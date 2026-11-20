@@ -37,7 +37,7 @@ $('wPlay').addEventListener('click',play);
 try{if(sessionStorage.getItem('alpenflug-skipdesk')){sessionStorage.removeItem('alpenflug-skipdesk');setTimeout(play,50);}}catch(e){}
 addEventListener('keydown',e=>{if(desk.classList.contains('gone'))return;if(e.code==='Enter'||e.code==='Space'){e.preventDefault();open&&!win.classList.contains('hidden')?play():openWin();}else if(e.code==='Escape'){if(!startm.classList.contains('hidden'))startToggle(false);else closeWin();}else if(e.code==='MetaLeft'||e.code==='MetaRight'){e.preventDefault();startToggle();}},true);
 // Controller: ✕ öffnet bzw. startet, ○ schliesst
-let padPrev={};function padPoll(){if(desk.classList.contains('gone'))return;requestAnimationFrame(padPoll);const ps=navigator.getGamepads?navigator.getGamepads():[];
+let padPrev={};function padPoll(){if(desk.classList.contains('gone'))return;requestAnimationFrame(padPoll);let ps=[];if(!window.__noPad){try{ps=navigator.getGamepads?navigator.getGamepads()||[]:[];}catch(e){window.__noPad=true;}}
   for(const g of ps){if(!g)continue;const b=i=>g.buttons[i]&&g.buttons[i].pressed;for(const i of [0,1,9]){const p=b(i);if(p&&!padPrev[i]){if(i===0||i===9)open&&!win.classList.contains('hidden')?play():openWin();if(i===1)closeWin();}padPrev[i]=p;}break;}}
 function show(){startToggle(false);win.classList.add('hidden');open=false;$('dockApp').classList.add('run');
   const h=$('dhint');h.style.display='';h.innerHTML='Swiss Sky ist pausiert – klicke unten in der Taskleiste auf <b>Swiss Sky</b>, um weiterzuspielen';

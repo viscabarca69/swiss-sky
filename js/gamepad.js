@@ -11,7 +11,7 @@ export function createGamepad(onConnect){
   let rep={};
   P.poll=(dt)=>{
     P.edges.length=0;
-    const pads=navigator.getGamepads?navigator.getGamepads():[];let g=null;
+    let pads=[];if(!window.__noPad){try{pads=navigator.getGamepads?navigator.getGamepads()||[]:[];}catch(e){window.__noPad=true;}}let g=null;
     if(P.idx>=0)g=pads[P.idx];if(!g)for(const q of pads)if(q&&q.connected){g=q;P.idx=q.index;P.name=q.id;break;}
     if(!g){P.connected=false;P.lx=P.ly=P.rx=P.ry=P.l2=P.r2=0;P.down.clear();return P;}
     if(!P.connected){P.connected=true;P.isPS=/dualsense|dualshock|054c|playstation|wireless controller/i.test(g.id);}
