@@ -30,8 +30,9 @@ export const MAIN_AP=AIRPORTS.find(a=>a.main)||AIRPORTS[0];
 export const ICAOS=[...new Set(AIRPORTS.map(a=>a.icao))].map(icao=>({icao,name:AIRPORTS.find(a=>a.icao===icao).name,rwys:AIRPORTS.filter(a=>a.icao===icao)}));
 
 export async function buildGrid(progress){
-  const res=await fetch(TERRAIN);if(!res.ok)throw new Error('Höhendaten fehlen ('+res.status+')');
-  const blob=await res.blob();
+  // Offline-Version: Höhendaten als Data-URL direkt dekodieren (kein fetch – das sperren manche Vorschau-Fenster)
+  let blob;if(TERRAIN.startsWith('data:')){const b64=TERRAIN.slice(TERRAIN.indexOf(',')+1),bin=atob(b64),u=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u[i]=bin.charCodeAt(i);blob=new Blob([u],{type:'image/png'});}
+  else{const res=await fetch(TERRAIN);if(!res.ok)throw new Error('Höhendaten fehlen ('+res.status+')');blob=await res.blob();}
   let bmp;try{bmp=await createImageBitmap(blob,{colorSpaceConversion:'none',premultiplyAlpha:'none'});}catch(e){bmp=await createImageBitmap(blob);}
   const cv=document.createElement('canvas');cv.width=bmp.width;cv.height=bmp.height;const ctx=cv.getContext('2d',{willReadFrequently:true});
   ctx.drawImage(bmp,0,0);const d=ctx.getImageData(0,0,N1,N1).data;
