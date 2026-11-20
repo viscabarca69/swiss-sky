@@ -78,7 +78,13 @@ export function createHUD(){
     c.fillStyle='#05202a';c.beginPath();c.arc(0,-20,4.2,0,7);c.fill();c.restore();
     if(lbl){c.font='800 13px Inter';const w=c.measureText(lbl).width;c.fillStyle='rgba(5,20,28,.85)';c.beginPath();rr(c,x+12,y-36*sc,w+14,22,6);c.fill();c.fillStyle='#22e0ff';c.textAlign='left';c.fillText(lbl,x+19,y-36*sc+15);}};
   const route=(c,P,d,objs,oi,wp,lw)=>{
-    let prev=d.from?P(d.from[0],d.from[1]):P(d.x,d.z);const pts=[];objs.forEach((o,i)=>{if(i>=oi)pts.push(P(o.x,o.z));});
+    let prev=d.from?P(d.from[0],d.from[1]):P(d.x,d.z);const pts=[];
+    if(d.path&&d.path.length){const pa=d.path;objs.forEach((o,i)=>{if(i<oi)return;
+        if(o.pi){let a=o.pi[0];const b=Math.min(pa.length,o.pi[1]);
+          if(i===oi&&!d.from){let bd=1e18;for(let k=a;k<b;k++){const q=pa[k],dd=(q.x-d.x)**2+(q.z-d.z)**2;if(dd<bd){bd=dd;a=k;}}if(bd<2500*2500)prev=P(pa[a].x,pa[a].z);}
+          for(let k=a;k<b;k+=2)pts.push(P(pa[k].x,pa[k].z));if(b>a)pts.push(P(pa[b-1].x,pa[b-1].z));}
+        else pts.push(P(o.x,o.z));});}
+    else objs.forEach((o,i)=>{if(i>=oi)pts.push(P(o.x,o.z));});
     c.lineCap=c.lineJoin='round';
     if(pts.length){c.strokeStyle='rgba(0,0,0,.45)';c.lineWidth=lw+3;c.setLineDash([]);c.beginPath();c.moveTo(...prev);pts.forEach(q=>c.lineTo(...q));c.stroke();
       c.strokeStyle='#ffd23f';c.lineWidth=lw;c.setLineDash([lw*3,lw*2]);c.beginPath();c.moveTo(...prev);pts.forEach(q=>c.lineTo(...q));c.stroke();prev=pts[pts.length-1];}

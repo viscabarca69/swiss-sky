@@ -47,6 +47,66 @@ export function roundRings(list,S,vref,inner){const v=vref*1.7,RW=v*v/(9.81*Math
     out.push(...(th>1.0||B.name?[T1,M,T2]:[T1,T2]));}
   return out;}
 
+// Sichtbare Flugbahn durch die Ringe. Zwischen zwei Ringen ein Dubins-Weg (Kurve–Gerade–Kurve mit festem Kurvenradius):
+// so ist die Bahn mit dem jeweiligen Flugzeug wirklich fliegbar; bei Haarnadeln zeigt sie den nötigen Bogen.
+// Richtung an einem Ring = Winkelhalbierende von Ein- und Ausflug (Endanflug-Ringe: Pistenrichtung).
+// Jedes Ziel o bekommt o.pi=[a,b] (Punktbereich der Bahn, die zu ihm führt) und o.hd (Flugrichtung im Ring).
+const M2P=Math.PI*2,md=a=>((a%M2P)+M2P)%M2P;
+function dubins(q0,q1,r){const dx=q1.X-q0.X,dy=q1.Y-q0.Y,D=Math.hypot(dx,dy),d=D/r,ph=Math.atan2(dy,dx),al=md(q0.t-ph),be=md(q1.t-ph);
+  const sa=Math.sin(al),sb=Math.sin(be),ca=Math.cos(al),cb=Math.cos(be),cab=Math.cos(al-be),C=[];
+  {const p2=2+d*d-2*cab+2*d*(sa-sb);if(p2>=0){const t1=Math.atan2(cb-ca,d+sa-sb);C.push(['LSL',md(-al+t1),Math.sqrt(p2),md(be-t1)]);}}
+  {const p2=2+d*d-2*cab+2*d*(sb-sa);if(p2>=0){const t1=Math.atan2(ca-cb,d-sa+sb);C.push(['RSR',md(al-t1),Math.sqrt(p2),md(-be+t1)]);}}
+  {const p2=-2+d*d+2*cab+2*d*(sa+sb);if(p2>=0){const p=Math.sqrt(p2),t2=Math.atan2(-ca-cb,d+sa+sb)-Math.atan2(-2,p);C.push(['LSR',md(-al+t2),p,md(-md(be)+t2)]);}}
+  {const p2=d*d-2+2*cab-2*d*(sa+sb);if(p2>=0){const p=Math.sqrt(p2),t2=Math.atan2(ca+cb,d-sa-sb)-Math.atan2(2,p);C.push(['RSL',md(al-t2),p,md(be-t2)]);}}
+  {const tm=(6-d*d+2*cab+2*d*(sa-sb))/8;if(Math.abs(tm)<=1){const p=md(M2P-Math.acos(tm)),t=md(al-Math.atan2(ca-cb,d-sa+sb)+p/2);C.push(['RLR',t,p,md(al-be-t+p)]);}}
+  {const tm=(6-d*d+2*cab+2*d*(-sa+sb))/8;if(Math.abs(tm)<=1){const p=md(M2P-Math.acos(tm)),t=md(-al-Math.atan2(ca-cb,d+sa-sb)+p/2);C.push(['LRL',t,p,md(md(be)-al-t+p)]);}}
+  let best=null;for(const c of C){const L=c[1]+c[2]+c[3];if(!best||L<best.L)best={w:c[0],s:[c[1],c[2],c[3]],L};}return best;}
+function dubinsPts(q0,q1,r,step){const b=dubins(q0,q1,r);if(!b)return null;const out=[];let X=q0.X,Y=q0.Y,t=q0.t;
+  for(let k=0;k<3;k++){const ty=b.w[k],len=b.s[k]*r,n=Math.max(1,Math.ceil(len/step));
+    for(let i=1;i<=n;i++){const u=len*i/n;let x,y,tt;
+      if(ty==='S'){x=X+Math.cos(t)*u;y=Y+Math.sin(t)*u;tt=t;}
+      else if(ty==='L'){const cx=X-r*Math.sin(t),cy=Y+r*Math.cos(t);tt=t+u/r;x=cx+r*Math.sin(tt);y=cy-r*Math.cos(tt);}
+      else{const cx=X+r*Math.sin(t),cy=Y-r*Math.cos(t);tt=t-u/r;x=cx-r*Math.sin(tt);y=cy+r*Math.cos(tt);}
+      out.push({X:x,Y:y});if(i===n){X=x;Y=y;t=tt;}}}
+  return {pts:out,L:b.L*r};}
+export function turnRadius(P){if(!P||P.heli)return 0;const V=(P.prop?1.45:1.5)*P.Vref,bk=P.prop?38:28;return V*V/(9.81*Math.tan(bk*Math.PI/180));}
+export function objPath(objs,st){
+  const pts=[],R=st&&st.r||600,STEP=Math.max(25,Math.min(60,R/12));
+  const th=(dx,dz)=>Math.atan2(-dz,dx);
+  // Kontrollpunkte (Pose: Position, Richtung, Höhe) je zusammenhängender Ringfolge
+  const runs=[];let cp=[];
+  if(st&&objs[0]&&objs[0].type==='ring'){const dx=st.hx,dz=st.hz;cp.push({x:st.x,y:st.y,z:st.z,t:th(dx,dz),leg:0,fix:1});
+    if(st.ground){const roll=st.jet?1700:600,climb=st.jet?2600:1100;cp.push({x:st.x+dx*roll,y:st.y+4,z:st.z+dz*roll,t:th(dx,dz),leg:0,fix:1,str:1});
+      const f=objs[0];if(((f.x-st.x)*dx+(f.z-st.z)*dz)>roll+climb+600)cp.push({x:st.x+dx*(roll+climb),y:st.y+(st.jet?190:110),z:st.z+dz*(roll+climb),t:th(dx,dz),leg:0,fix:1,str:1});}
+    else cp.push({x:st.x+dx*500,y:st.y,z:st.z+dz*500,t:th(dx,dz),leg:0,fix:1,str:1});}
+  objs.forEach((o,i)=>{o.pi=null;
+    if(o.type==='ring'){const c={x:o.x,y:o.y,z:o.z,leg:i,o};if(o.dir){c.t=th(o.dir[0],o.dir[1]);c.fix=1;}cp.push(c);return;}
+    if(o.type==='land'&&cp.length&&objs[i-1]&&objs[i-1].type==='ring'&&objs[i-1].dir){const A=o.ap,dr=objs[i-1].dir,s=Math.sign(dr[0]*A.sin-dr[1]*A.cos)||1,t=th(dr[0],dr[1]);
+      const td=fromLocal(A,-s*(A.len/2-330),0),ro=fromLocal(A,-s*(A.len/2-1100),0);o.td={x:td.x,y:A.elev,z:td.z};
+      cp.push({x:td.x,y:A.elev+1,z:td.z,t,fix:1,str:1,leg:i,o},{x:ro.x,y:A.elev+0.5,z:ro.z,t,fix:1,str:1,leg:i});runs.push(cp);cp=[];return;}
+    runs.push(cp);cp=[];});
+  runs.push(cp);
+  for(const c of runs){if(c.length<2)continue;
+    // Richtungen an freien Ringen: Winkelhalbierende
+    for(let j=0;j<c.length;j++){const q=c[j];if(q.fix)continue;const a=c[j-1],b=c[j+1];let ux=0,uz=0;
+      if(a){const l=Math.hypot(q.x-a.x,q.z-a.z)||1;ux+=(q.x-a.x)/l;uz+=(q.z-a.z)/l;}
+      if(b){const l=Math.hypot(b.x-q.x,b.z-q.z)||1;ux+=(b.x-q.x)/l;uz+=(b.z-q.z)/l;}
+      if(Math.hypot(ux,uz)<0.25&&a&&b){// Haarnadel: quer zur Einflugrichtung, zur Seite des nächsten Rings
+        const l=Math.hypot(q.x-a.x,q.z-a.z)||1,ix=(q.x-a.x)/l,iz=(q.z-a.z)/l,side=Math.sign(ix*(b.z-q.z)-iz*(b.x-q.x))||1;ux=-iz*side;uz=ix*side;}
+      if(Math.hypot(ux,uz)<1e-6){ux=0;uz=-1;}q.t=th(ux,uz);}
+    for(let j=0;j<c.length-1;j++){const A=c[j],B=c[j+1],a=pts.length;let seg=null;
+      if(!B.str){const dp=dubinsPts({X:A.x,Y:-A.z,t:A.t},{X:B.x,Y:-B.z,t:B.t},R,STEP);if(dp)seg=dp.pts.map(p=>({x:p.X,z:-p.Y}));}
+      if(!seg){const L=Math.hypot(B.x-A.x,B.z-A.z),n=Math.max(1,Math.ceil(L/STEP));seg=[];for(let i=1;i<=n;i++)seg.push({x:A.x+(B.x-A.x)*i/n,z:A.z+(B.z-A.z)*i/n});}
+      if(j===0)pts.push({x:A.x,y:A.y,z:A.z,leg:B.leg});
+      // Höhe: weich (smoothstep) entlang der Weglänge
+      let tot=0;const ds=[];let px=A.x,pz=A.z;for(const q of seg){tot+=Math.hypot(q.x-px,q.z-pz);ds.push(tot);px=q.x;pz=q.z;}
+      seg.forEach((q,i)=>{const u=tot>0?ds[i]/tot:1,w=u*u*(3-2*u)*0.6+u*0.4;pts.push({x:q.x,y:A.y+(B.y-A.y)*w,z:q.z,leg:B.leg});});
+      if(B.o&&B.o.pi==null)B.o.pi=[Math.max(0,a-1),pts.length];if(B.o)B.o.hd=[Math.cos(B.t),-Math.sin(B.t)];}
+    const last=c[c.length-1];if(last.o&&last.o.pi)last.o.pi[1]=pts.length;
+    const lo=c.find(q=>q.o&&q.o.type==='land');if(lo&&lo.o.pi)lo.o.pi[1]=pts.length;
+    pts.push({...pts[pts.length-1],brk:1});}
+  let sAcc=0;for(let k=0;k<pts.length;k++){if(k&&!pts[k-1].brk)sAcc+=Math.hypot(pts[k].x-pts[k-1].x,pts[k].z-pts[k-1].z);pts[k].s=sAcc;}
+  return pts;}
 export const MISSIONS=[
   {id:'m1',name:'Platzrunde Birrfeld',plane:'alpina',start:['BIR',false],hour:10.5,weather:'fair',
    brief:'Erste Schritte auf dem Flugplatz Birrfeld im Aargau: Start auf Piste 08, Linkskurven über Gegen- und Queranflug, dann Landung auf der kurzen Piste.',
@@ -69,9 +129,10 @@ export const MISSIONS=[
    tip:'Im Endanflug auf Piste 34 fliegst du von Süden her über Dübendorf. Fahrwerk (G) nicht vergessen!',
    obj:({R,F,L})=>[R(47.41,8.545,380),R(47.378,8.54,330),R(47.355,8.553,280),R(47.34,8.575,300),R(47.37,8.60,350),...F('ZRH16',true,[3000,1300]),L('ZRH16')]},
   {id:'m6',name:'Nachtlandung Zürich',plane:'l320',start:['ZRH10',true],hour:22.6,weather:'clear',
-   brief:'Linienflug bei Nacht: Start mit dem LUIS L-320 auf Piste 28, Kurve über das Furttal und langer Instrumentenanflug auf Piste 14 – die Lichter von Zürich unter dir.',
-   tip:'Fahrwerk (G) nach dem Start einfahren und vor dem Endanflug wieder ausfahren. Klappen schrittweise (F). PAPI: zwei weisse, zwei rote Lichter = perfekter Gleitpfad.',
-   obj:({RL,F,L})=>[RL('ZRH10',-4500,0,600),RL('ZRH14',-10200,3400,800),...F('ZRH14',false,[6000,3500,1500,600]),L('ZRH14')]},
+   brief:'Linienflug bei Nacht: Start mit dem LUIS L-320 auf Piste 28, Gegenanflug über die Lägern, weite Rechtskurve über dem Rafzerfeld und langer Endanflug auf Piste 14 – die Lichter von Zürich unter dir.',
+   tip:'Folge der leuchtenden Bahn durch die Ringe. Die grosse Kurve mit etwa 25° Querlage bei 400 km/h fliegen. Fahrwerk (G) vor dem Endanflug ausfahren, Klappen schrittweise (F). PAPI: zwei weisse, zwei rote Lichter = perfekter Gleitpfad.',
+   // Abflug West, Gegenanflug parallel zur Anfluglinie (6.4 km südwestlich), Halbkreis mit 3.2 km Radius direkt in den Endanflug (10 km)
+   obj:({RL,F,L})=>[RL('ZRH10',-4800,0,330),RL('ZRH14',-4600,5700,470),RL('ZRH14',-7600,6400,560),RL('ZRH14',-10600,6400,620),RL('ZRH14',-14071,5463,620),RL('ZRH14',-15008,3200,590),RL('ZRH14',-14071,937,540),...F('ZRH14',false,[9000,6000,3500,1500,600]),L('ZRH14')]},
   {id:'m7',name:'Langstrecke: Ankunft in Zürich',plane:'l350',start:['ZRH16',true,{dist:10000,agl:600}],hour:7.1,weather:'fair',
    brief:'Nach einer langen Nacht über Europa: Mit dem Grossraumjet LUIS L-350 im Morgenlicht über den Zürichsee anfliegen und auf Piste 34 landen.',
    tip:'Das schwere Flugzeug reagiert träge – plane jede Kurve früh. Klappen stufenweise auf FULL, Fahrwerk spätestens 6 km vor der Piste.',

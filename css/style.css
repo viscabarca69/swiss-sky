@@ -337,3 +337,29 @@ body.touchui #keys{display:none}
 .mappop button small{display:block;font-weight:600;font-size:11px;color:#d9c2e6;margin-top:2px}
 .mappop button.warn{border-color:rgba(255,176,0,.5);background:rgba(255,176,0,.1)}.mappop button.warn small{color:#ffcf6a}
 .mappop button.ghost{border-color:rgba(255,255,255,.15);background:rgba(255,255,255,.05)}
+
+/* Bodenanzeige beim Aufsetzen: Höhe über Grund, Trend (3 s), Zeit bis zum Aufsetzen */
+#gnd{position:absolute;left:calc(50% + 150px);top:50%;transform:translateY(-55%);width:64px;display:flex;flex-direction:column;align-items:center;gap:4px;opacity:0;transition:opacity .25s;pointer-events:none;filter:drop-shadow(0 2px 6px rgba(0,0,0,.5))}
+#gnd.on{opacity:1}
+#gnd .gl{font:800 10px Inter,sans-serif;letter-spacing:.12em;color:#cfe8ff}
+#gnd .gbar{position:relative;width:14px;height:170px;border-radius:7px;background:linear-gradient(#0b1a2a99,#0b1a2acc);border:1px solid #9fd2ff66;overflow:visible}
+#gnd .gtick{position:absolute;left:-4px;width:22px;height:1px;background:#ffffff55}
+#gnd .gground{position:absolute;left:-10px;right:-10px;bottom:-8px;height:8px;border-radius:2px;background:repeating-linear-gradient(135deg,#c8a165 0 4px,#6b4d22 4px 8px)}
+#gplane{position:absolute;left:50%;width:0;height:0;border-left:11px solid transparent;border-right:11px solid transparent;border-top:12px solid #3df58a;transform:translate(-50%,50%);transition:border-top-color .2s}
+#gtrend{position:absolute;left:50%;width:4px;transform:translateX(-50%);background:#3df58a88;border-radius:2px}
+#gnd.amber #gplane{border-top-color:#ffc23a}#gnd.amber #gtrend{background:#ffc23a88}
+#gnd.red #gplane{border-top-color:#ff4b3a}#gnd.red #gtrend{background:#ff4b3a99}
+#gval{font:900 18px Inter,sans-serif;color:#fff;font-variant-numeric:tabular-nums}
+#gtime{font:700 11px Inter,sans-serif;color:#cfe8ff;white-space:nowrap}
+#flare{position:absolute;left:50%;top:42%;transform:translate(-50%,-50%) scale(.9);font:900 30px Inter,sans-serif;letter-spacing:.08em;color:#fff;text-shadow:0 2px 12px rgba(0,0,0,.7),0 0 18px rgba(255,194,58,.8);opacity:0;transition:opacity .15s,transform .15s;pointer-events:none;text-align:center}
+#flare span{display:block;font:700 14px Inter,sans-serif;letter-spacing:.04em;color:#ffe08a}
+#flare.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
+@media (max-width:900px){#gnd{left:calc(50% + 110px)}#gnd .gbar{height:120px}}
+
+/* Aufsetz-Bewertung */
+#tdb{position:absolute;left:50%;top:33%;transform:translate(-50%,-50%) scale(.85);text-align:center;opacity:0;transition:opacity .25s,transform .35s cubic-bezier(.2,1.6,.4,1);pointer-events:none}
+#tdb.on{opacity:1;transform:translate(-50%,-50%) scale(1)}
+#tdb b{display:block;font:900 40px Inter,sans-serif;letter-spacing:.06em;color:#fff;text-shadow:0 3px 16px rgba(0,0,0,.6)}
+#tdb span{display:inline-block;margin-top:6px;padding:5px 14px;border-radius:999px;background:rgba(10,16,24,.72);font:700 14px Inter,sans-serif;color:#dfeaf5}
+#tdb.g1 b{color:#7dffb0;text-shadow:0 0 22px rgba(61,245,138,.6),0 3px 16px rgba(0,0,0,.6)}
+#tdb.g2 b{color:#bff7ff}#tdb.g3 b{color:#ffd23f}#tdb.g4 b{color:#ff6a4a}
