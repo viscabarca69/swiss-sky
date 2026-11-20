@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Swiss Sky</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+<script type="importmap">{"imports":{"three":"https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js","three/addons/":"https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"}}</script>
+</head>
+<body>
+<div id="desk">
+  <canvas id="stars"></canvas>
+  <div id="dicons">
+    <div class="dico" id="dicon" title="Swiss Sky öffnen"><div class="appic big"></div><span>Swiss Sky</span></div>
+    <div class="dico" id="dbin" title="Papierkorb"><div class="binic"></div><span>Papierkorb</span></div>
+  </div>
+  <div id="dhint">Doppelklicke auf <b>Swiss Sky</b> – oder klicke unten in der Taskleiste</div>
+  <div id="startm" class="hidden">
+    <div class="ssearch"><svg viewBox="0 0 24 24" width="16" height="16"><circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M15 15l5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg><span>Nach Apps und Dokumenten suchen</span></div>
+    <div class="shead"><b>Angeheftet</b></div>
+    <div class="sgrid"><div class="sapp" id="sApp"><div class="appic"></div><span>Swiss Sky</span></div></div>
+    <div class="shead"><b>Empfohlen</b></div>
+    <div class="srec" id="sRec"><div class="appic sm"></div><div><b>Swiss Sky – Neuigkeiten</b><span>Version 8 · gerade eben</span></div></div>
+    <div class="sfoot"><div class="suser"><i>L</i><span>Luis</span></div><svg viewBox="0 0 24 24" width="18" height="18"><path d="M12 3v8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg></div>
+  </div>
+  <div id="taskbar">
+    <div class="tbc">
+      <button class="tbb" id="tbStart" title="Start"><svg viewBox="0 0 24 24" width="22" height="22"><defs><linearGradient id="sg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#6cc4ff"/><stop offset="1" stop-color="#1f6fe0"/></linearGradient></defs><rect x="2" y="2" width="20" height="20" rx="6" fill="url(#sg)"/><path d="M5 17 L10 9.5 L12.6 13.2 L14.6 10.8 L19 17 Z" fill="#fff"/></svg></button>
+      <button class="tbb" id="tbSearch" title="Suche"><svg viewBox="0 0 24 24" width="20" height="20"><circle cx="10.5" cy="10.5" r="6" fill="none" stroke="#fff" stroke-width="2"/><path d="M15 15l5 5" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg></button>
+      <button class="tbb" id="dockApp" title="Swiss Sky"><div class="appic xs"></div><i class="ind"></i></button>
+    </div>
+    <div class="tray">
+      <span class="chev">⌃</span>
+      <svg viewBox="0 0 24 24" width="16" height="16"><path d="M12 18.5a1.5 1.5 0 1 0 0 .01zM6.5 13.8a7.8 7.8 0 0 1 11 0l-1.4 1.4a5.8 5.8 0 0 0-8.2 0zM3.3 10.6a12.3 12.3 0 0 1 17.4 0l-1.4 1.4a10.3 10.3 0 0 0-14.6 0z" fill="#fff"/></svg>
+      <svg viewBox="0 0 24 24" width="16" height="16"><path d="M4 9h4l5-4v14l-5-4H4z" fill="#fff"/><path d="M16 8.5a5 5 0 0 1 0 7M18.5 6a8.5 8.5 0 0 1 0 12" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>
+      <span class="tbat"><i></i></span>
+      <div class="tclock"><span id="tTime"></span><span id="tDate"></span></div>
+    </div>
+  </div>
+  <div id="win" class="hidden">
+    <div class="wbar"><div class="wapp"><div class="appic xs"></div><span class="wtitle">Swiss Sky – Info</span></div><div class="caps"><button id="wMin" title="Minimieren"><svg viewBox="0 0 10 10" width="10" height="10"><path d="M0 5h10" stroke="currentColor" stroke-width="1"/></svg></button><button id="wMax" title="Maximieren"><svg viewBox="0 0 10 10" width="10" height="10"><rect x=".5" y=".5" width="9" height="9" rx="1.5" fill="none" stroke="currentColor" stroke-width="1"/></svg></button><button id="wClose" class="cx" title="Schliessen"><svg viewBox="0 0 10 10" width="10" height="10"><path d="M0 0l10 10M10 0L0 10" stroke="currentColor" stroke-width="1"/></svg></button></div></div>
+    <div class="wbody">
+      <div class="whead"><div class="appic huge"></div><div><h1>Swiss Sky</h1><p class="sub">Flugsimulator · Zürich · Bern · Alpen · Wallis</p><p class="ver">Version 8 · November 2026 · früher «Alpenflug»</p></div></div>
+      <p class="lead">Fliege über eine echte Schweiz – mit echten Höhendaten, 16 Seen, rund 150 Orten und 15 Flugplätzen auf einer einzigen, durchgehenden Karte: von Basel und Zürich über Aarau, Zofingen und Strengelbach nach Bern, ins Berner Oberland zu Eiger, Mönch und Jungfrau und bis nach Sion im Wallis. Lerne in der Flugschule fliegen, verdiene Geld in der Karriere oder erkunde alles im freien Flug.</p>
+      <div class="cards">
+        <div class="card"><b>🗺️ Eine grosse Karte</b><span>Rund 170 × 170 km Schweiz ohne Ladepausen: Mittelland, Zentralschweiz, Berner Oberland und Wallis.</span></div>
+        <div class="card"><b>🛫 15 Flugplätze</b><span>Zürich, Bern, Sion, Emmen, Buochs, Grenchen, Interlaken und mehr – alle Pisten lang genug für L-320 und L-330.</span></div>
+        <div class="card"><b>✈️ 12 Luftfahrzeuge</b><span>Vom Hochdecker Alpina über Segler und Löschflugzeug bis zur LUIS-Flotte L-320 bis L-380 – und der Rega «Da Vinci».</span></div>
+        <div class="card"><b>🧭 Anflugplaner</b><span>Piste auf der Karte antippen, Landeanflug wählen: Bahn mit Kurven, Sinkflug-Tipps und Autopilot bis kurz vor die Piste.</span></div>
+        <div class="card"><b>🏆 Karriere</b><span>34 Missionen, Aufträge mit Lohn – auch Langstrecken wie Zürich → Bern oder Zürich → Sion –, Hangar, Lackierungen, 23 Abzeichen.</span></div>
+        <div class="card"><b>🎓 Flugschule</b><span>9 Lektionen mit Fluglehrer: rollen, starten, Kurven, Klappen, Überziehen, Landen – bis zur Prüfung.</span></div>
+        <div class="card"><b>📻 Funk &amp; Regeln</b><span>Start- und Landefreigaben, Abflugkontrolle, Tempolimit im Nahbereich der Flughäfen – alles wird erklärt.</span></div>
+        <div class="card"><b>🌦️ Wetter, Foto &amp; Film</b><span>Gewitter, Nebelmeer, Föhn, Winter oder echtes Wetter · Fotomodus, Wiederholungen, 48 goldene Edelweiss.</span></div>
+      </div>
+      <h3>Steuerung</h3>
+      <div class="ctl">
+        <div><h4>Tastatur</h4><dl><dt>W / S</dt><dd>Schub</dd><dt>↓ / ↑</dt><dd>Nase hoch / runter</dd><dt>A / D</dt><dd>Kurve</dd><dt>Q / E</dt><dd>Seitenruder</dd><dt>F / V</dt><dd>Klappen</dd><dt>G</dt><dd>Fahrwerk</dd><dt>B</dt><dd>Bremse / Luftbremse</dd><dt>C</dt><dd>Kamera</dd><dt>T</dt><dd>Funk</dd><dt>U · H</dt><dd>Autopilot · Flughilfe</dd><dt>M · P</dt><dd>Karte (mit Anflugplaner) · Pause</dd><dt>K · J</dt><dd>Fotomodus · Pushback</dd></dl></div>
+        <div><h4>PS5-Controller</h4><dl><dt>Linker Stick</dt><dd>Steuern</dd><dt>R2 / L2</dt><dd>Schub</dd><dt>L1 / R1</dt><dd>Seitenruder</dd><dt>✕</dt><dd>Bremse / Luftbremse</dd><dt>○</dt><dd>Fahrwerk</dd><dt>□ / △</dt><dd>Klappen</dd><dt>R3</dt><dd>Kamera</dd><dt>L3</dt><dd>Funk</dd><dt>◀ / ▶</dt><dd>Autopilot / Flughilfe</dd><dt>Options</dt><dd>Pause</dd></dl></div>
+      </div>
+      <h3>Neu in Version 8</h3>
+      <ul class="news"><li>Neuer Name: Alpenflug heisst jetzt <b>Swiss Sky</b> – dein Spielstand bleibt erhalten</li><li>Flugzeuge und Helikopter: Glanzlack, Blechfelder, detaillierte Triebwerke und Propeller, Rega mit Rotorkopf, Winde und Suchscheinwerfer</li><li>Landschaft: Feldspuren und Feldwege, Obstgärten, Kirchen in jedem Dorf, Chalets in den Bergen, Gletscher, zerklüftete Felsen, türkisfarbene Ufer</li><li>Läuft flüssiger: Wolken und Flugplätze brauchen viel weniger Rechenarbeit</li><li>Flughäfen mit mehr Gebäuden, Anflugbefeuerung und geparkten Flugzeugen; alle Pisten lang genug für Airliner</li><li>Strengelbach und Zofingen auf der Karte</li><li>Anflugplaner, Langstrecken-Aufträge und eine grosse Karte von Zürich bis ins Wallis</li><li>Funk: Abflugkontrolle nach dem Start; Tempowarnungen werden erklärt</li><li>Rega «Da Vinci» und Airliner nach echten Fotos neu gestaltet</li></ul>
+      <p class="tip">Tipp: Neu hier? Starte mit der <b>Flugschule</b>, Lektion 1. Im Spiel kommst du über «Desktop» im Menü jederzeit hierher zurück.</p>
+    </div>
+    <div class="wfoot"><div class="ld"><div class="lb"><i id="wBar"></i></div><span id="wStat">Wird im Hintergrund geladen …</span></div><button id="wPlay">Spielen</button></div>
+  </div>
+</div>
+<canvas id="c"></canvas>
+<div id="vignette"></div>
+
+<div id="loading">
+  <div class="lwrap">
+    <div class="logo">SWISS SKY</div>
+    <div class="lsub">Flugsimulator · Zürich · Bern · Alpen</div>
+    <div class="lbar"><div id="lbar"></div></div>
+    <div id="lstep">Wird gestartet …</div>
+  </div>
+</div>
+
+<div id="hud" class="hidden">
+  <div id="emerg"></div>
+  <div id="objbox" class="glass">
+    <div class="orow"><div id="objtitle"></div><div id="objdist"></div></div>
+    <div id="objtext"></div>
+    <div id="glide"></div>
+  </div>
+  <div id="tr"><div id="timer">0:00</div><canvas id="mini"></canvas><div id="wpInfo" style="display:none"></div></div>
+  <canvas id="pfd"></canvas>
+  <div id="sys" class="glass">
+    <div class="srow"><span id="thrLbl">SCHUB</span><b id="thrVal">0</b></div>
+    <div class="sbar"><div id="thrBar2"></div><div id="thrBar"></div></div>
+    <div class="srow"><span>KLAPPEN</span><b id="flapVal">0</b></div>
+    <div class="sbar"><div id="flapBar"></div></div>
+    <div class="srow"><span>FAHRWERK</span><b id="gearTxt"></b></div>
+    <div id="gearLights" class="gear"><i></i><i></i><i></i></div>
+    <div class="inds"><span id="brkInd">BREMSE</span><span id="splInd">SPOILER</span><span id="astInd">FLUGHILFE</span><span id="apInd">AUTOPILOT</span><span id="crateInd"></span></div>
+    <div id="windInd" style="display:none"></div>
+  </div>
+  <div id="radio" style="display:none"></div>
+  <div id="keys" class="kb">T Funk · W/S Schub · ↓↑ Nase · A/D Kurve · F/V Klappen · G Fahrwerk · B Bremse · C Kamera · M Karte · H Flughilfe · U Autopilot · P Pause</div>
+  <div id="marker"><div class="dia"></div><div class="arr"></div><div id="mdist"></div></div>
+  <div id="wpmk"><div class="pin"></div><div class="arr"></div><div id="wpdist"></div></div>
+  <div id="warn"></div>
+  <div id="toast"></div>
+</div>
+<div id="padkeys">R2/L2 Schub · Stick Steuern · L1/R1 Seitenruder · ✕ Bremse · ○ Fahrwerk · □/△ Klappen · R3 Kamera · L3 Funk · ◀ Autopilot · ▶ Flughilfe · ▲ Karte · ▼ Kiste</div>
+
+<div id="mapov" class="ov hidden"><div class="mapwrap"><div class="mapbox"><canvas id="mapc" width="1100" height="1100"></canvas><div id="mapPop" class="mappop hidden"></div><div class="mapbar"><button id="mapZin" title="Hineinzoomen">+</button><button id="mapZout" title="Herauszoomen">−</button><button id="mapCtr" title="Zum Flugzeug">⌖</button><button id="mapClr" title="Eigenes Ziel löschen">Ziel löschen</button><button id="mapClose" title="Karte schliessen (M)">✕</button></div></div><div class="hint" id="mapHint"></div></div></div>
+
+<div id="mfade"></div>
+<div id="menu" class="hidden">
+  <div class="side glass">
+    <div class="brand"><div class="logo">SWISS SKY</div><div class="lsub">Flugsimulator · Zürich · Bern · Alpen</div><button class="deskbtn" id="mDesk" title="Zum Desktop"><svg viewBox="0 0 24 24" width="18" height="18"><rect x="3" y="4" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9 20h6M12 16v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg><span>Desktop</span></button></div>
+    <div class="tabs"><button data-t="tSchool">Flugschule</button><button class="sel" data-t="tCareer">Karriere</button><button data-t="tFree">Freier Flug</button><button data-t="tKeys">Steuerung</button><button data-t="tSet">Optionen</button></div>
+    <div class="tab hidden" id="tSchool"><div id="llist"></div></div>
+    <div class="tab" id="tCareer">
+      <div id="cHead"></div>
+      <div class="subtabs" id="cTabs"><button data-s="cMis" class="sel">Missionen</button><button data-s="cJobs">Aufträge</button><button data-s="cHang">Hangar</button><button data-s="cBad">Abzeichen</button><button data-s="cRec">Rekorde</button></div>
+      <div class="sub" id="cMis"><div id="daily"></div><div id="mlist"></div></div>
+      <div class="sub hidden" id="cJobs"></div>
+      <div class="sub hidden" id="cHang"></div>
+      <div class="sub hidden" id="cBad"></div>
+      <div class="sub hidden" id="cRec"></div>
+    </div>
+    <div class="tab hidden" id="tFree">
+      <h4>Karte</h4><div id="fArea" class="chips"></div>
+      <h4>Flugzeug</h4><div id="fPlanes" class="pcs"></div>
+      <h4>Flughafen</h4><div id="fAP" class="chips"></div>
+      <h4>Start</h4><div id="fRwy" class="chips"></div>
+      <h4>Tageszeit</h4><div id="fTime" class="chips"></div>
+      <h4>Wetter</h4><div id="fWx" class="chips"></div><div id="fLive" class="chips" style="margin-top:6px"></div>
+      <h4>Jahreszeit</h4><div id="fSeason" class="chips"></div>
+      <h4>Wind</h4><div id="fWind" class="chips"></div>
+      <div id="ewInfo" class="tip"></div>
+      <div class="gobar"><button id="fGo" class="wide">Abflug</button><small id="fSum"></small></div>
+    </div>
+    <div class="tab hidden" id="tKeys">
+      <h4>Tasten anpassen</h4><div id="kMap" class="kmap"></div><div class="btnrow"><button class="ghost small" id="kReset">Standard wiederherstellen</button></div>
+      <h4 style="margin-top:18px">Standard-Belegung</h4>
+      <div class="keys">
+        <kbd>W / S</kbd><span>Schub erhöhen / verringern</span>
+        <kbd>↓ / ↑</kbd><span>Nase hoch (ziehen) / Nase runter</span>
+        <kbd>← → / A D</kbd><span>In die Kurve legen – loslassen: Flügel richten sich langsam wieder auf (Stärke unter Optionen)</span>
+        <kbd>Q / E</kbd><span>Seitenruder, Lenken am Boden</span>
+        <kbd>F / V</kbd><span>Landeklappen aus / ein – mehr Auftrieb bei wenig Tempo, aber mehr Widerstand. Start: Stufe 1 · Landung: voll</span>
+        <kbd>G</kbd><span>Fahrwerk ein / aus</span>
+        <kbd>B</kbd><span>Am Boden: Radbremse · In der Luft: Luftbremse (Spoiler) – zum Langsamer-Werden und Sinken</span>
+        <kbd>Leertaste</kbd><span>Kiste abwerfen (Versorgungsflüge)</span>
+        <kbd>C</kbd><span>Kamera: Verfolger · Cockpit · Vorbeiflug · Weit</span>
+        <kbd>Maus ziehen</kbd><span>Umschauen · Mausrad: Zoom</span>
+        <kbd>M · P · H</kbd><span>Karte · Pause · Flughilfe an/aus</span>
+        <kbd>U</kbd><span>Autopilot: hält Kurs, Höhe, Tempo (Q/E Kurs, W/S Tempo, Pfeiltasten = aus)</span>
+        <kbd>Karte</kbd><span>Klick setzt ein eigenes Ziel (rastet auf Flughäfen, Gipfel, Orte ein) · Rechtsklick/Entf löscht · Mausrad zoomt · Ziehen verschiebt. Mit gesetztem Ziel fliegt der Autopilot (U) in sicherer Höhe hin.</span>
+        <kbd>N · R</kbd><span>Ton an/aus · Neustart</span>
+        <kbd>K</kbd><span>Fotomodus: Kamera frei drehen, Filter wählen (F), Foto speichern (Enter)</span>
+        <kbd>J</kbd><span>Am Gate: Pushback durch den Schlepper</span>
+        <kbd>Leertaste</kbd><span>Löschflugzeug: Wasser über dem Feuer abwerfen</span>
+      </div>
+      <h4 style="margin-top:18px">PS5-Controller (DualSense)</h4>
+      <div class="keys">
+        <kbd>Linker Stick</kbd><span>Steuern: nach hinten ziehen = Nase hoch, links/rechts = Kurve</span>
+        <kbd>R2 / L2</kbd><span>Schub erhöhen / verringern (je stärker gedrückt, desto schneller)</span>
+        <kbd>L1 / R1</kbd><span>Seitenruder links / rechts, Lenken am Boden</span>
+        <kbd>✕ Kreuz</kbd><span>Bremse am Boden · Luftbremse in der Luft</span>
+        <kbd>○ Kreis</kbd><span>Fahrwerk ein / aus</span>
+        <kbd>□ / △</kbd><span>Klappen ausfahren / einfahren</span>
+        <kbd>Rechter Stick</kbd><span>Umschauen · R3 (drücken): Kamera wechseln</span>
+        <kbd>L3 / Create</kbd><span>Funk mit dem Tower</span>
+        <kbd>Steuerkreuz</kbd><span>◀ Autopilot (am Gate: Pushback) · ▶ Flughilfe · ▲ Karte · ▼ Kiste/Wasser abwerfen</span>
+        <kbd>In der Karte</kbd><span>Linker Stick: Cursor · ✕ Ziel setzen · □ löschen · R1/L1 Zoom · △ zum Flugzeug · ○ schliessen</span>
+        <kbd>Options</kbd><span>Pause · Im Menü: Steuerkreuz/Stick wählen, ✕ bestätigen, ○ zurück, L1/R1 Reiter</span>
+      </div>
+      <div class="tip">Controller per Bluetooth oder USB verbinden und eine Taste drücken – das Spiel erkennt ihn automatisch.</div>
+      <h4 style="margin-top:18px">Funk</h4>
+      <div class="keys"><kbd>T</kbd><span>Tower rufen: vor dem Start für die Startfreigabe, im Anflug (ca. 15 km vor dem Platz) für die Landefreigabe. Ohne Freigabe gibt es Abzug.</span></div>
+      <div class="tip"><b>Flughilfe:</b> Hält die Flugbahn, wenn du die Pfeiltasten loslässt, und schützt vor dem Überziehen. Ausschalten für echtes Handfliegen.</div>
+    </div>
+    <div class="tab hidden" id="tSet">
+      <h4>Einheiten</h4><div id="sUnits" class="chips"></div>
+      <h4>Steuerung</h4><div id="sAssist" class="chips"></div><div id="sInvert" class="chips" style="margin-top:6px"></div>
+      <h4>Flügel-Rückstellung nach Kurven</h4><div id="sLevel" class="chips"></div>
+      <h4>Lautstärke</h4><input type="range" id="sVol" min="0" max="1" step="0.05">
+      <h4>Funk & Verkehr</h4><div id="sAtc" class="chips"></div><div id="sVoice" class="chips" style="margin-top:6px"></div><div id="sTraffic" class="chips" style="margin-top:6px"></div><div id="sCall" class="chips" style="margin-top:6px"></div>
+      <h4>Controller-Empfindlichkeit</h4><div id="sPad" class="chips"></div>
+      <h4>Vibration (Controller)</h4><div id="sVib" class="chips"></div>
+      <h4>Touch-Steuerung (Tablet / Handy)</h4><div id="sTouch" class="chips"></div>
+      <h4>Grafikqualität</h4><div id="sQual" class="chips"></div>
+      <div id="qHint" class="tip" style="display:none">Wird nach dem Neuladen übernommen. <button class="ghost small" id="qReload">Jetzt neu laden</button></div>
+    </div>
+    <div id="rank"></div>
+  </div>
+</div>
+
+<div id="badgePop"></div>
+<div id="touch" class="hidden"><div id="tStick"><div id="tKnob"></div></div><div id="tThr"><div id="tThrFill"></div><span>SCHUB</span></div>
+  <div id="tBtns"><button data-k="KeyF">Klappen +</button><button data-k="KeyV">Klappen −</button><button data-k="KeyG">Fahrwerk</button><button data-k="KeyB" data-hold="1">Bremse</button><button data-k="KeyC">Kamera</button><button data-k="KeyM">Karte</button><button data-k="KeyT">Funk</button><button data-k="Space">Abwurf</button><button data-k="KeyP">Pause</button></div>
+  <div id="tRud"><button data-y="1">◁ Ruder</button><button data-y="-1">Ruder ▷</button></div></div>
+<div id="brief" class="ov hidden"></div>
+<div id="pause" class="ov hidden"><div class="panel ppanel"><div class="eyebrow" id="pEye">PAUSE</div><h2>Flug angehalten</h2>
+  <div class="pstat" id="pStat"></div>
+  <div class="pgrid"><button id="pResume">▶ Weiter</button><button class="ghost" id="pMap">Karte</button><button class="ghost" id="pReplay">Wiederholung</button><button class="ghost" id="pPhoto">Fotomodus</button><button class="ghost" id="pRestart">Neustart</button><button class="ghost" id="pMenu">Hauptmenü</button></div>
+  <button class="ghost small pdesk" id="pDesk"><svg viewBox="0 0 24 24" width="16" height="16"><rect x="3" y="4" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9 20h6M12 16v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg> Zum Desktop – das Spiel bleibt pausiert</button>
+  <div class="pset"><div><span>Flughilfe</span><div class="chips" id="pAssist"></div></div><div><span>Lautstärke</span><input type="range" id="pVol" min="0" max="1" step="0.05"></div></div>
+  <details class="pkeys" id="pKeysBox"><summary>Steuerung anzeigen</summary><div id="pKeys"></div></details></div></div>
+<div id="replay" class="hidden"><div class="rpt"><b>WIEDERHOLUNG</b><span id="rpCam">Verfolger</span></div><div class="rpb"><div id="rpBar"></div></div><div class="rph">Kamera: Leertaste / ✕ · Tempo: R1 · Beenden: Esc / ○</div></div>
+<div id="photo" class="hidden"><div class="phbar"><b>📷 FOTOMODUS</b><span>Ziehen / Pfeile / Stick: Kamera drehen · W/S, Mausrad, L2/R2: Zoom · F / □: Filter <em id="phFilt">Normal</em> · H / △: Hinweise · Enter / ✕: Foto · Esc / ○: zurück</span></div><div id="phFlash"></div></div>
+<div id="phOv" class="ov hidden"><div class="panel phpanel"><img id="phImg" alt="Foto"><div class="btnrow"><button id="phDl">Foto speichern</button><button class="ghost" id="phClose">Weiter fotografieren</button></div><p class="hint">Falls das Speichern blockiert ist: Rechtsklick bzw. lange auf das Bild drücken und «Bild sichern» wählen.</p></div></div>
+<div id="result" class="ov hidden"><div class="panel" id="resbody"></div></div>
+
+<script type="module" src="js/desk.js"></script>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
