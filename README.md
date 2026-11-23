@@ -12,3 +12,6 @@ Browser-Flugsimulator über der ganzen Schweiz – von Genf bis ins Engadin, von
 Läuft in jedem aktuellen Browser (Chrome, Edge, Firefox, Safari), am besten mit Tastatur oder Gamepad.
 
 Gebaut von Luis mit Claude. 3D: [three.js](https://threejs.org) (MIT-Lizenz).
+
+## Datenquellen
+- Gebäude: swissBUILDINGS3D 3.0 – Quelle: Bundesamt für Landestopografie swisstopo

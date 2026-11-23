@@ -3,7 +3,7 @@ import {AIRPORTS,toLocal} from './worldgen.js';
 const TWR={LSZH:{n:'Zürich Turm',c:true},LSME:{n:'Emmen Turm',c:true},LSZC:{n:'Buochs Turm',c:true},LSMA:{n:'Alpnach Turm',c:true},LSZF:{n:'Birrfeld Info',c:false},LSZN:{n:'Hausen Info',c:false},LSZB:{n:'Bern Turm',c:true},LSMM:{n:'Meiringen Turm',c:true},LSMI:{n:'Interlaken Info',c:false},LSGR:{n:'Reichenbach Info',c:false},LSTA:{n:'Raron Info',c:false},LSGS:{n:'Sion Turm',c:true},LSZG:{n:'Grenchen Turm',c:true},LSGG:{n:'Genève Tour',c:true},LFSB:{n:'Basel Turm',c:true},LSZA:{n:'Lugano Torre',c:true},LSZR:{n:'Altenrhein Turm',c:true},LSZS:{n:'Samedan Turm',c:true},LSMP:{n:'Payerne Tour',c:true}};
 const DIG=['null','eins','zwo','drei','vier','fünf','sechs','sieben','acht','neun'];
 const spell=s=>String(s).split('').map(c=>/[0-9]/.test(c)?DIG[+c]:c==='-'?'':({H:'Hotel',B:'Bravo',K:'Kilo',A:'Alpha',L:'Lima',S:'Sierra',E:'Echo',F:'Foxtrot',T:'Tango',I:'India',U:'Uniform',P:'Papa',C:'Charlie'}[c]||c)).join(' ');
-export const CALLSIGN={alpina:'HB-KAL',saentis:'HB-SAE',titlis:'HB-FTI',foehn:'LUIS 42',l320:'LUIS 320',l330:'LUIS 330',l340:'LUIS 340',l350:'LUIS 350',l380:'LUIS 380'};
+export const CALLSIGN={alpina:'HB-KAL',saentis:'HB-SAE',titlis:'HB-FTI',foehn:'LUIS 42',l320:'LUIS 320',l330:'LUIS 330',l340:'LUIS 340',l350:'LUIS 350',l380:'LUIS 380',l32n:'LUIS 324',l747:'LUIS 747'};
 const csSpeak=cs=>cs.startsWith('LUIS')?'Luis '+spell(cs.slice(5)):spell(cs);
 
 const ZONE_V=128;// m/s ≈ 460 km/h ≈ 250 Knoten

@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {buildExtras,windowShader} from './gfx.js';
+import {loadRealCity,coverTest,buildRealCity} from './realcity.js';
 import {makeSimplex,fbm,hash2,clamp,sstep,mulberry} from './noise.js';
 import {WORLD,HALF,G,N1,CELL,AIRPORTS,FLATS,TOWNS,ROADS,RIVERS,LAKES,BORDER,toLocal} from './worldgen.js';
 
@@ -10,6 +11,9 @@ const SF=makeSimplex(71),SV=makeSimplex(97);
 
 export async function buildWorld(scene,H,LK,S,Q,progress){
   const W={uWin:{value:0},uSun:{value:new THREE.Vector3(0.3,0.8,0.3)}};
+  progress(0.01,'Echte Gebäude von swisstopo werden geladen');await tick();
+  let RC=null;try{RC=await loadRealCity();}catch(e){console.warn('Echte Gebäude nicht geladen:',e.message);}
+  const inReal=coverTest(RC);W.inReal=inReal;
   // ---------- Hilfsgitter ----------
   const SL=new Float32Array(N1*N1),FO=new Float32Array(N1*N1),VA=new Float32Array(N1*N1),TW=new Float32Array(N1*N1);
   for(let j=0;j<N1;j++){const z=-HALF+j*CELL;
@@ -83,7 +87,7 @@ export async function buildWorld(scene,H,LK,S,Q,progress){
   const cls=new Uint8Array(N1*N1*4);
   for(let j=0;j<N1;j++)for(let i=0;i<N1;i++){const k=j*N1+i,x=-HALF+i*CELL,z=-HALF+j*CELL,o=((G-j)*N1+i)*4,h=H[k],sl=SL[k];
     const wat=isWater(k),town=TW[k]>0.05,fo=!wat&&!town&&FO[k]-forestThr(h,sl)>0&&sl<=1.0&&h<2050;
-    cls[o]=(!wat&&!town&&!fo&&sl<0.16&&h<1150&&!airportNear(x,z,-40))?255:0;cls[o+1]=fo?255:0;cls[o+2]=town?Math.min(255,40+TW[k]*200):0;cls[o+3]=255;}
+    cls[o]=(!wat&&!town&&!fo&&sl<0.16&&h<1150&&!airportNear(x,z,-40))?255:0;cls[o+1]=fo?255:0;cls[o+2]=town?Math.min(255,40+TW[k]*200):0;cls[o+3]=town&&inReal(x,z)?0:255;}
   const clsTex=new THREE.DataTexture(cls,N1,N1,THREE.RGBAFormat);clsTex.magFilter=THREE.LinearFilter;clsTex.minFilter=THREE.LinearFilter;clsTex.needsUpdate=true;
   // Kartenbild
   const MW=T>=4096?4096:T>=2048?2048:1024,ls=MW/1024;const mc=document.createElement('canvas');mc.width=mc.height=MW;{const m=mc.getContext('2d');m.imageSmoothingQuality='high';m.drawImage(cv,0,0,MW,MW);
@@ -140,12 +144,13 @@ float dCam=length(vWP-cameraPosition);float near=1.0-smoothstep(500.0,7000.0,dCa
   float ta=floor(vn(vWP.xz*0.00013+3.0)*5.0)*0.37;float tc=cos(ta),ts=sin(ta);vec2 w=vec2(vn(vWP.xz*0.004),vn(vWP.xz*0.004+9.0))*10.0;
   vec2 tq=vec2(tc*vWP.x+ts*vWP.z,-ts*vWP.x+tc*vWP.z)+w;vec2 bs=vec2(74.0,58.0);vec2 bi=floor(tq/bs),bf=fract(tq/bs)*bs;
   float dx=min(bf.x,bs.x-bf.x),dy=min(bf.y,bs.y-bf.y);float eX=step(0.25,h21(bi+vec2(0.3,1.7))),eY=step(0.2,h21(bi+vec2(5.1,0.2)));
-  float aw=max(mpp,0.6);float stX=(1.0-smoothstep(2.8,2.8+aw,dx))*eX,stY=(1.0-smoothstep(2.8,2.8+aw,dy))*eY;float street=max(stX,stY);
+  float aw=max(mpp,0.6);float stX=(1.0-smoothstep(2.8,2.8+aw,dx))*eX,stY=(1.0-smoothstep(2.8,2.8+aw,dy))*eY;float street=max(stX,stY);float rl=1.0-cl.a;street*=1.0-rl;
   float r=h21(bi+0.5);float dense=smoothstep(0.45,0.95,cl.b);
   vec3 garden=pow(vec3(0.4,0.52,0.28),vec3(2.2))*(0.85+0.3*vn(vWP.xz*0.12));
   float tb=smoothstep(0.55,0.75,vn(vWP.xz*0.09+r*7.0));garden=mix(garden,pow(vec3(0.2,0.3,0.15),vec3(2.2)),tb*0.7);
   vec3 paved=pow(mix(vec3(0.55,0.54,0.51),vec3(0.62,0.6,0.56),h21(bi+2.2)),vec3(2.2))*(0.92+0.16*vn(vWP.xz*0.3));
   vec3 blk=mix(garden,paved,step(r,0.07+0.55*dense));
+  blk=mix(blk,mix(garden,paved*0.92,smoothstep(0.38,0.62,vn(vWP.xz*0.012+4.0)*0.7+0.25*dense+0.15*vn(vWP.xz*0.05))),rl);
   vec3 uc=mix(blk,pow(vec3(0.33,0.33,0.34),vec3(2.2)),street*(1.0-smoothstep(4.0,14.0,mpp)));uc*=0.94+0.12*n2;
   vec3 far=mix(base,pow(vec3(0.52,0.52,0.48),vec3(2.2)),0.35+0.4*dense);
   base=mix(base,mix(uc,far,smoothstep(1500.0,7000.0,dCam)),smoothstep(0.02,0.3,cl.b)*0.85);}
@@ -240,7 +245,7 @@ float dCam=length(vWP-cameraPosition);float near=1.0-smoothstep(500.0,7000.0,dCa
   // ---------- Häuser ----------
   progress(0.62,'Städte und Dörfer werden gebaut');await tick();
   const rnd=mulberry(5);const houses=[],towers=[],churches=[];
-  function okSpot(x,z){if(S.isLake(x,z)||S.lakeId(x,z))return false;if(sample(SL,x,z)>0.32)return false;if(airportNear(x,z,200))return false;return true;}
+  function okSpot(x,z){if(S.isLake(x,z)||S.lakeId(x,z))return false;if(sample(SL,x,z)>0.32)return false;if(airportNear(x,z,200))return false;if(inReal(x,z))return false;return true;}
   for(const Tn of TOWNS){
     const n=Math.round(Tn.r*Tn.r/(Tn.city?1500:2400)*Q.house*(Tn.name==='Zürich'?2.2:Tn.city?1.3:1));const ang=rnd()*Math.PI;
     for(let i=0;i<n;i++){const rr=Math.sqrt(rnd())*Tn.r*1.0,a=rnd()*Math.PI*2,x=Tn.x+Math.cos(a)*rr,z=Tn.z+Math.sin(a)*rr;
@@ -287,6 +292,9 @@ float dCam=length(vWP-cameraPosition);float near=1.0-smoothstep(500.0,7000.0,dCa
   W.updateHouses=(cp)=>{for(const c of HCELLS){const dx=Math.max(0,Math.abs(cp.x-c.cx)-c.hw),dz=Math.max(0,Math.abs(cp.z-c.cz)-c.hw),v=Math.hypot(dx,dz)<30000+Math.max(0,cp.y-1500)*4;for(const m of c.ms)m.visible=v;}};
   for(const R of ROADS){for(let i=0;i<R.pts.length-1;i++){const [x0,z0]=R.pts[i],[x1,z1]=R.pts[i+1];const n=Math.floor(Math.hypot(x1-x0,z1-z0)/100);
     for(let k=0;k<n;k++){const x=x0+(x1-x0)*k/n,z=z0+(z1-z0)*k/n;if(S.isLake(x,z))continue;if(sample(TW,x,z)>0.02||rnd()<0.05)lightsPos.push(x,S.heightAt(x,z)+7,z);}}}
+  // Echte Gebäude (swissBUILDINGS3D) in Zürich, Genf, Basel, Bern, Lugano, St. Gallen, Zofingen/Strengelbach
+  let real=null;if(RC){progress(0.66,'Echte Gebäude werden aufgebaut');await tick();try{real=buildRealCity(scene,RC,S,lightsPos);W.realCount=real.count;}catch(e){console.warn('Echte Gebäude:',e);}}
+  {const uh=W.updateHouses;W.updateHouses=cp=>{uh(cp);if(real)real.update(cp);};}
   W.cityLights=lightsPos;
 
   // ---------- Bäume (dynamisch um die Kamera) ----------
@@ -299,7 +307,7 @@ float dCam=length(vWP-cameraPosition);float near=1.0-smoothstep(500.0,7000.0,dCa
   // Zwei Sätze (sichtbar / im Aufbau), damit das Nachladen nicht ruckelt
   const SETS=[0,1].map(()=>[new THREE.InstancedMesh(con,tmatT,CAP),new THREE.InstancedMesh(dec,tmatT,CAP)]);let cur=0;
   SETS.forEach((st,si)=>st.forEach(t=>{t.count=0;t.frustumCulled=false;t.instanceMatrix.setUsage(THREE.DynamicDrawUsage);t.setColorAt(0,col.set(0x335522));t.instanceColor.setUsage(THREE.DynamicDrawUsage);t.visible=si===0;scene.add(t);}));
-  const trees=SETS[0];W.heavy=[...SETS[0],...SETS[1],...wallMs,...roofMs];W.blockers=[...wallMs,...roofMs];
+  const trees=SETS[0];W.heavy=[...SETS[0],...SETS[1],...wallMs,...roofMs,...(real?real.meshes:[])];W.blockers=[...wallMs,...roofMs];
   const SP=Q.treeSpacing,RAD=Q.treeRadius;
   let gen=null,center=new THREE.Vector2(1e9,1e9);
   function* treeGen(cx,cz){

@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import {APM,fromLocal,toLocal} from './worldgen.js';
 const DEG=Math.PI/180,UP=new THREE.Vector3(0,1,0);
-const TYPES=['l320','l320','l330','l350','l340','l320','l380'];
+const TYPES=['l320','l32n','l330','l350','l340','l32n','l380','l747'];
 export function createTraffic(scene,S,buildModel,animateModel,PLANES){
   const T={list:[],pool:{},timer:{arr:8,dep:30},on:true,n:0};
   const Z=APM.ZRH16;

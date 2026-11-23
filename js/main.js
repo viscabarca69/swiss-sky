@@ -87,7 +87,7 @@ async function boot(){
   prog(0.9,'Flughäfen werden gebaut');await new Promise(r=>setTimeout(r,0));
   airports=buildAirports(scene,S,addParked);
   traffic=createTraffic(scene,S,buildModel,animateModel,PLANES);traffic.prewarm();
-  attr=createAttractions(scene,S,{collected:ewIds(),area:AREA_ID});
+  attr=createAttractions(scene,S,{collected:ewIds(),area:AREA_ID,realCover:world.inReal});
   try{groundT=createGround(scene,S,Q);}catch(e){console.warn('Bodenverkehr',e);}
   {const cl=world.cityLights,n=cl.length/3,col=[],sz=[];for(let i=0;i<n;i++){const r=Math.random();col.push(1,0.72+r*0.2,0.38+r*0.25);sz.push(4+r*4);}cityGlow=makeGlow(cl,col,sz,cityU);scene.add(cityGlow);}
   WF={heightAt:S.heightAt,slopeAt:S.slopeAt,isLake:S.isLake,waterLevel:S.waterLevel,groundAt:S.groundAt,
@@ -254,7 +254,7 @@ function buildCockpit(model,P){
   const ped=add(new THREE.BoxGeometry(small?0.18:0.34,0.18,0.55),panelM,cx,-0.62,-0.55);
   const lev=(x,len,col)=>{const piv=new THREE.Group();piv.position.set(x,-0.53,-0.6);g.add(piv);const r=new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.012,len,8),metal);r.position.y=len/2;piv.add(r);
     const k=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.035,0.035),new THREE.MeshStandardMaterial({color:col,roughness:0.5}));k.position.y=len;piv.add(k);return piv;};
-  const thr=[];const ne=P.cls==='jet'&&['l340','l380'].includes(P.id)?4:jet||P.id==='foehn'?2:1;for(let i=0;i<ne;i++)thr.push(lev(cx+(i-(ne-1)/2)*0.05,0.16,0x2a2a2a));
+  const thr=[];const ne=P.cls==='jet'&&['l340','l380','l747'].includes(P.id)?4:jet||P.id==='foehn'?2:1;for(let i=0;i<ne;i++)thr.push(lev(cx+(i-(ne-1)/2)*0.05,0.16,0x2a2a2a));
   const flapL=lev(cx+(small?0.07:0.14),0.11,0xdedede);
   const gearL=P.fixedGear?null:(()=>{const piv=new THREE.Group();piv.position.set(cx+0.06+(jet?0.05:0),-0.44,-0.98);g.add(piv);const r=new THREE.Mesh(new THREE.CylinderGeometry(0.01,0.01,0.09,8),metal);r.position.y=0.045;piv.add(r);
     const wh=new THREE.Mesh(new THREE.CylinderGeometry(0.025,0.025,0.02,16),new THREE.MeshStandardMaterial({color:0xdddddd}));wh.rotation.z=Math.PI/2;wh.position.y=0.095;piv.add(wh);return piv;})();
@@ -882,7 +882,7 @@ function apprTick(F){if(!G.appr)return;G.apprG=approachGuide(G.appr,F,G.P);const
   if(g.phase!=='final'&&Math.hypot(g.p.x-F.pos.x,g.p.z-F.pos.z)>1800&&G.t-G.apprT>12){G.appr=planApproach(F,G.P,G.apprOpt,S);G.apprT=G.t;buildApprRibbon();toast('Anflug neu berechnet',2000);G.apprG=approachGuide(G.appr,F,G.P);}
   if(F.onGround&&g.phase==='final'){clearAppr();toast('Gelandet – Anflug beendet',2200);}}
 // Geschwindigkeitsgrenzen: Höchstgeschwindigkeit, Klappen, Tempolimit im Flugplatz-Nahbereich – mit Erklärung beim ersten Überschreiten
-const VMO={alpina:94,saentis:136,segler:69,titlis:158,foehn:167,feuer:125,rega:89,l320:247,l330:239,l340:267,l350:247,l380:233};
+const VMO={alpina:94,saentis:136,segler:69,titlis:158,foehn:167,feuer:125,rega:89,l320:247,l330:239,l340:267,l350:247,l380:233,l32n:247,l747:260};
 function speedWarn(F,P,V){if(F.onGround||!G||G.lesson&&G.lesson.noWarn)return null;const u=save.settings.units==='metric',f=v=>u?`${Math.round(v*3.6/10)*10} km/h`:`${Math.round(v*1.944/5)*5} kt`;
   const vmo=VMO[P.id]||P.Vr*3,n=(P.flapNames||[]).length,k=F.flaps|0,vfe=k>0&&n>1?P.Vref*(1.75-0.45*k/(n-1)):Infinity,z=atc.zone;let w=null;
   if(V>vmo)w={k:'vmo',lbl:'MAX '+f(vmo).replace(' km/h','').replace(' kt',''),msg:`Tempo rot = zu schnell! Die Höchstgeschwindigkeit der ${P.name} ist ${f(vmo)}. Schub reduzieren (S), Nase etwas hoch oder Luftbremse (B).`};
@@ -1341,7 +1341,7 @@ function loop(now){
 }
 const P_shadow=P=>P.shadow;
 boot().then(()=>requestAnimationFrame(loop)).catch(e=>{console.error(e);$('lstep').textContent='Fehler: '+e.message;});
-window.__af={get attr(){return attr;},buildObjectives,AIRPORTS,fromLocal,get airports(){return airports;},apprTest:(icao,i)=>{setAppr(approachOptions(icao)[i]);return G.appr;},apprMenu,mapXf,get groundT(){return groundT;},MSH,THUMB,TH,thumbTick,setWp,clearWp,MV,mapZoom,mapCenter,__jm:jobMission,career,showMenu,setSub,renderCareer,openCareer,getDaily,showBrief,finish,award,toXZ,get S(){return S;},MISSIONS,get traffic(){return traffic;},atc,keyAction,startReplay,get env(){return env;},renderer,get world(){return world;},get composer(){return composer;},set noComp(v){window.__noComp=v;},buildModel,PLANES,THREE,get G(){return G;},startFlight,K,get state(){return state;},MISSIONS,cam,scene,simAP:(sec)=>{for(let t=0;t<sec;t+=1/30){const F=G.F;K.clear();const A=G.obj.find(o=>o.type==='land')?.ap||(G.lesson&&AP[G.lesson.ap]);if(!A)break;const l=toLocal(A,F.pos.x,F.pos.z);const sgn0=(F.vel.x*A.sin-F.vel.z*A.cos)>=0?1:-1;const d=(-sgn0*A.len/2-l.along)*sgn0;const ideal=A.elev+F.P.gearH+Math.max(0,d+150)*0.0524;const agl=F.pos.y-F.P.gearH-S.heightAt(F.pos.x,F.pos.z);
+window.__af={animateModel,AIRLINER,get attr(){return attr;},buildObjectives,AIRPORTS,fromLocal,get airports(){return airports;},apprTest:(icao,i)=>{setAppr(approachOptions(icao)[i]);return G.appr;},apprMenu,mapXf,get groundT(){return groundT;},MSH,THUMB,TH,thumbTick,setWp,clearWp,MV,mapZoom,mapCenter,__jm:jobMission,career,showMenu,setSub,renderCareer,openCareer,getDaily,showBrief,finish,award,toXZ,get S(){return S;},MISSIONS,get traffic(){return traffic;},atc,keyAction,startReplay,get env(){return env;},renderer,get world(){return world;},get composer(){return composer;},set noComp(v){window.__noComp=v;},buildModel,PLANES,THREE,get G(){return G;},startFlight,K,get state(){return state;},MISSIONS,cam,scene,simAP:(sec)=>{for(let t=0;t<sec;t+=1/30){const F=G.F;K.clear();const A=G.obj.find(o=>o.type==='land')?.ap||(G.lesson&&AP[G.lesson.ap]);if(!A)break;const l=toLocal(A,F.pos.x,F.pos.z);const sgn0=(F.vel.x*A.sin-F.vel.z*A.cos)>=0?1:-1;const d=(-sgn0*A.len/2-l.along)*sgn0;const ideal=A.elev+F.P.gearH+Math.max(0,d+150)*0.0524;const agl=F.pos.y-F.P.gearH-S.heightAt(F.pos.x,F.pos.z);
   const wantVs=F.onGround?0:agl>6?clamp((ideal-F.pos.y)*0.15-0.0524*F.vel.length(),-6,2):-0.5;const vs=F.vel.y;if(!F.onGround){if(vs<wantVs-0.3)K.add('ArrowDown');else if(vs>wantVs+0.3)K.add('ArrowUp');}
   {const sgn=(F.vel.x*A.sin-F.vel.z*A.cos)>=0?1:-1;const ac=l.across*sgn;const vlat=(F.vel.x*A.cos+F.vel.z*A.sin)*sgn;const want=clamp(-ac*0.05,-25,25);const err=want-vlat;const bk=(F.bank||0)/DEG;const wb=clamp(-err*3,-20,20);if(F.onGround){if(ac>2)K.add('KeyA');else if(ac<-2)K.add('KeyD');}else if(bk<wb-3)K.add('KeyA');else if(bk>wb+3)K.add('KeyD');}const V=F.vel.length();if(!F.onGround){if(V<F.P.Vref*1.05)K.add('KeyW');else if(V>F.P.Vref*1.15)K.add('KeyS');}else{K.add('KeyS');K.add('KeyB');}
   step(1/30);if(G.done||F.crashed)break;}K.clear();const F=G.F;return{v:F.vel.length(),y:F.pos.y,gnd:F.onGround,done:G.done,crashed:F.crashed,lt:G.lastTouch&&G.lastTouch.letter,oi:G.oi,n:G.obj.length};},

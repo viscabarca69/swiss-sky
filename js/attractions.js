@@ -33,6 +33,8 @@ export function createAttractions(scene,S,opts){
   const P=(lat,lon,agl)=>{const p=toXZ(lat,lon);return new THREE.Vector3(p.x,S.groundAt(p.x,p.z)+(agl||0),p.z);};
   const PH=(lat,lon,agl)=>{const p=toXZ(lat,lon);return new THREE.Vector3(p.x,S.heightAt(p.x,p.z)+(agl||0),p.z);};
   const grp=new THREE.Group();scene.add(grp);
+  // Wahrzeichen, die es als echte swisstopo-Gebäude gibt, nicht doppelt bauen
+  const RCov=opts.realCover||(()=>false),hideIf=g=>{if(RCov(g.position.x,g.position.z)){g.visible=false;g.userData.realHidden=true;}};
   const add=(geo,mat,pos,ry,parent)=>{const m=new THREE.Mesh(geo,mat);if(pos)m.position.copy(pos);if(ry)m.rotation.y=ry;m.castShadow=true;m.receiveShadow=true;(parent||grp).add(m);return m;};
   const winTex=(col,wcol,fx,fy)=>ctex(128,128,(x,w,h)=>{x.fillStyle=col;x.fillRect(0,0,w,h);x.fillStyle=wcol;for(let i=0;i<4;i++)for(let j=0;j<4;j++)x.fillRect(i*32+3,j*32+4,26,22);});
   const nightM=[];
@@ -62,7 +64,7 @@ export function createAttractions(scene,S,opts){
       const dk=add(new THREE.BoxGeometry(6,8,150),st,new THREE.Vector3(c.x,deck+2,c.z),a,g);
       const rail=add(new THREE.BoxGeometry(7.5,0.6,150),std(0x5b5650),new THREE.Vector3(c.x,deck+6.3,c.z),a,g);}
     {// Basler Münster: rotes Sandsteinschiff mit zwei Türmen
-      const p=PH(47.5565,7.5925,-1),g=new THREE.Group();g.position.copy(p);g.rotation.y=-0.2;grp.add(g);const rs=std(0xa5503f),tile=std(0x6c7d5a);
+      const p=PH(47.5565,7.5925,-1),g=new THREE.Group();g.position.copy(p);g.rotation.y=-0.2;grp.add(g);hideIf(g);const rs=std(0xa5503f),tile=std(0x6c7d5a);
       add(new THREE.BoxGeometry(24,24,62),rs,new THREE.Vector3(0,12,0),0,g);add(new THREE.ConeGeometry(18,14,4).rotateY(Math.PI/4).scale(0.95,1,2.5),tile,new THREE.Vector3(0,31,0),0,g);
       for(const x of [-8,8]){add(new THREE.BoxGeometry(9,52,9),rs,new THREE.Vector3(x,26,-34),0,g);add(pyr(9,16),rs,new THREE.Vector3(x,60,-34),0,g);}}
     {// Castelgrande Bellinzona: Torre Bianca, Torre Nera, Mauer
@@ -80,17 +82,17 @@ export function createAttractions(scene,S,opts){
   {// Prime Tower Zürich (126 m, grünes Glas)
     const p=PH(47.3863,8.5168,-1);const t=winTex('#3f6d66','#86b9ad');t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(10,30);
     const m=std(0xffffff,{map:t,metalness:0.6,roughness:0.15,emissive:new THREE.Color(0,0,0),emissiveMap:t});nightM.push(m);
-    const g=new THREE.Group();g.position.copy(p);grp.add(g);
+    const g=new THREE.Group();g.position.copy(p);grp.add(g);hideIf(g);
     const b=add(new THREE.CylinderGeometry(22,26,126,6),m,new THREE.Vector3(0,63,0),0.3,g);b.scale.z=0.62;
     add(new THREE.CylinderGeometry(23,23,3,6),std(0xd8dcde),new THREE.Vector3(0,127,0),0.3,g).scale.z=0.62;
     const ant=add(new THREE.CylinderGeometry(0.4,0.4,14,6),std(0xc0c0c0),new THREE.Vector3(0,135,0),0,g);
     A.primeTop=p.clone().add(new THREE.Vector3(0,142,0));}
   {// Grossmünster mit Doppeltürmen, Fraumünster mit grünem Spitzturm
-    const p=PH(47.3701,8.5442,-1),g=new THREE.Group();g.position.copy(p);g.rotation.y=0.25;grp.add(g);const st=std(0xd9cdb4),dm=std(0x4a3f38);
+    const p=PH(47.3701,8.5442,-1),g=new THREE.Group();g.position.copy(p);g.rotation.y=0.25;grp.add(g);hideIf(g);const st=std(0xd9cdb4),dm=std(0x4a3f38);
     add(new THREE.BoxGeometry(24,22,60),st,new THREE.Vector3(0,11,10),0,g);add(new THREE.ConeGeometry(18,10,4),std(0x6b3a2a),new THREE.Vector3(0,27,10),Math.PI/4,g).scale.z=2.3;
     for(const s of [-1,1]){add(new THREE.BoxGeometry(8,52,8),st,new THREE.Vector3(s*8,26,-22),0,g);add(new THREE.CylinderGeometry(4.2,4.6,6,8),st,new THREE.Vector3(s*8,55,-22),0,g);
       add(new THREE.SphereGeometry(4.4,12,8,0,Math.PI*2,0,Math.PI/2),dm,new THREE.Vector3(s*8,58,-22),0,g);add(new THREE.ConeGeometry(0.6,6,6),dm,new THREE.Vector3(s*8,64,-22),0,g);}
-    const f=PH(47.3697,8.5413,-1),g2=new THREE.Group();g2.position.copy(f);grp.add(g2);
+    const f=PH(47.3697,8.5413,-1),g2=new THREE.Group();g2.position.copy(f);grp.add(g2);hideIf(g2);
     add(new THREE.BoxGeometry(18,18,46),st,new THREE.Vector3(0,9,0),0,g2);add(new THREE.BoxGeometry(9,38,9),st,new THREE.Vector3(0,19,-26),0,g2);
     add(new THREE.ConeGeometry(5.5,26,8),std(0x3f8a6b,{metalness:0.3}),new THREE.Vector3(0,51,-26),0,g2);}
   {// Uetliberg-Fernsehturm (rot-weiss)
@@ -138,7 +140,7 @@ export function createAttractions(scene,S,opts){
       for(const [x,z] of [[-10,-13],[10,-13],[-10,13],[10,13]]){add(new THREE.CylinderGeometry(3.4,3.6,34,12),wh,new THREE.Vector3(x,17,z),0,g);add(new THREE.ConeGeometry(4.2,12,12),rf,new THREE.Vector3(x,40,z),0,g);}
       add(new THREE.BoxGeometry(46,9,30),std(0xe6e0d2),new THREE.Vector3(18,-2,24),0.3,g);}
     {// Bundeshaus Bern mit grüner Kuppel
-      const p=PH(46.9466,7.4441,-1),g=new THREE.Group();g.position.copy(p);g.rotation.y=0.1;grp.add(g);const sand=std(0xcdbf9e);
+      const p=PH(46.9466,7.4441,-1),g=new THREE.Group();g.position.copy(p);g.rotation.y=0.1;grp.add(g);hideIf(g);const sand=std(0xcdbf9e);
       add(new THREE.BoxGeometry(110,26,34),sand,new THREE.Vector3(0,13,0),0,g);add(new THREE.BoxGeometry(34,34,40),sand,new THREE.Vector3(0,17,0),0,g);
       add(new THREE.CylinderGeometry(11,12,10,20),sand,new THREE.Vector3(0,38,0),0,g);add(new THREE.SphereGeometry(11.5,24,14,0,Math.PI*2,0,Math.PI/2),std(0x4f8a72,{metalness:0.3,roughness:0.45}),new THREE.Vector3(0,43,0),0,g);
       add(new THREE.ConeGeometry(1.5,8,8),std(0x4f8a72),new THREE.Vector3(0,58,0),0,g);for(const s of [-1,1])add(new THREE.ConeGeometry(16,9,4),std(0x5a6f66),new THREE.Vector3(s*38,30.5,0),Math.PI/4,g).scale.z=1.6;}
@@ -230,7 +232,7 @@ export function createAttractions(scene,S,opts){
   // ---------- Update ----------
   // feste Wahrzeichen weit weg nicht zeichnen (grosse Karte: viele Objekte)
   const mov=new Set([...balloons.map(b=>b.g),...gliders.map(g=>g.g),...team.map(t=>t.m),zep]);const CULL=[];const bx=new THREE.Box3(),cv=new THREE.Vector3();
-  grp.updateMatrixWorld(true);for(const c of grp.children){if(mov.has(c)||c.isPoints||!(c.isMesh||c.isGroup||c.isLine))continue;bx.setFromObject(c);if(bx.isEmpty())continue;CULL.push({c,p:bx.getCenter(new THREE.Vector3()),r:bx.getSize(cv).length()/2});}
+  grp.updateMatrixWorld(true);for(const c of grp.children){if(mov.has(c)||c.isPoints||!(c.isMesh||c.isGroup||c.isLine)||c.userData.realHidden)continue;bx.setFromObject(c);if(bx.isEmpty())continue;CULL.push({c,p:bx.getCenter(new THREE.Vector3()),r:bx.getSize(cv).length()/2});}
   let cullT=0;A._cull=CULL;
   A.update=(dt,t,cam,night,glowS,wind)=>{
     cullT-=dt;if(cullT<=0||dt===0){cullT=0.5;const cp=cam.position,far=32000+Math.max(0,cp.y-1500)*4;for(const o of CULL)o.c.visible=o.p.distanceTo(cp)-o.r<far;}
