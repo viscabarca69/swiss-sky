@@ -22,6 +22,8 @@ export function buildObjectives(mission,S,opt){
   const list0=mission.obj({R,RL,F,L,D,DL,P,SC,FI,W,SP,TX,HL,HO});
   // doppelte Ringe (gleicher Ort direkt hintereinander) entfernen – sonst entsteht eine Schleife in der Bahn
   const list=list0.filter((o,i)=>{const q=list0[i-1];return!(o.type==='ring'&&q&&q.type==='ring'&&Math.hypot(o.x-q.x,o.y-q.y,o.z-q.z)<60);});
+  // Ringe gut ein Drittel grösser (leichter zu treffen)
+  for(const o of list)if(o.type==='ring'&&!o.big){o.r=Math.round(o.r*1.35);o.big=1;}
   return mission.dyn||!opt||!opt.vref?list:roundRings(list,S,opt.vref);
 }
 // Zu enge Ecken im Ringkurs ausrunden: Ring an der Ecke durch Ringe auf einem Bogen ersetzen.

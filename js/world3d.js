@@ -15,6 +15,8 @@ export async function buildWorld(scene,H,LK,S,Q,progress){
   progress(0.01,'Echte Gebäude von swisstopo werden geladen');await tick();
   let RC=null;try{RC=await loadRealCity();}catch(e){console.warn('Echte Gebäude nicht geladen:',e.message);}
   const inReal=coverTest(RC);W.inReal=inReal;W.inOrtho=inOrtho;
+  const RWS=AIRPORTS.filter(a=>inOrtho(a.x,a.z,-2000)).map(a=>({x:a.x,z:a.z,dx:Math.sin(a.a),dz:-Math.cos(a.a),h:a.len/2}));
+  const rwNear=(x,z,d)=>RWS.some(r=>{const px=x-r.x,pz=z-r.z,t=Math.max(-r.h,Math.min(r.h,px*r.dx+pz*r.dz));return Math.hypot(px-t*r.dx,pz-t*r.dz)<d;});
   // ---------- Hilfsgitter ----------
   const SL=new Float32Array(N1*N1),FO=new Float32Array(N1*N1),VA=new Float32Array(N1*N1),TW=new Float32Array(N1*N1);
   for(let j=0;j<N1;j++){const z=-HALF+j*CELL;
@@ -320,7 +322,7 @@ ${ORTHO_GLSL_BODY}`)
       for(let i=i0;i<=i1;i++){
         const x=(i+hash2(i,j*3+1))*SP,z=(j+hash2(i*5+2,j))*SP;const dx=x-cx,dz=z-cz;if(dx*dx+dz*dz>RAD*RAD||Math.abs(x)>HALF||Math.abs(z)>HALF)continue;
         const hv=hash2(i+11,j-7);
-        if(inOrtho(x,z,-150)){const ot=orthoTree(x,z);if(ot){const hz=hash2(i*3-1,j*7+5),kd=ot===2||hv<0.4?0:1;if(out[kd].length<CAP*5)out[kd].push(x,S.heightAt(x,z)-0.3,z,0.8+hz*0.45,hv);}if((i+j)%40===0)yield;continue;}
+        if(inOrtho(x,z,-150)){if(rwNear(x,z,750)){if((i+j)%40===0)yield;continue;}const ot=orthoTree(x,z);if(ot){const hz=hash2(i*3-1,j*7+5),kd=ot===2||hv<0.4?0:1;if(out[kd].length<CAP*5)out[kd].push(x,S.heightAt(x,z)-0.3,z,0.8+hz*0.45,hv);}if((i+j)%40===0)yield;continue;}
         const t=isForest(x,z,(hv-0.5)*0.08);
         if(!t){// offenes Land: Hochstamm-Obstgärten in Reihen, Einzelbäume auf Feldern, Gartenbäume in Dörfern
           if(dx*dx+dz*dz>RAD*RAD*0.55)continue;const hz=hash2(i*3-1,j*7+5);

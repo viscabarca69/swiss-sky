@@ -29,6 +29,15 @@ const toEN=(R,x,z)=>[R.aff.E[0]*x+R.aff.E[1]*z+R.aff.E[2],R.aff.N[0]*x+R.aff.N[1
 export function orthoAt(x,z,margin){margin=margin||0;for(const R of ORTHO_REGIONS){const [E,N]=toEN(R,x,z);
   if(E>R.e0*1000+margin&&E<R.e1*1000-margin&&N>R.n0*1000+margin&&N<R.n1*1000-margin)return R;}return null;}
 export const inOrtho=(x,z,m)=>!!orthoAt(x,z,m);
+// Spiel (x,z) -> LV95 [E,N] im Luftbild-Gebiet (sonst null)
+export function toLV95(x,z){const R=orthoAt(x,z);return R?toEN(R,x,z):null;}
+// Flughafen Zürich: Gelände der Flughafengebäude (LV95, Meter) – dort moderne Fassaden statt Wohnhaus-Fenster
+const ZRH_AREA=[[[2683780,1257150],[2684560,1257150],[2684560,1257500],[2683780,1257500]],
+  [[2684200,1256750],[2685950,1256750],[2685950,1256400],[2685400,1256100],[2685350,1255200],[2684750,1255150],[2684200,1255400]],
+  [[2683750,1255850],[2684200,1255850],[2684200,1255100],[2683750,1255100]]];
+export function inAirportArea(x,z){const p=toLV95(x,z);if(!p)return false;const [E,N]=p;
+  for(const P of ZRH_AREA){let c=false;for(let i=0,j=P.length-1;i<P.length;j=i++){const [xi,yi]=P[i],[xj,yj]=P[j];
+    if((yi>N)!==(yj>N)&&E<(xj-xi)*(N-yi)/(yj-yi)+xi)c=!c;}if(c)return true;}return false;}
 // Mittelpunkt eines Gebiets in Spielkoordinaten
 export function orthoCenter(id){const R=ORTHO_REGIONS.find(r=>r.id===id);return lv95ToXZ((R.e0+R.e1)*500,(R.n0+R.n1)*500);}
 export {lv95ToXZ};
@@ -66,7 +75,11 @@ export function orthoTree(x,z){const R=orthoAt(x,z);if(!R||!R.pix)return 0;const
   const px=Math.floor((E/1000-R.e0)*512),py=Math.floor((R.n1-N/1000)*512);let r=0,g=0,b=0,n=0;
   for(let dy=-1;dy<=1;dy++)for(let dx=-1;dx<=1;dx++){const X=px+dx,Y=py+dy;if(X<0||Y<0||X>=R.pw||Y>=R.ph)continue;const o=(Y*R.pw+X)*4;r+=R.pix[o];g+=R.pix[o+1];b+=R.pix[o+2];n++;}
   if(!n)return 0;r/=n;g/=n;b/=n;const l=(r+g+b)/3;
-  if(l<96&&g>=r-2&&g>=b-4&&g-b>2)return l<62?2:1;return 0;}
+  if(!(l<92&&g>=r-2&&g>=b-4&&g-b>3))return 0;
+  // Wald ist rau (Kronen + Schatten), Wiese und Schatten sind glatt: Helligkeits-Streuung im 5×5-Fenster (10 m)
+  let s1=0,s2=0,m=0;for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){const X=px+dx,Y=py+dy;if(X<0||Y<0||X>=R.pw||Y>=R.ph)continue;const o=(Y*R.pw+X)*4,v=(R.pix[o]+R.pix[o+1]+R.pix[o+2])/3;s1+=v;s2+=v*v;m++;}
+  const sd=Math.sqrt(Math.max(0,s2/m-(s1/m)*(s1/m)));if(sd<11)return 0;
+  return l<62?2:1;}
 // Laden: Übersichtsbilder sofort (Atlas je Gebiet), scharfe Kacheln je nach Kameraposition
 export function initOrtho(renderer){
   const aniso=renderer.capabilities.getMaxAnisotropy();

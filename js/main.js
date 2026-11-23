@@ -226,6 +226,7 @@ function startFlight(cfg){
   const wdir=(typeof wk==='object'&&wk.dir!=null)?wk.dir:wk==='foehn'?195:(mission&&mission.windDir)||(cfg.windDir??(240+Math.round((Math.random()-0.5)*60)));
   const wet=weather==='rain'||weather==='storm'||weather==='snow';wx.set({...wp,dir:wdir},wet?1:0,weather==='snow');audio.setRain&&audio.setRain(weather==='rain'||weather==='storm'?1:0);G.windDir=wdir;
   world.setWinter((mission?mission.season:lesson?null:cfg.season)==='winter'||weather==='snow');G.ltT=4+Math.random()*6;
+  G.hour=hour;if(!mission&&!lesson&&cfg.liveCH&&LIVE){G.live=true;try{applyLive(true);}catch(e){}}
   const dest=G.obj.find(o=>o.type==='land')?.ap||null;
   atc.start({enabled:!lesson&&!(mission&&mission.race)&&!P.heli&&!P.glider&&save.settings.atc!==false,onGround:!air,startAP,dest,callsign:CALLSIGN[planeId]||'HB-XYZ'});
   if(traffic){traffic.on=save.settings.traffic!==false;traffic.reset();}
@@ -412,7 +413,10 @@ function step(dt){
   if(G.ghost){const d=G.ghost.d,n=d.length/7,f=Math.min(n-1.001,G.t/0.25),i=Math.floor(f),u=f-i,a=i*7,b=a+7,m=G.ghost.m;m.visible=G.t/0.25<n-1;
     m.position.set(d[a]+(d[b]-d[a])*u,d[a+1]+(d[b+1]-d[a+1])*u,d[a+2]+(d[b+2]-d[a+2])*u);_gq1.set(d[a+3],d[a+4],d[a+5],d[a+6]).normalize();_gq2.set(d[b+3],d[b+4],d[b+5],d[b+6]).normalize();m.quaternion.slerpQuaternions(_gq1,_gq2,u);}
   const inv=save.settings.invert?-1:1;
-  const ctl={pitch:((K.has('ArrowDown')?1:0)-(K.has('ArrowUp')?1:0))*inv,roll:((K.has('ArrowLeft')||K.has('KeyA'))?1:0)-((K.has('ArrowRight')||K.has('KeyD'))?1:0),yaw:(K.has('KeyQ')?1:0)-(K.has('KeyE')?1:0)};
+  // Tastatur: Ausschlag wächst mit der Haltedauer (kurz tippen = feine Korrektur, halten = voller Ausschlag)
+  const kh=G.kh||(G.kh={l:0,r:0,u:0,d:0}),kL=K.has('ArrowLeft')||K.has('KeyA'),kR=K.has('ArrowRight')||K.has('KeyD'),kU=K.has('ArrowUp'),kD=K.has('ArrowDown');
+  kh.l=kL?kh.l+dt:0;kh.r=kR?kh.r+dt:0;kh.u=kU?kh.u+dt:0;kh.d=kD?kh.d+dt:0;const rmpR=t=>0.3+0.7*Math.min(1,t/1.0),rmpP=t=>0.35+0.65*Math.min(1,t/0.8);
+  const ctl={pitch:((kD?rmpP(kh.d):0)-(kU?rmpP(kh.u):0))*inv,roll:(kL?rmpR(kh.l):0)-(kR?rmpR(kh.r):0),yaw:(K.has('KeyQ')?1:0)-(K.has('KeyE')?1:0)};
   const gp=pad.connected&&state!=='map';let gpYawL=false,gpYawR=false,thrUp=K.has('KeyW')?1:0,thrDn=K.has('KeyS')?1:0;
   if(gp){const sp=parseFloat(save.settings.padSensS||1),cv=v=>Math.sign(v)*Math.pow(Math.abs(v),1.5)*sp;
     if(Math.abs(pad.ly)>Math.abs(ctl.pitch))ctl.pitch=clamp(cv(pad.ly),-1,1)*inv;if(Math.abs(pad.lx)>Math.abs(ctl.roll))ctl.roll=clamp(-cv(pad.lx),-1,1);
@@ -430,6 +434,7 @@ function step(dt){
   // Wind & Turbulenz
   {const agl0=F.pos.y-S.groundAt(F.pos.x,F.pos.z);WF.wind=wx.update(dt,agl0);wx.kick(F,dt);if(G.therm){G.lift=thermalLift(F.pos.x,F.pos.y,F.pos.z,agl0);WF.wind.y+=G.lift;}}
   const wasGround=F.onGround;
+  F.apIn=!!G.ap;liveTick(dt);
   if(G.push)pushTick(F,dt);else if(F.P.heli){ctl.coll=thrUp-thrDn;const n=Math.ceil(dt/(1/120));for(let i=0;i<n;i++)stepHeli(F,ctl,dt/n,WF);}else{const n=Math.ceil(dt/(1/120));for(let i=0;i<n;i++)stepFlight(F,ctl,dt/n,WF);}
   // Kisten
   for(const b of G.boxes){if(b.landed){b.t+=dt;if(b.t>12)b.g.visible=false;continue;}b.t+=dt;crateStep(b.g.position,b.v,b.t,dt);const chute=b.t>0.9;b.ch.visible=b.lines.visible=chute;
@@ -456,19 +461,20 @@ function step(dt){
   atc.update(dt,atcCtx());
   if(F.onGround&&F.vel.length()<1&&!G.stopMsg&&G.t>5){G.stopMsg=true;atc.event('stopped');}else if(!F.onGround)G.stopMsg=false;
   // Passagierkomfort: nur deutlich unruhiges Fliegen kostet; ruhige Phasen lassen die Passagiere langsam wieder entspannen
-  if(G.mission&&G.mission.comfort&&!F.onGround){const bank=Math.abs(F.bank||0)/DEG,vs=F.vel.y;let d=0;if(bank>35)d+=(bank-35)*0.07;if(vs<-12)d+=(-12-vs)*0.12;if(vs>15)d+=(vs-15)*0.1;
-    const e2=new THREE.Euler().setFromQuaternion(F.q,'YXZ');if(Math.abs(e2.x/DEG)>20)d+=(Math.abs(e2.x/DEG)-20)*0.1;
+  if(G.mission&&G.mission.comfort&&!F.onGround){// Komfort wie im echten Flugzeug: normales Steigen/Sinken stört nicht, erst starke Lage, sehr steile Bahn oder harte Lastwechsel
+    const bank=Math.abs(F.bank||0)/DEG,vs=F.vel.y;let d=0;if(bank>35)d+=(bank-35)*0.05;if(vs<-20)d+=(-20-vs)*0.06;if(vs>25)d+=(vs-25)*0.05;
+    const e2=new THREE.Euler().setFromQuaternion(F.q,'YXZ'),pt=e2.x/DEG;if(pt>25)d+=(pt-25)*0.08;if(pt<-15)d+=(-15-pt)*0.08;
     // senkrechte Beschleunigung geglättet (einzelne Böen-Spitzen zählen nicht)
-    const ay=(F.vel.y-(G.lvy??F.vel.y))/Math.max(dt,1e-3);G.lvy=F.vel.y;G.ayF=(G.ayF??0)+(ay-(G.ayF??0))*Math.min(1,dt*2);if(Math.abs(G.ayF)>3.5)d+=(Math.abs(G.ayF)-3.5)*0.05;
-    if(d>0){G.comfort=Math.max(0,G.comfort-d*dt);if(d>1&&G.t-(G.cMsg||0)>10){G.cMsg=G.t;toast('Die Passagiere werden unruhig …',1800);}}
-    else G.comfort=Math.min(100,G.comfort+0.02*dt);}
+    const ay=(F.vel.y-(G.lvy??F.vel.y))/Math.max(dt,1e-3);G.lvy=F.vel.y;G.ayF=(G.ayF??0)+(ay-(G.ayF??0))*Math.min(1,dt*2);if(Math.abs(G.ayF)>4)d+=(Math.abs(G.ayF)-4)*0.05;
+    if(d>0){G.comfort=Math.max(0,G.comfort-d*dt);if(d>1.5&&G.t-(G.cMsg||0)>12){G.cMsg=G.t;toast('Die Passagiere werden unruhig …',1800);}}
+    else G.comfort=Math.min(100,G.comfort+0.05*dt);}
   G.recT+=dt;if(G.recT>=0.1&&G.rec.length<9000){G.recT=0;G.rec.push([F.pos.x,F.pos.y,F.pos.z,F.q.x,F.q.y,F.q.z,F.q.w,F.flapPos,F.gearPos,F.eng,F.onGround?F.vel.length():0,F.ail,F.elev,F.rud]);}
   if(G.lesson&&!G.done){const r=tutorTick(G.lesson,G.tut,tutCtx(F),dt);if(r.stepDone&&!r.done){audio.chime();toast('✓ Gut gemacht!',1600);}if(r.done){audio.chime();return finishLesson();}}
   if(G.P.glider){F.thr=0;F.eng=0;if(!F.onGround&&G.t-(G.varT||0)>0.45){G.varT=G.t;audio.vario(F.vel.y);}}
   emergTick(F);stage3Tick(F,dt);calloutTick(F,dt);if(F.P.heli)regaTick(F,dt);
   // Ziele
   if(o){
-    if(o.type==='ring'){const d=Math.hypot(F.pos.x-o.x,F.pos.y-o.y,F.pos.z-o.z);if(d<o.r+5){audio.chime();ringPop(o);G.oi++;refreshRings();const left=G.obj.slice(G.oi).filter(x=>x.type==='ring').length;toast(left?`Ring geschafft – noch ${left}`:'Alle Ringe geschafft!');}}
+    if(o.type==='ring'){const d=Math.hypot(F.pos.x-o.x,F.pos.y-o.y,F.pos.z-o.z);if(d<o.r*1.2+12){audio.chime();ringPop(o);G.oi++;refreshRings();const left=G.obj.slice(G.oi).filter(x=>x.type==='ring').length;toast(left?`Ring geschafft – noch ${left}`:'Alle Ringe geschafft!');}}
     else if(o.type==='taxi'&&F.onGround&&Math.hypot(F.pos.x-o.x,F.pos.z-o.z)<o.r){G.oi++;audio.chime();toast('Rollhalt erreicht – auf die Piste rollen, ausrichten und starten (T: Startfreigabe).',4500);if(G.taxiDots)G.taxiDots.visible=false;}
     else if(o.type==='wland'&&F.water&&F.vel.length()<3&&Math.hypot(F.pos.x-o.x,F.pos.z-o.z)<o.r){G.oi++;audio.chime();toast('Wasserlandung geglückt!',2500);}
     else if(o.type==='land'&&F.onGround&&F.vel.length()<2.5){const z=WF.airportZone(F.pos.x,F.pos.z);
@@ -788,15 +794,17 @@ function renderFree(){
   $('fTime').innerHTML=[[7.2,'Morgen'],[12.5,'Mittag'],[17,'Nachmittag'],[20.1,'Abendrot'],[22.8,'Nacht']].map(([h,n])=>`<button class="chip ${Math.abs(f.hour-h)<0.01?'sel':''}" data-h="${h}">${n}<small>${fmtH(h)}</small></button>`).join('');
   $('fTime').querySelectorAll('.chip').forEach(el=>el.onclick=()=>{f.hour=+el.dataset.h;persist();renderFree();});
   $('fWx').innerHTML=[['clear','Klar'],['fair','Schönwetterwolken'],['cloudy','Bewölkt'],['rain','Regen'],['storm','Gewitter'],['snow','Schneefall'],['fog','Nebelmeer'],['foehn','Föhn (klar)']].map(([k,n])=>`<button class="chip ${f.weather===k?'sel':''}" data-w="${k}">${n}</button>`).join('');
-  $('fWx').querySelectorAll('.chip').forEach(el=>el.onclick=()=>{f.weather=el.dataset.w;f.live=null;if(f.weather==='foehn'&&f.wind!=='foehn')f.wind='foehn';persist();renderFree();});
-  $('fLive').innerHTML=`<button class="chip ${f.live?'sel':''}" id="fLiveB">☁ Echtes Wetter ${ZS?'Zürich':'Interlaken'} laden<small>${f.live?esc(f.live):'aktuelles Wetter, Wind und Uhrzeit'}</small></button>`;$('fLiveB').onclick=liveWeather;
+  $('fWx').querySelectorAll('.chip').forEach(el=>el.onclick=()=>{f.weather=el.dataset.w;f.live=null;f.liveCH=false;if(f.weather==='foehn'&&f.wind!=='foehn')f.wind='foehn';persist();renderFree();});
+  $('fLive').innerHTML=`<button class="chip ${f.live?'sel':''}" id="fLiveB">☁ Echtwetter Schweiz${f.liveCH&&f.live?' ✓':' laden'}<small>${f.live?esc(f.live):'aktuelles Wetter an 40 Orten – unterwegs immer das Wetter der Gegend'}</small></button>`;$('fLiveB').onclick=liveWeather;
   f.season=f.season||'summer';$('fSeason').innerHTML=[['summer','Sommer'],['winter','Winter (Schnee)']].map(([k,n])=>`<button class="chip ${f.season===k?'sel':''}" data-s="${k}">${n}</button>`).join('');
   $('fSeason').querySelectorAll('.chip').forEach(el=>el.onclick=()=>{f.season=el.dataset.s;persist();renderFree();});
   f.wind=f.wind||'light';$('fWind').innerHTML=[['calm','Windstill'],['light','Leicht'],['mid','Mässig'],['strong','Stark, böig'],['foehn','Föhnsturm']].map(([k,n])=>`<button class="chip ${f.wind===k?'sel':''}" data-k="${k}">${n}</button>`).join('');
-  $('fWind').querySelectorAll('.chip').forEach(el=>el.onclick=()=>{f.wind=el.dataset.k;persist();renderFree();});
+  $('fWind').querySelectorAll('.chip').forEach(el=>el.onclick=()=>{f.wind=el.dataset.k;f.live=null;f.liveCH=false;persist();renderFree();});
 }
 function ewInfo(){const n=ewIds().length;$('ewInfo').innerHTML=`<b>Goldene Edelweiss: ${n} / ${attr?attr.edelweissTotal:72}</b> – versteckt bei Wahrzeichen, auf Gipfeln und tief über Seen: von Genf und dem Matterhorn über Zürich, Luzern und die Jungfrau bis nach St. Moritz und Lugano. Flieg im freien Flug hindurch und sammle alle! Dazu: Kunstflugstaffel, Zeppelin über Zürich, Heissluftballone, Gleitschirme, Seilbahnen und nachts Feuerwerk.`;}
-$('fGo').onclick=()=>{audio.init();startFlight({...save.free});};
+$('fGo').onclick=async()=>{audio.init();const f=save.free;
+  if(f.liveCH){try{await fetchLiveCH();const tt=new Date(LIVE.time);f.hour=tt.getHours()+tt.getMinutes()/60;}catch(e){f.liveCH=false;f.live=null;toast('Echtwetter nicht erreichbar – es gilt das eingestellte Wetter.',3500);}}
+  startFlight({...f});};
 function renderSettings(){const st=save.settings;
   const opt=(id,vals,key)=>{$(id).innerHTML=vals.map(([v,n])=>`<button class="chip ${st[key]===v?'sel':''}" data-v="${v}">${n}</button>`).join('');$(id).querySelectorAll('.chip').forEach(el=>el.onclick=()=>{let v=el.dataset.v;if(v==='true')v=true;if(v==='false')v=false;st[key]=v;persist();renderSettings();if(key==='quality')$('qHint').style.display='';});};
   opt('sUnits',[['metric','Metrisch (km/h, m)'],['aviation','Luftfahrt (kt, ft)']],'units');
@@ -943,7 +951,7 @@ function apStep(F,ctl,dt,thrUp,thrDn,gpYawL,gpYawR){
       let r=pathNearest(pts,F,A.pi,Math.min(pts.length-1,hi+60));if(r.bd>3000)r=pathNearest(pts,F,lo,hi,0);A.pi=r.bi;
       mode=o.type==='land'?'ANFLUG':'ROUTE';follow(pts,A.pi,pts.length-1);landing=(o.type==='land'||!!o.final)&&A.ex<250;
       // Ring knapp verpasst (Autopilot hat ihn schon hinter sich): weiter zum nächsten statt umzukehren
-      if(o.type==='ring'&&A.pi>=hi-1){const d=Math.hypot(F.pos.x-o.x,F.pos.y-o.y,F.pos.z-o.z);if(d>o.r+5&&d>(A.lastD||0)&&d<2500){G.oi++;refreshRings();toast('Ring knapp verpasst – der Autopilot fliegt weiter',2200);}A.lastD=d;}else A.lastD=0;
+      if(o.type==='ring'&&A.pi>=hi-1){const d=Math.hypot(F.pos.x-o.x,F.pos.y-o.y,F.pos.z-o.z);if(d>o.r*1.2+12&&d>(A.lastD||0)&&d<2500){G.oi++;refreshRings();toast('Ring knapp verpasst – der Autopilot fliegt weiter',2200);}A.lastD=d;}else A.lastD=0;
       if(o.type==='land'&&agl<90){apOff('Autopilot AUS – jetzt von Hand landen');return;}}}
   if(want==null&&A.nav!==false&&G.wp){mode='ZIEL';const b=Math.atan2(G.wp.x-F.pos.x,-(G.wp.z-F.pos.z)),dd=Math.max(300,Math.hypot(G.wp.x-F.pos.x,G.wp.z-F.pos.z)),al=wrapA(b-trk);
     want=Math.abs(al)>Math.PI/2?-Math.sign(al)*mbCmd:-Math.atan(2*vh*vh*Math.sin(al)/(Math.min(dd,v*8)*9.81));A.hdg=((b/DEG)+360)%360;}
@@ -1180,18 +1188,44 @@ function calloutTick(F,dt){
   const o=G.obj[G.oi];if(!F.onGround&&((o&&o.final)||(F.gearPos>0.5&&agl<700&&vs<-1&&F.airTime>30)))ann('a','Kabinenbesatzung, bitte Plätze für die Landung einnehmen.');
   if(F.onGround&&G.lastTouch&&F.vel.length()<22){const ap=G.lastTouch.ap||nearestAP(F.pos);ann('l',`Meine Damen und Herren, willkommen in ${ap&&ap.name?ap.name:'der Schweiz'}. Bitte bleiben Sie angeschnallt, bis das Flugzeug zum Stillstand gekommen ist. Merci vielmal und uf Wiederluege!`);}
 }
-// ---------- Echtes Wetter (Open-Meteo) ----------
-async function liveWeather(){const f=save.free;toast('Wetter wird geladen …',1500);
-  try{const u=`https://api.open-meteo.com/v1/forecast?latitude=${ZS?47.38:46.69}&longitude=${ZS?8.54:7.86}&current=temperature_2m,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,wind_gusts_10m,is_day&timezone=Europe%2FZurich`;
-    const ctl=new AbortController();const tm=setTimeout(()=>ctl.abort(),6000);const r=await fetch(u,{signal:ctl.signal});clearTimeout(tm);if(!r.ok)throw new Error('HTTP '+r.status);const j=await r.json(),c=j.current;
-    const code=c.weather_code,T=c.temperature_2m,cc=c.cloud_cover;
-    const w=code>=95?'storm':(code>=71&&code<=77)||code===85||code===86?'snow':(code>=51&&code<=67)||(code>=80&&code<=82)?'rain':code===45||code===48?'fog':cc>80?'cloudy':cc>25?'fair':'clear';
-    const spd=c.wind_speed_10m/3.6,gust=Math.max(0,c.wind_gusts_10m/3.6-spd);
-    const tt=new Date(c.time);const hour=tt.getHours()+tt.getMinutes()/60;
-    f.weather=w;f.wind={spd,gust:gust*0.7,turb:Math.min(0.9,0.1+gust/14),dir:c.wind_direction_10m};f.hour=hour;f.season=(w==='snow'||(T<2&&[11,12,1,2,3].includes(tt.getMonth()+1)))?'winter':'summer';
-    const wn={storm:'Gewitter',snow:'Schneefall',rain:'Regen',fog:'Nebel',cloudy:'bewölkt',fair:'leicht bewölkt',clear:'klar'}[w];
-    f.live=`${fmtH(hour)} · ${Math.round(T)} °C · ${wn} · Wind ${Math.round(c.wind_direction_10m/10)*10}° ${Math.round(c.wind_speed_10m)} km/h`;persist();renderFree();toast('Echtes Wetter übernommen: '+f.live,3500);}
-  catch(e){toast('Wetterdienst nicht erreichbar – bitte später nochmal versuchen.',3500);}}
+// ---------- Echtwetter Schweiz (Open-Meteo: aktuelles Wetter an 40 Orten der ganzen Schweiz) ----------
+// Unterwegs gilt jeweils das Wetter der Gegend, über der man fliegt (Nebel im Mittelland, Sonne in den Alpen, Föhnwind …).
+const WXP=[['Genf',46.20,6.14],['Lausanne',46.52,6.63],['Neuenburg',46.99,6.93],['La Chaux-de-Fonds',47.10,6.83],['Delémont',47.36,7.34],['Basel',47.56,7.59],['Biel',47.14,7.25],['Freiburg',46.80,7.15],
+  ['Bern',46.95,7.44],['Thun',46.76,7.63],['Interlaken',46.69,7.86],['Jungfraujoch',46.55,7.98],['Gstaad',46.47,7.29],['Sitten',46.23,7.36],['Zermatt',46.02,7.75],['Brig',46.32,7.99],
+  ['Olten',47.35,7.90],['Zofingen',47.29,7.95],['Aarau',47.39,8.04],['Luzern',47.05,8.31],['Engelberg',46.82,8.41],['Zürich',47.38,8.54],['Flughafen Zürich',47.46,8.55],['Winterthur',47.50,8.72],
+  ['Schaffhausen',47.70,8.63],['Zug',47.17,8.52],['Altdorf',46.88,8.64],['Andermatt',46.63,8.59],['Glarus',47.04,9.07],['St. Gallen',47.42,9.37],['Altenrhein',47.49,9.56],['Chur',46.85,9.53],
+  ['Davos',46.80,9.84],['Samedan',46.53,9.88],['Scuol',46.80,10.30],['Bellinzona',46.19,9.02],['Locarno',46.17,8.80],['Lugano',46.00,8.95],['Airolo',46.53,8.61],['Poschiavo',46.32,10.06]];
+let LIVE=null;
+const WXN={storm:'Gewitter',snow:'Schneefall',rain:'Regen',fog:'Nebel',cloudy:'bewölkt',fair:'leicht bewölkt',clear:'klar'};
+const wxClass=(code,cc,vis)=>code>=95?'storm':(code>=71&&code<=77)||code===85||code===86?'snow':(code>=51&&code<=67)||(code>=80&&code<=82)?'rain':code===45||code===48||(vis!=null&&vis<1200)?'fog':cc>80?'cloudy':cc>25?'fair':'clear';
+async function fetchLiveCH(force){
+  if(LIVE&&!force&&Date.now()-LIVE.t<15*60e3)return LIVE;
+  const u=`https://api.open-meteo.com/v1/forecast?latitude=${WXP.map(p=>p[1]).join(',')}&longitude=${WXP.map(p=>p[2]).join(',')}&current=temperature_2m,weather_code,cloud_cover,wind_speed_10m,wind_direction_10m,wind_gusts_10m,visibility&timezone=Europe%2FZurich`;
+  const ac=new AbortController();const tm=setTimeout(()=>ac.abort(),9000);const r=await fetch(u,{signal:ac.signal});clearTimeout(tm);if(!r.ok)throw new Error('HTTP '+r.status);
+  let j=await r.json();if(!Array.isArray(j))j=[j];
+  LIVE={t:Date.now(),time:j[0].current.time,pts:j.map((d,i)=>{const c=d.current,q=toXZ(WXP[i][1],WXP[i][2]);
+    return{n:WXP[i][0],x:q.x,z:q.z,T:c.temperature_2m,code:c.weather_code,cc:c.cloud_cover,ws:c.wind_speed_10m/3.6,wd:c.wind_direction_10m,wg:c.wind_gusts_10m/3.6,vis:c.visibility};})};
+  return LIVE;}
+// Wetter am Ort: Wetterlage vom nächsten Messort, Wind/Temperatur aus den drei nächsten gemittelt
+function liveAt(x,z){const L=LIVE.pts.map(p=>({p,d:Math.hypot(p.x-x,p.z-z)})).sort((a,b)=>a.d-b.d).slice(0,3);
+  let sw=0,T=0,vx=0,vz=0,wg=0,cc=0;for(const {p,d} of L){const w=1/Math.max(800,d)**2;sw+=w;T+=p.T*w;wg+=p.wg*w;cc+=p.cc*w;const a=p.wd*DEG;vx+=Math.sin(a)*p.ws*w;vz+=Math.cos(a)*p.ws*w;}
+  const n=L[0].p,spd=Math.hypot(vx,vz)/sw;return{n:n.n,cls:wxClass(n.code,n.cc,n.vis),T:T/sw,spd,dir:(Math.atan2(vx,vz)/DEG+360)%360,gust:Math.max(0,wg/sw-spd)};}
+function liveText(lw){return`${lw.n}: ${Math.round(lw.T)} °C · ${WXN[lw.cls]} · Wind ${Math.round(lw.dir/10)*10}° ${Math.round(lw.spd*3.6)} km/h`;}
+function applyLive(first){const F=G.F,lw=liveAt(F.pos.x,F.pos.z),wet=lw.cls==='rain'||lw.cls==='storm'||lw.cls==='snow';
+  wx.set({spd:lw.spd,gust:lw.gust*0.7,turb:Math.min(0.9,0.08+lw.gust/14),dir:lw.dir},wet?1:0,lw.cls==='snow');G.windDir=lw.dir;
+  if(lw.cls!==env.weather){if(!first&&G.liveC!==lw.cls){G.liveC=lw.cls;return;}// erst beim zweiten Mal wechseln (kein Flackern an Grenzen)
+    env.setTime(G.hour,lw.cls);audio.setRain&&audio.setRain(lw.cls==='rain'||lw.cls==='storm'?1:0);if(!first)toast('Echtwetter · '+liveText(lw),4200);}
+  G.liveC=lw.cls;G.liveTxt=liveText(lw);}
+function liveTick(dt){if(!G||!G.live||!LIVE)return;G.liveT=(G.liveT||0)-dt;if(G.liveT>0)return;G.liveT=8;
+  if(Date.now()-LIVE.t>15*60e3&&!G.liveF){G.liveF=1;fetchLiveCH(true).catch(()=>{}).finally(()=>{if(G)G.liveF=0;});}
+  try{applyLive(false);}catch(e){}}
+async function liveWeather(){const f=save.free;toast('Echtwetter der ganzen Schweiz wird geladen …',1800);
+  try{await fetchLiveCH(true);const tt=new Date(LIVE.time),hour=tt.getHours()+tt.getMinutes()/60;
+    const A=AP[f.ap],lw=A?liveAt(A.x,A.z):liveAt(LIVE.pts[21].x,LIVE.pts[21].z);
+    f.liveCH=true;f.weather=lw.cls;f.hour=hour;f.wind={spd:lw.spd,gust:lw.gust*0.7,turb:Math.min(0.9,0.08+lw.gust/14),dir:lw.dir};
+    f.season=(lw.cls==='snow'||(lw.T<2&&[11,12,1,2,3].includes(tt.getMonth()+1)))?'winter':'summer';
+    f.live=`${fmtH(hour)} · ${liveText(lw)} · unterwegs gilt das Wetter der jeweiligen Gegend`;persist();renderFree();toast('Echtwetter Schweiz aktiv · '+liveText(lw),4000);}
+  catch(e){toast('Wetterdienst nicht erreichbar. Im claude.ai-Fenster sperrt der Browser Internet-Abfragen – Echtwetter funktioniert in der Desktop-Datei «Swiss Sky.html» und auf viscabarca69.github.io/swiss-sky.',7000);}}
 // ---------- Rega ----------
 function heliGrade(ev){const sk=ev.sink,hs=ev.hs||0,v=sk+hs*0.35,letter=v<0.6?'S':v<1.0?'A':v<1.6?'B':v<2.4?'C':'D';
   return{letter,ap:ev.rw||WF.airportZone(ev.x,ev.z),parts:[['Sinkrate',clamp(25-sk*8,2,25),`${sk.toFixed(1)} m/s`],['Drift',clamp(25-hs*5,2,25),`${hs.toFixed(1)} m/s über Grund`],['Hang',clamp(25-(ev.slope||0)*80,2,25),`${Math.round(Math.atan(ev.slope||0)/DEG)}° Neigung`]]};}

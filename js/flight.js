@@ -20,7 +20,8 @@ function crash(F,reason){F.crashed=true;F.events.push({type:'crash',reason});}
 
 export function stepFlight(F,ctl,dt,W){
   const P=F.P;if(F.crashed)return;
-  const sm=Math.min(1,dt*7);F.elev+=(ctl.pitch-F.elev)*sm;F.ail+=(ctl.roll-F.ail)*sm;F.rud+=(ctl.yaw-F.rud)*sm;
+  // Ausschlag folgt der Eingabe, beim Loslassen schneller zurück (kein Nachrollen)
+  const sm=(c,v)=>Math.min(1,dt*(Math.abs(c)<Math.abs(v)?14:7));F.elev+=(ctl.pitch-F.elev)*sm(ctl.pitch,F.elev);F.ail+=(ctl.roll-F.ail)*sm(ctl.roll,F.ail);F.rud+=(ctl.yaw-F.rud)*sm(ctl.yaw,F.rud);
   const TM=1.22,SP=P.prop?1.3:1.7;F.eng+=(F.thr-F.eng)*Math.min(1,dt*P.spool*SP*(F.thr<F.eng?1.4:1));
   F.flapPos+=clamp(F.flaps/(P.flapCL.length-1)-F.flapPos,-dt*0.2,dt*0.2);
   if(P.fixedGear){F.gear=true;F.gearPos=1;}else F.gearPos+=clamp((F.gear?1:0)-F.gearPos,-dt/7,dt/7);
@@ -104,9 +105,17 @@ export function stepFlight(F,ctl,dt,W){
   let rt;
   const mb=(P.maxBank||55)*DEG;
   const over=Math.abs(bankL)-mb;
-  if(Math.abs(F.ail)>0.04){rt=F.ail*P.rollRate*Math.min(1,ce*1.2+0.2);if(Math.sign(F.ail)===Math.sign(bankL)){const room=(mb-Math.abs(bankL))/(7*DEG);rt=room>0?rt*Math.min(1,room):-Math.sign(bankL)*(over*4+0.02);}}
+  // Querruder: Rollraten-Befehl (wie Fly-by-Wire) – kleine Ausschläge = langsames, feines Rollen
+  if(Math.abs(F.ail)>0.04){const ai=F.apIn?F.ail:Math.sign(F.ail)*Math.pow(Math.abs(F.ail),1.4);rt=ai*P.rollRate*Math.min(1,ce*1.2+0.2);F.bHold=null;
+    if(Math.sign(F.ail)===Math.sign(bankL)){const room=(mb-Math.abs(bankL))/(7*DEG);rt=room>0?rt*Math.min(1,room):-Math.sign(bankL)*(over*4+0.02);}}
   else{const rb=Math.abs(F.rud)>0.05?F.rud*(P.cls==='small'?20:P.cls==='regional'?17:15)*DEG:0;
-    rt=Math.abs(F.rud)>0.05?clamp((rb-bankL)*1.6,-P.rollRate*0.5,P.rollRate*0.5):F.level>0?clamp(-bankL*F.level,-P.rollRate*0.45,P.rollRate*0.45):0;if(over>0)rt=-Math.sign(bankL)*Math.max(Math.abs(rt),over*4+0.05);}
+    if(Math.abs(F.rud)>0.05){rt=clamp((rb-bankL)*1.6,-P.rollRate*0.5,P.rollRate*0.5);F.bHold=null;}
+    else if(!F.assist||F.level>=1.5)rt=F.level>0?clamp(-bankL*F.level,-P.rollRate*0.45,P.rollRate*0.45):0;
+    else{// Querlage halten (Normal Law): losgelassene Querlage bleibt stehen; über 33° zurück auf 33°, unter der Schwelle sanft waagrecht
+      const thr=F.level>0.5?3*DEG:F.level>0?1.2*DEG:0,lim=33*DEG;
+      if(F.bHold==null)F.bHold=Math.abs(bankL)<thr?0:clamp(bankL,-lim,lim);
+      rt=clamp((F.bHold-bankL)*1.8,-P.rollRate*0.45,P.rollRate*0.45);}
+    if(over>0)rt=-Math.sign(bankL)*Math.max(Math.abs(rt),over*4+0.05);}
   F.w.z+=(rt-F.w.z)*Math.min(1,dt*4.5);
   const yr=(F.rud*(P.cls==='small'?0.26:P.cls==='regional'?0.19:0.15)+(F.asym||0)*0.1*F.eng)*Math.min(1,0.35+ce);
   // Kurvenkoordination (mit Flughilfe, wie ein Gierdämpfer): die Nase dreht mit der Kurve mit, kaum Schiebewinkel

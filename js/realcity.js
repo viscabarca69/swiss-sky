@@ -1,7 +1,7 @@
 // Echte Gebäude aus swissBUILDINGS3D 3.0 (Quelle: swisstopo) für ausgewählte Städte
 // Datei: data/buildings.txt (Base64 einer gzip-Datei, weil der Artifact-Server keine .gz ausliefert) – pro 1-km-Kachel Gebäude-Köpfe, Positions-Deltas (Byte-Ebenen) und Index-Codes
 import * as THREE from 'three';
-import {ORU,ORTHO_GLSL_HEAD} from './ortho.js';
+import {ORU,ORTHO_GLSL_HEAD,inAirportArea} from './ortho.js';
 import {BUILDINGS} from './swissdata.js';
 import {nightU} from './gfx.js';
 
@@ -37,14 +37,44 @@ function cityMaterial(){
     sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nattribute vec2 aInfo;varying vec2 vInfo;varying vec3 vWP;')
       .replace('#include <worldpos_vertex>','#include <worldpos_vertex>\nvInfo=aInfo;vWP=(modelMatrix*vec4(transformed,1.0)).xyz;');
     sh.fragmentShader=sh.fragmentShader.replace('#include <common>',`#include <common>
-uniform float uNight;varying vec2 vInfo;varying vec3 vWP;float winLit;float winMask;float farLit;
+uniform float uNight;varying vec2 vInfo;varying vec3 vWP;float winLit;float winMask;float farLit;float glassM;float metA;float cool;
 ${ORTHO_GLSL_HEAD}
 float hh(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}`)
       .replace('#include <map_fragment>',`#include <map_fragment>
 vec3 nW=normalize(cross(dFdx(vWP),dFdy(vWP)));if(dot(nW,cameraPosition-vWP)<0.0)nW=-nW;
-float t=vInfo.x/255.0;float k=vInfo.y;winLit=0.0;winMask=0.0;farLit=0.0;
+float t=vInfo.x/255.0;float k=vInfo.y;winLit=0.0;winMask=0.0;farLit=0.0;glassM=0.0;metA=0.0;cool=0.0;
 vec3 c;
-if(abs(nW.y)<0.4){
+if(abs(nW.y)<0.4&&k>15.5){
+  // Flughafengebäude: Glasfassaden, Metallpaneele, Fensterbänder
+  float sub=floor((k-16.0)/48.0),hb=k-16.0-sub*48.0;float hA=vWP.y-(380.0+vInfo.x);
+  float u=abs(nW.x)>abs(nW.z)?vWP.z:vWP.x;float vr=hh(floor(vWP.xz/40.0));
+  float top=step(hb-1.1,hA);cool=1.0;
+  if(sub<0.5){
+    vec2 g=vec2(u/1.5,hA/4.2);vec2 f=fract(g);float aa=fwidth(g.x)+fwidth(g.y);float fade=1.0-smoothstep(0.15,0.6,aa);
+    float fr=max(1.0-step(0.035,f.x)*step(f.x,0.965),1.0-step(0.12,f.y)*step(f.y,0.985));
+    fr=max(mix(0.2,fr,fade),top);if(hA<0.4)fr=1.0;
+    vec3 gc=mix(vec3(0.30,0.36,0.41),vec3(0.35,0.40,0.43),vr);
+    c=mix(gc,vec3(0.72,0.74,0.76),fr);glassM=1.0-fr;
+    winMask=glassM;winLit=glassM*fade*step(0.42,hh(floor(g)+vec2(t*13.0,vr)))*0.7;farLit=(1.0-fade)*0.07;
+  }else if(sub<1.5){
+    float rb=u/0.55;float rs=1.0-smoothstep(0.1,0.5,fwidth(rb));
+    c=vec3(0.86,0.87,0.88)-0.03*vr;c*=1.0-0.07*rs*smoothstep(0.3,0.5,abs(fract(rb)-0.5));
+    c*=1.0-0.10*rs*(1.0-step(0.025,fract(hA/3.2)));
+    float cb=step(hb-4.6,hA)*step(hA,hb-2.6);vec2 g=vec2(u/2.0,0.0);float fade=1.0-smoothstep(0.15,0.6,fwidth(g.x));
+    float win=cb*step(0.06,fract(g.x))*fade;c=mix(c,vec3(0.30,0.36,0.41),win);glassM=win;winMask=win;winLit=win*0.25;
+    if(top>0.5)c=vec3(0.66,0.68,0.70);if(hA<0.9)c=vec3(0.50,0.50,0.49);metA=0.25;
+  }else if(sub<2.5){
+    vec2 g=vec2(u/1.35,hA/3.7);vec2 f=fract(g);float aa=fwidth(g.x)+fwidth(g.y);float fade=1.0-smoothstep(0.15,0.6,aa);
+    float win=step(0.27,f.y)*step(f.y,0.84)*step(0.06,f.x);if(hA<4.2)win=step(0.35,hA)*step(hA,3.7)*step(0.04,f.x);
+    win*=1.0-top;float w2=win*fade;
+    c=vec3(0.86,0.87,0.88)-0.05*vr;c=mix(c,vec3(0.30,0.36,0.41),w2);c=mix(c,vec3(0.45,0.51,0.56),(1.0-fade)*0.5*(1.0-top));glassM=(1.0-fade)*0.45*(1.0-top);
+    glassM=max(glassM,w2);winMask=w2;winLit=w2*step(0.5,hh(floor(g)+vec2(t*7.0,vr)));farLit=(1.0-fade)*0.07;
+  }else{
+    float rb=u/0.5;float rs=1.0-smoothstep(0.1,0.5,fwidth(rb));
+    c=mix(vec3(0.80,0.81,0.82),vec3(0.72,0.73,0.72),vr)*(1.0-0.06*rs*smoothstep(0.3,0.5,abs(fract(rb)-0.5)));
+    if(hA<0.5)c*=0.7;if(top>0.5)c*=0.85;metA=0.2;
+  }
+}else if(abs(nW.y)<0.4){
   vec3 w0=vec3(0.86,0.83,0.77),w1=vec3(0.82,0.76,0.66),w2=vec3(0.90,0.89,0.86),w3=vec3(0.76,0.73,0.69),w4=vec3(0.88,0.80,0.64);
   c=t<0.25?w0:t<0.45?w1:t<0.65?w2:t<0.85?w3:w4;
   if(k>0.5&&k<1.5)c=mix(vec3(0.55,0.62,0.68),vec3(0.78,0.78,0.76),step(0.5,t));
@@ -53,7 +83,7 @@ if(abs(nW.y)<0.4){
   else if(k>3.5&&k<4.5)c=vec3(0.86,0.90,0.90);
   else if(k>4.5)c=vec3(0.62,0.60,0.56);
   if(k<1.5||(k>1.5&&k<2.5)){
-    vec2 tg=normalize(vec2(-nW.z,nW.x)+1e-5);float u=dot(vWP.xz,tg);float tall=step(0.5,k)*step(k,1.5);
+    float u=abs(nW.x)>abs(nW.z)?vWP.z:vWP.x;float tall=step(0.5,k)*step(k,1.5);
     float fh=tall>0.5?3.4:2.9,cw=tall>0.5?2.4:3.3;vec2 g=vec2(u/cw,(vWP.y-0.8)/fh);vec2 f=fract(g);vec2 id=floor(g);
     float aa=fwidth(g.x)+fwidth(g.y);float fade=1.0-smoothstep(0.12,0.45,aa);
     float inW=step(0.22,f.x)*step(f.x,tall>0.5?0.9:0.72)*step(0.3,f.y)*step(f.y,0.85);
@@ -73,8 +103,9 @@ if(abs(nW.y)<0.4){
 diffuseColor.rgb*=pow(c,vec3(2.2));
 // Dächer im Luftbild-Gebiet: echte Dachfarbe aus dem Luftbild
 if(nW.y>0.4){vec4 o4=orthoAt(vWP.xz);if(o4.a>0.0)diffuseColor.rgb=mix(diffuseColor.rgb,o4.rgb*0.82,o4.a*(nW.y>0.94?0.95:0.85));}`)
-      .replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\ntotalEmissiveRadiance+=vec3(1.0,0.74,0.44)*(winLit*1.5+farLit)*uNight;')
-      .replace('#include <roughnessmap_fragment>','#include <roughnessmap_fragment>\nroughnessFactor=mix(roughnessFactor,0.15,winMask);');
+      .replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\ntotalEmissiveRadiance+=mix(vec3(1.0,0.74,0.44),vec3(0.82,0.9,1.0),cool)*(winLit*1.5+farLit)*uNight;')
+      .replace('#include <roughnessmap_fragment>','#include <roughnessmap_fragment>\nroughnessFactor=mix(roughnessFactor,0.15,winMask);roughnessFactor=mix(roughnessFactor,0.05,glassM);if(metA>0.0)roughnessFactor=min(roughnessFactor,0.5);')
+      .replace('#include <metalnessmap_fragment>','#include <metalnessmap_fragment>\nmetalnessFactor=max(metalnessFactor,max(glassM*0.92,metA));');
   };
   return m;
 }
@@ -91,14 +122,18 @@ export function buildRealCity(scene,RC,S,lights){
     const acc=[0,0,0];let v=0,ii=0;
     for(let b=0;b<NB;b++){
       const nv=bh.getUint16(b*6,true),nt=bh.getUint16(b*6+2,true),tint=bh.getUint8(b*6+4),ty=bh.getUint8(b*6+5);
-      let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;const v0=v;
+      let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9,y0=1e9,y1=-1e9;const v0=v;
       for(let j=0;j<nv;j++,v++){for(let c=0;c<3;c++){const d=(lo[c][v]|(hi[c][v]<<8))<<16>>16;acc[c]=(acc[c]+d)<<16>>16;}
         const x=acc[0]/sc,y=acc[1]/sc,z=acc[2]/sc;pos[v*3]=x;pos[v*3+1]=y;pos[v*3+2]=z;info[v*2]=tint;info[v*2+1]=ty;
-        if(x<x0)x0=x;if(x>x1)x1=x;if(z<z0)z0=z;if(z>z1)z1=z;}
+        if(x<x0)x0=x;if(x>x1)x1=x;if(z<z0)z0=z;if(z>z1)z1=z;if(y<y0)y0=y;if(y>y1)y1=y;}
       // Boden: tiefster Punkt des Spielgeländes unter dem Grundriss (kein Schweben am Hang)
       const gx=C.cx,gz=C.cz;let g=Infinity;
       for(const [px,pz] of [[x0,z0],[x1,z0],[x0,z1],[x1,z1],[(x0+x1)/2,(z0+z1)/2]])g=Math.min(g,S.heightAt(gx+px,gz+pz));
       g-=0.4;for(let j=v0;j<v;j++)pos[j*3+1]+=g;
+      // Flughafen Zürich: Gebäudeart aus Form/Höhe – k = 16 + Art*48 + Höhe (Art 0 Glas-Terminal/Dock, 1 Hangar, 2 Büro mit Fensterbändern, 3 Nebengebäude); tint = Bodenhöhe-380 m
+      if(inAirportArea(gx+(x0+x1)/2,gz+(z0+z1)/2)){const w=x1-x0,d=z1-z0,hb=y1-y0,asp=Math.max(w,d)/Math.max(1,Math.min(w,d)),ar=w*d;
+        const sub=hb<7.5?3:asp>3.2?0:(ar>3500&&hb>13)?1:hb>17?0:2,at=16+sub*48+Math.min(47,Math.round(hb)),gt=Math.max(0,Math.min(255,Math.round(g+y0-380)));
+        for(let j=v0;j<v;j++){info[j*2]=gt;info[j*2+1]=at;}}
       if(lights&&(nb%3===0)&&nv>14)lights.push(gx+(x0+x1)/2,g+3,gz+(z0+z1)/2);
       let hw=0;for(let j=0;j<nt*3;j++,ii++){const code=clo[ii]|(chi[ii]<<8);let l;if(code===0)l=hw++;else l=hw-code;idx[ii]=v0+l;}
       nb++;}

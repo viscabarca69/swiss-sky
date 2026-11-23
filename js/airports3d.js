@@ -1,7 +1,8 @@
 // Flughäfen: Pisten mit Markierungen, Rollwege, Gebäude, Befeuerung, PAPI
 import * as THREE from 'three';
 import {inOrtho,lv95ToXZ} from './ortho.js';
-const ZRH_STANDS=[["l380",2683861.8,1257401.9,156],["l350",2683939.9,1257401.9,186],["l340",2684013.2,1257399.4,186],["l747",2684096.2,1257394.5,186],["l350",2684164.6,1257389.6,186],["l330",2684242.7,1257382.3,186],["l350",2684313.5,1257375.0,186],["l340",2684384.3,1257372.6,186],["l340",2683981.4,1257250.5,6],["l330",2684052.2,1257243.2,6],["l350",2684123.0,1257238.3,6],["l330",2684198.7,1257231.0,6],["l350",2684269.5,1257223.6,6],["l747",2684352.5,1257216.3,6],["l330",2684425.8,1257216.3,6],["l320",2684336.6,1256292.0,184.5],["l32n",2684377.6,1256285.5,184.5],["l320",2684419.9,1256279.0,184.5],["l32n",2684518.9,1256272.5,184.5],["l320",2684559.9,1256262.7,184.5],["l32n",2684296.2,1256458.0,4.5],["l320",2684337.2,1256458.0,4.5],["l32n",2684377.6,1256448.2,4.5],["l320",2684418.6,1256441.7,4.5],["l32n",2684459.0,1256454.8,4.5],["l320",2684518.9,1256435.2,4.5],["l330",2684462.2,1256103.2,4.5]];
+// [Typ, E, N, Kurs, Abstand Flugzeugmitte–Dockfassade in Kursrichtung (0 = Aussenposition ohne Brücke)]
+const ZRH_STANDS=[["l380",2683861.8,1257401.9,156,0],["l350",2683939.9,1257401.9,186,56.75],["l340",2684013.2,1257399.4,186,60.75],["l747",2684096.2,1257394.5,186,63.25],["l350",2684164.6,1257389.6,186,64.5],["l330",2684242.7,1257382.3,186,64.5],["l350",2684313.5,1257375.0,186,63.75],["l340",2684384.3,1257372.6,186,67.25],["l340",2683981.4,1257250.5,6,57.0],["l330",2684052.2,1257243.2,6,57.75],["l350",2684123.0,1257238.3,6,56.25],["l330",2684198.7,1257231.0,6,56.5],["l350",2684269.5,1257223.6,6,57.5],["l747",2684352.5,1257216.3,6,57.5],["l330",2684425.8,1257216.3,6,0],["l320",2684336.6,1256292.0,184.5,0],["l32n",2684377.6,1256285.5,184.5,46.25],["l320",2684419.9,1256279.0,184.5,56.5],["l32n",2684518.9,1256272.5,184.5,59.25],["l320",2684559.9,1256262.7,184.5,52.75],["l32n",2684296.2,1256458.0,4.5,35.75],["l320",2684337.2,1256458.0,4.5,32.25],["l32n",2684377.6,1256448.2,4.5,38.25],["l320",2684418.6,1256441.7,4.5,40.75],["l32n",2684459.0,1256454.8,4.5,24.25],["l320",2684518.9,1256435.2,4.5,38.25],["l330",2684462.2,1256103.2,4.5,66.25]];
 import {bakeStatic} from './bake.js';
 import {AIRPORTS,fromLocal} from './worldgen.js';
 import {mulberry} from './noise.js';
@@ -92,6 +93,61 @@ export function buildAirports(scene,S,addParked){
     const nav=new THREE.Mesh(new THREE.BoxGeometry(w,1.2,1.2),new THREE.MeshStandardMaterial({color:0x0b2545}));nav.position.set(0,h*0.8+0.6,d/2+0.6);g.add(nav);
     g.children.forEach(m=>{m.castShadow=true;m.receiveShadow=true;});return place(A,g,al,ac);};
   const parkRot=s=>s<0?Math.PI/2:-Math.PI/2;
+  // ---- Fluggastbrücken (Zürich, echte Standplätze): Festbrücke ab Dockfassade, Rotunde, Teleskoptunnel mit Glasband, Fahrwerk, Kabine mit Faltenbalg
+  const bW=new THREE.MeshStandardMaterial({color:0xd9dcdf,roughness:0.42,metalness:0.3}),bG=new THREE.MeshStandardMaterial({color:0x33424d,roughness:0.06,metalness:0.88});
+  const bD=new THREE.MeshStandardMaterial({color:0x2b2c2e,roughness:0.85}),bY=new THREE.MeshStandardMaterial({color:0xe8b62a,roughness:0.55}),bS=new THREE.MeshStandardMaterial({color:0x8d939a,roughness:0.5,metalness:0.5});
+  const vW=new THREE.MeshStandardMaterial({color:0xeef0f1,roughness:0.5}),vGl=new THREE.MeshStandardMaterial({color:0x1d262d,roughness:0.15,metalness:0.6});
+  const SD=Math.PI/180;
+  // Quader von Bodenpunkt a nach b (Breite w, Höhe h), geneigt wie die Verbindung
+  const beam=(g,a,b,w,hh,mat)=>{const dx=b.x-a.x,dy=b.y-a.y,dz=b.z-a.z,L=Math.hypot(dx,dz);const m=new THREE.Mesh(new THREE.BoxGeometry(w,hh,Math.hypot(L,dy)),mat);
+    m.position.set((a.x+b.x)/2,(a.y+b.y)/2+hh/2,(a.z+b.z)/2);m.rotation.order='YXZ';m.rotation.y=Math.atan2(dx,dz);m.rotation.x=-Math.atan2(dy,L);m.castShadow=true;m.receiveShadow=true;g.add(m);return m;};
+  const blk=(g,x,y,z,w,hh,d,ry,mat)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,hh,d),mat);m.position.set(x,y+hh/2,z);m.rotation.y=ry;m.castShadow=true;m.receiveShadow=true;g.add(m);return m;};
+  const frame=(id,p,h)=>{const C=AIRLINER[id],fw={x:Math.sin(h*SD),z:-Math.cos(h*SD)},lf={x:-Math.cos(h*SD),z:-Math.sin(h*SD)},gy=S.heightAt(p.x,p.z);
+    return{C,gy,ry:-h*SD,at:(f,l,y)=>new THREE.Vector3(p.x+fw.x*f+lf.x*l,y,p.z+fw.z*f+lf.z*l)};};
+  function jetBridges(g,id,p,h,F){const {C,gy,ry,at}=frame(id,p,h),R=C.R,floorY=gy+PLANES[id].gearH-R*(C.sy||1)*0.42;
+    const nd=C.L>50?2:1;let lPrev=0;
+    for(let i=0;i<nd;i++){const df=C.L/2-C.doors[i]*C.L,rf=F-9;let lr=R+4+0.55*(rf-df);if(i)lr=Math.max(lr+4,lPrev+9);lPrev=lr;
+      const ryF=Math.max(floorY+0.6,gy+3.2),rot=at(rf,lr,ryF),cab=at(df,R+2.1,floorY-0.15);
+      // Festbrücke + Stützen
+      const f0=at(F+1,lr,ryF),f1=at(rf+2.2,lr,ryF);beam(g,f0,f1,3.0,3.0,bW);beam(g,at(F+1,lr,ryF+0.95),at(rf+2.2,lr,ryF+0.95),3.08,1.25,bG);
+      for(let q=rf+5;q<F-1;q+=7){const c=at(q,lr,0);blk(g,c.x,gy,c.z,0.45,ryF-gy,0.45,ry,bS);}
+      // Rotunde
+      {const c=new THREE.Mesh(new THREE.CylinderGeometry(0.45,0.6,ryF-gy,10),bS);c.position.set(rot.x,(ryF+gy)/2,rot.z);c.castShadow=true;g.add(c);
+       const r=new THREE.Mesh(new THREE.CylinderGeometry(2.4,2.4,3.3,18),bW);r.position.set(rot.x,ryF+1.65,rot.z);r.castShadow=true;r.receiveShadow=true;g.add(r);
+       const rr2=new THREE.Mesh(new THREE.CylinderGeometry(2.5,2.5,0.35,18),bS);rr2.position.set(rot.x,ryF+3.4,rot.z);g.add(rr2);}
+      // Tunnel: Richtung Rotunde -> Kabine
+      const dir=cab.clone().sub(rot);dir.y=0;const dl=dir.length();dir.normalize();
+      const t0=rot.clone().addScaledVector(dir,2.2),t1=cab.clone().addScaledVector(dir,-1.9);t0.y=ryF;t1.y=floorY-0.15;
+      const tm=t0.clone().lerp(t1,0.56),tm2=t0.clone().lerp(t1,0.5);
+      beam(g,t0,tm,3.4,3.25,bW);beam(g,t0.clone().setY(t0.y+0.95),tm.clone().setY(tm.y+0.95),3.48,1.3,bG);
+      beam(g,tm2,t1,3.05,2.95,bW);beam(g,tm2.clone().setY(tm2.y+0.85),t1.clone().setY(t1.y+0.85),3.13,1.2,bG);
+      // Fahrwerk (Hubsäulen + Drehgestell)
+      const dv=t0.clone().lerp(t1,0.74),px=-dir.z,pz=dir.x,yaw=Math.atan2(dir.x,dir.z);
+      for(const sd of [-1,1])blk(g,dv.x+px*sd*1.15,gy+0.9,dv.z+pz*sd*1.15,0.42,dv.y-gy-0.9,0.42,yaw,bS);
+      blk(g,dv.x,gy+0.15,dv.z,3.2,0.75,1.5,yaw,bD);blk(g,dv.x,dv.y-0.35,dv.z,3.2,0.35,0.6,yaw,bS);
+      // Kabine (quer zum Rumpf) + Faltenbalg
+      const n=at(0,-1,0).sub(at(0,0,0));const cy=Math.atan2(n.x,n.z);
+      blk(g,cab.x,cab.y,cab.z,3.5,3.3,3.4,cy,bW);blk(g,cab.x,cab.y+1.0,cab.z,3.58,1.3,2.6,cy,bG);
+      const cb=at(df,R+0.25,0);blk(g,cb.x,cab.y-0.05,cb.z,3.0,3.0,0.9,cy,bD);
+      const ws=at(df,R+3.9,0);blk(g,ws.x,cab.y+3.3,ws.z,1.6,0.28,0.5,cy,bS);}}
+  // ---- Bodenfahrzeuge am Stand: Pushback-Schlepper, Förderband am vorderen Frachttor, Gepäckwagen, Catering/Tankwagen bei Grossraumjets
+  function groundCrew(g,id,p,h,F,rq,si){const {C,gy,ry,at}=frame(id,p,h),R=C.R,L=C.L;
+    const tug=at(L/2+5.5,0,0);blk(g,tug.x,gy+0.35,tug.z,2.5,1.05,5.2,ry,bY);const tc=at(L/2+7.0,0.5,0);blk(g,tc.x,gy+1.4,tc.z,1.4,1.0,1.4,ry,vGl);
+    for(const [f,l] of [[L/2+3.6,1.2],[L/2+3.6,-1.2],[L/2+7.4,1.2],[L/2+7.4,-1.2]]){const w=at(f,l,0);blk(g,w.x,gy,w.z,0.45,0.75,0.75,ry,bD);}
+    // Förderband rechts am vorderen Frachtraum (Rampe vom Boden zum Rumpf)
+    const fc=L/2-0.27*L,bl0=at(fc,-(R+6.5),gy+0.9),bl1=at(fc,-(R+0.2),gy+PLANES[id].gearH-R*0.75);beam(g,bl0,bl1,1.1,0.35,bS);
+    const bb=at(fc,-(R+4.6),0);blk(g,bb.x,gy+0.2,bb.z,4.2,0.9,2.0,ry+Math.PI/2,bY);
+    // Gepäckwagen-Zug
+    const nn=2+Math.floor(rq()*3);for(let k=0;k<nn;k++){const d=at(fc-4-k*3.6,-(R+9.5),0);blk(g,d.x,gy+0.35,d.z,1.6,0.12,3.0,ry,bS);blk(g,d.x,gy+0.47,d.z,1.5,1.1,2.6,ry,k%2?vW:bS);}
+    const tr=at(fc-1,-(R+9.5),0);blk(g,tr.x,gy+0.3,tr.z,1.5,1.2,2.6,ry,bY);
+    if(L>50){// Catering-Lastwagen hinten rechts (gehobener Kasten), Tankwagen unter dem rechten Flügel
+      const cd=L/2-C.doors[C.doors.length-1]*L,ct=at(cd,-(R+3.8),0);blk(g,ct.x,gy+0.4,ct.z,2.5,1.3,7.2,ry+Math.PI/2,vW);blk(g,ct.x,gy+PLANES[id].gearH-R*0.5,ct.z,2.4,2.7,5.2,ry+Math.PI/2,vW);
+      const sc=at(cd,-(R+1.2),0);blk(g,sc.x,gy+1.7,sc.z,0.3,PLANES[id].gearH-R*0.5-1.7,0.3,ry,bS);
+      if(rq()<0.6){const fu=at(-L*0.08,-(R+11),0);blk(g,fu.x,gy+0.45,fu.z,2.5,2.6,9.5,ry,vW);const fk=at(-L*0.08+5.5,-(R+11),0);blk(g,fk.x,gy+0.45,fk.z,2.5,2.4,2.2,ry,vW);}
+    }else if(rq()<0.5){const fu=at(-3,-(R+10),0);blk(g,fu.x,gy+0.45,fu.z,2.4,2.3,7.5,ry,vW);}
+    // Stromaggregat (GPU) unter der Nase
+    const gp=at(L/2-3,-(R+1.5),0);blk(g,gp.x,gy,gp.z,1.6,1.3,2.4,ry,vW);
+    }
   for(const A of AIRPORTS){
     const rw=new THREE.Mesh(new THREE.PlaneGeometry(A.w,A.len).rotateX(-Math.PI/2),new THREE.MeshStandardMaterial({map:runwayTexture(A),roughness:0.9,polygonOffset:true,polygonOffsetFactor:-3-(A.id==='ZRH14'?1:A.id==='ZRH10'?2:0),polygonOffsetUnits:-3-(A.id==='ZRH14'?1:A.id==='ZRH10'?2:0)}));
     rw.receiveShadow=true;place(A,rw,0,0,A.elev+0.06);scene.add(rw);
@@ -108,7 +164,9 @@ export function buildAirports(scene,S,addParked){
     }
     if(A.id==='ZRH16'&&zO){
       // Flugzeuge an den echten Standplätzen (aus dem Luftbild abgelesen): Dock E (Grossraum), Dock A/B (L-320)
-      if(addParked)for(const [id,E,N,h] of ZRH_STANDS){const p=lv95ToXZ(E,N);addParked(id,A,0,0,0,0,{x:p.x,z:p.z,h});}
+      const rq=mulberry(1607);let si=0;
+      for(const [id,E,N,h,F] of ZRH_STANDS){const p=lv95ToXZ(E,N);if(addParked)addParked(id,A,0,0,0,0,{x:p.x,z:p.z,h});
+        if(F)jetBridges(grpOf(A),id,p,h,F);groundCrew(grpOf(A),id,p,h,F,rq,si++);}
       // Vorfeld-Flutlicht an den Docks
       for(const [e0,e1,n] of [[2683800,2684460,1257470],[2683930,2684470,1257150],[2684270,2684600,1256215],[2684270,2684570,1256525]])
         for(let e=e0;e<=e1;e+=90){const p=lv95ToXZ(e,n),gy=S.heightAt(p.x,p.z);const ms=new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.6,28,8),metal);ms.position.set(p.x,gy+14,p.z);ms.castShadow=true;scene.add(ms);

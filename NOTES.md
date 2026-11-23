@@ -163,3 +163,15 @@ Morgen-Zusammenfassung an Luis gesendet. Offene Grenzen: Flugschule nur ZS; L-32
 - Gebäude: sb3d_build.py ohne Flughafen-Ausschluss für LSZH; FINE-Kacheln (Strengelbach/Zofingen) mit ERR×0,35, DIV×0,3, MINA×0,5 → 104 330 Gebäude.
 - airports3d: in Zürich (mit Luftbild) keine prozeduralen Terminals/Vorfelder/Rollwege mehr; ZRH_STANDS (aus dem Luftbild abgelesen, LV95 + Kurs) für geparkte Flugzeuge (addParked mit abs), Flutlichtmasten. Geparkte Flugzeuge > 9 km ausgeblendet.
 - build_offline.mjs bettet data/ortho als Data-URLs ein (ORTHO_DATA). Aufruf aus /home/claude/buildtools (Schriften).
+
+## 2026-11-23 – Version 11: Steuerung, Echtwetter Schweiz, Flughafen Zürich, Flotte
+- Steuerung (main.js/flight.js): Tastatur-Ausschlag wächst mit Haltedauer (Querruder 0.3→1 in 1 s, Höhenruder 0.35→1 in 0.8 s); Querruder als Rollraten-Befehl mit Kurve ^1.4 (nicht beim AP, F.apIn);
+  ohne Eingabe Querlage halten (F.bHold, bis 33°, darüber zurück auf 33°, unter 1.2° (schwach) / 3° (mittel) waagrecht); 'stark' = altes Ausrichten; Loslassen 2× schneller (kein Nachrollen).
+- Echtwetter Schweiz: Open-Meteo, 40 Orte (WXP) in einem Aufruf, alle 15 min neu; liveAt = Wetterlage vom nächsten Ort + Wind/Temperatur aus den 3 nächsten; alle 8 s prüfen, Wechsel erst beim 2. Mal.
+  Im Artifact blockiert die CSP fetch zu fremden Hosts → Hinweis; Desktop-Datei und GitHub Pages funktionieren.
+- ZRH: deplane.py (Flugzeuge aus dem Luftbild entfernt), Bäume: orthoTree strenger + 750 m um Pisten frei; realcity: Flughafengebäude (ortho.js inAirportArea, LV95-Polygone) → k=16+Art*48+Höhe,
+  tint=Boden−380 m; Shader: Glas-Vorhangfassade (Metall 0.92, Rauheit 0.05, Env-Spiegelung), Hangar-Paneele, Büro-Fensterbänder, Nebengebäude; Fassaden-Koordinate entlang der Hauptachse (vorher dot mit Rauschen → Glitzern).
+- airports3d: ZRH_STANDS mit Fassadenabstand F (prep: Grundriss-Raster aus npz, Strahl in Kursrichtung) → jetBridges (Festbrücke, Rotunde, 2 Teleskopteile mit Glasband, Fahrwerk, Kabine + Balg; Grossraum 2 Brücken) + groundCrew.
+- Flotte: SPAN_REAL/WEXT (Spannweite inkl. Winglet wie Original), L-747 Oberdeck sxT 0.55, L-380 Nase mit hoher Stirn, L-350 Seitenleitwerk 9.0 m, Titlis Rumpf ×0.9 (14.4 m) + tieferes T-Leitwerk.
+  Hinweis: Box3.setFromObject(m) ohne precise=true überschätzt Längen (gedrehte Ruder) – /tmp/dims.py nutzt jetzt precise.
+- Ringe ×1.35 (missions.js) und Treffer bei d < r·1.2+12; Komfort: Sinken erst ab 20 m/s, Steigen ab 25 m/s, Nase >25° / <−15°, Lastwechsel >4 m/s², Erholung 0.05/s.
