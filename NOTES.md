@@ -175,3 +175,5 @@ Morgen-Zusammenfassung an Luis gesendet. Offene Grenzen: Flugschule nur ZS; L-32
 - Flotte: SPAN_REAL/WEXT (Spannweite inkl. Winglet wie Original), L-747 Oberdeck sxT 0.55, L-380 Nase mit hoher Stirn, L-350 Seitenleitwerk 9.0 m, Titlis Rumpf ×0.9 (14.4 m) + tieferes T-Leitwerk.
   Hinweis: Box3.setFromObject(m) ohne precise=true überschätzt Längen (gedrehte Ruder) – /tmp/dims.py nutzt jetzt precise.
 - Ringe ×1.35 (missions.js) und Treffer bei d < r·1.2+12; Komfort: Sinken erst ab 20 m/s, Steigen ab 25 m/s, Nase >25° / <−15°, Lastwechsel >4 m/s², Erholung 0.05/s.
+- Nachtrag 11 (nach Fotos von Luis): NOSE.a380 und NOSE.b747 aus Seitenfotos vermessen (Spitze A380 −0.35H, 747 +0.11H); 747-Buckel top 0.48 mit gemessener Stirnkurve (Hm.pts, monotone Spline), Front schmal+kastig (sxF);
+  paneLayout: A380 Scheiben 0.16–0.285H, 747 1.04–1.25R, A350 0.29–0.55H; A350-Maske schmaler.

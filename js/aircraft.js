@@ -64,7 +64,9 @@ export const PLANES={
 function lerpProf(prof,t,key){const g=q=>key==='syT'?(q.syT??q.sy??1):key==='sxT'?(q.sxT??1):(q[key]??(key==='r'?0:1));for(let i=0;i<prof.length-1;i++){const a=prof[i],b=prof[i+1];if(t<=b.t){const u=(t-a.t)/(b.t-a.t||1);return g(a)*(1-u)+g(b)*u;}}return g(prof[prof.length-1]);}
 // Höhenfaktor oben/unten: die obere Rumpfhälfte kann höher sein (Buckel der L-747)
 const syAt=(PR,t,ph)=>Math.cos(ph)>0?lerpProf(PR,t,'syT'):lerpProf(PR,t,'sy');
-const sxW=(PR,t,c)=>{const k=lerpProf(PR,t,'sxT');return 1-(1-k)*c*c;};
+// Breitenfaktor der oberen Rumpfhälfte: schmaler oben (sxT) und beim Buckel kastenförmiger (steile Seitenwände wie beim 747-Oberdeck)
+const sxF=(k,c)=>k>0.999?1:(1-(1-k)*c*c)*Math.pow(Math.max(1e-4,1-c*c),-0.22*Math.min(1,(1-k)/0.45));
+const sxW=(PR,t,c)=>sxF(lerpProf(PR,t,'sxT'),c);
 function fuselageGeo(L,prof,segs){
   const ts=[];for(let k=0;k<64;k++)ts.push(0.2*Math.pow(k/64,1.6));for(let k=0;k<40;k++)ts.push(0.2+0.6*k/40);for(let k=0;k<=30;k++)ts.push(0.8+0.2*k/30);
   const pts=[];for(let i=ts.length-1;i>=0;i--){const t=ts[i];pts.push(new THREE.Vector2(Math.max(0.001,lerpProf(prof,t,'r')),L/2-t*L));}
@@ -336,7 +338,8 @@ const NAVY='#0b2545',RED='#d7263d';
 // Rumpfprofil: Nase mit Ober-/Unterkante (halbe Rumpfhöhen) und eigener Breite (R) – nach Airbus-Seiten- und Draufsicht
 // [s, oben, unten, halbe Breite]; s = Anteil der Nasenlänge
 const NOSE={std:[[0,-0.35,-0.35,0],[0.004,-0.29,-0.41,0.055],[0.012,-0.25,-0.45,0.1],[0.03,-0.17,-0.5,0.17],[0.056,-0.09,-0.55,0.245],[0.11,0.04,-0.64,0.37],[0.22,0.2,-0.775,0.55],[0.33,0.3,-0.87,0.69],[0.44,0.39,-0.925,0.8],[0.54,0.6,-0.96,0.87],[0.64,0.79,-0.98,0.92],[0.8,0.935,-0.995,0.97],[0.9,0.985,-1,0.99],[1,1,-1,1]],
-  a380:[[0,-0.17,-0.17,0],[0.004,-0.08,-0.26,0.065],[0.012,0.0,-0.33,0.12],[0.025,0.1,-0.4,0.18],[0.05,0.24,-0.49,0.27],[0.1,0.4,-0.6,0.41],[0.2,0.61,-0.73,0.6],[0.3,0.76,-0.83,0.73],[0.45,0.9,-0.915,0.86],[0.6,0.96,-0.962,0.93],[0.8,0.99,-0.99,0.98],[1,1,-1,1]],
+  a380:[[0,-0.35,-0.35,0],[0.016,-0.117,-0.584,0.2],[0.0485,0.117,-0.69,0.36],[0.097,0.304,-0.794,0.5],[0.162,0.49,-0.876,0.63],[0.259,0.666,-0.946,0.76],[0.38,0.794,-0.98,0.86],[0.558,0.923,-0.99,0.94],[0.752,0.98,-1,0.985],[1,1,-1,1]],
+  b747:[[0,0.11,0.11,0],[0.0177,0.25,-0.08,0.15],[0.0426,0.36,-0.2,0.24],[0.071,0.48,-0.31,0.31],[0.142,0.70,-0.51,0.46],[0.213,0.85,-0.66,0.58],[0.305,0.97,-0.75,0.69],[0.355,1.0,-0.8,0.74],[0.567,1,-0.89,0.9],[0.78,1,-0.96,0.97],[1,1,-1,1]],
   a350:[[0,-0.3,-0.3,0],[0.005,-0.22,-0.4,0.08],[0.015,-0.15,-0.46,0.15],[0.035,-0.05,-0.53,0.25],[0.06,0.05,-0.6,0.34],[0.11,0.2,-0.69,0.47],[0.2,0.37,-0.8,0.63],[0.3,0.5,-0.87,0.75],[0.42,0.63,-0.925,0.85],[0.55,0.76,-0.96,0.92],[0.7,0.88,-0.985,0.97],[0.85,0.96,-0.997,0.993],[1,1,-1,1]]};
 // monotone kubische Interpolation (kein Überschwingen)
 function mono(xs,ys){const n=xs.length,d=[],m=new Array(n);for(let i=0;i<n-1;i++)d.push((ys[i+1]-ys[i])/(xs[i+1]-xs[i]));
@@ -389,13 +392,13 @@ function halfW(PR,t,y){const r=lerpProf(PR,t,'r'),sx=lerpProf(PR,t,'sx'),yo=yOff
 function uAtWidth(PR,L,x,y,t0,t1){let a=t0,b=t1;if(halfW(PR,b,y)<x)return b*L;for(let k=0;k<40;k++){const m=(a+b)/2;if(halfW(PR,m,y)<x)a=m;else b=m;}return (a+b)/2*L;}
 // Scheiben-Layout: Airbus (Unterkante waagrecht, hintere Seitenscheibe mit stark abfallender Oberkante) oder Boeing 747 (auf dem Oberdeck)
 function paneLayout(C,PR,L,R,H){const k=1+(R/1.98-1)*0.3,nz=C.nose,F=[],S=[];
-  if(C.hump){const yb=R*1.12,yt=R*1.44,xo=0.78,xt=0.64,pst=0.05*k;
+  if(C.hump){const yb=R*1.04,yt=R*1.25,xo=0.8,xt=0.66,pst=0.05*k;
     F.push([[pst,yb],[pst,yt],[xt,yt-0.03*k],[xo,yb+0.02*k]]);
     const uB=uAtWidth(PR,L,xo,yb+0.02*k,0.02,0.2),uT=uAtWidth(PR,L,xt,yt-0.03*k,0.02,0.2),g=0.1*k;
     S.push([[uB+g,yb+0.02*k],[uT+g,yt-0.03*k],[uT+g+0.66*k,yt-0.05*k],[uB+g+0.66*k,yb+0.06*k]]);
     S.push([[uB+2*g+0.66*k,yb+0.06*k],[uT+2*g+0.66*k,yt-0.05*k],[uT+2*g+1.05*k,yt-0.1*k],[uB+2*g+1.12*k,yb+0.12*k]]);
     return{F,S,fr:0.055*k,rc:0.07*k,ta:0.02,tb:Math.min(0.3,(uB+2*g+1.3*k)/L)};}
-  const a=C.deck2?{yb:0.2,yt:0.44,xo:0.92,xt:0.78,w2:0.62,w3:0.5,drop:0.6}:C.ws==='a350'?{yb:0.31,yt:0.52,xo:0.95,xt:0.82,w2:0.66,w3:0.5,drop:0.62}:{yb:0.27,yt:0.65,xo:1.0,xt:0.85,w2:0.66,w3:0.52,drop:0.62};
+  const a=C.deck2?{yb:0.16,yt:0.285,xo:0.78,xt:0.72,w2:0.6,w3:0.46,drop:0.62}:C.ws==='a350'?{yb:0.29,yt:0.55,xo:0.95,xt:0.82,w2:0.7,w3:0.52,drop:0.55}:{yb:0.27,yt:0.65,xo:1.0,xt:0.85,w2:0.66,w3:0.52,drop:0.62};
   const yb=a.yb*H,yt=a.yt*H,hgt=yt-yb,pst=0.045*k,g=0.1*k;
   F.push([[pst,yb],[pst,yt],[a.xt*k,yt-0.06*hgt],[a.xo*k,yb+0.04*hgt]]);
   const uB=uAtWidth(PR,L,a.xo*k,yb+0.04*hgt,0.003,nz*1.6),uT=uAtWidth(PR,L,a.xt*k,yt-0.06*hgt,0.003,nz*1.6);
@@ -408,7 +411,7 @@ function cockpitGlass(L,PR,R,C,key){const H=R*(C.sy||1),lay=paneLayout(C,PR,L,R,
   const g=patchGeo(L,PR,ta,tb,-PA,PA,48,96);
   if(!GC[key]){const FP=lay.F.map(p=>roundPane(p,lay.rc)),SP=lay.S.map(p=>roundPane(p,lay.rc)),fr=lay.fr,TW=2048,TH=1024;
     const rows=[],st=(t)=>({r:lerpProf(PR,t,'r'),sx:lerpProf(PR,t,'sx'),sy:lerpProf(PR,t,'sy'),syT:lerpProf(PR,t,'syT'),sxT:lerpProf(PR,t,'sxT'),yo:yOff(PR,t),z:t*L});
-    const pos=(q,ph)=>{const c=Math.cos(ph);return[q.r*q.sx*Math.sin(ph)*(c>0?1-(1-q.sxT)*c*c:1),q.r*(c>0?q.syT:q.sy)*c+q.yo,q.z];};
+    const pos=(q,ph)=>{const c=Math.cos(ph);return[q.r*q.sx*Math.sin(ph)*(c>0?sxF(q.sxT,c):1),q.r*(c>0?q.syT:q.sy)*c+q.yo,q.z];};
     const yC=[0.1,0.12,0.15],yR=[0.33,0.4,0.47];
     GC[key]=maskTex(TW,TH,(u,v)=>{const t=ta+(tb-ta)*v,row=rows[Math.round(v*TH)]||(rows[Math.round(v*TH)]=[st(t),st(t+(tb-ta)/TH)]),ph=-PA+2*PA*u;
       const P=pos(row[0],ph),Pp=pos(row[0],ph+0.002),Pt=pos(row[1],ph);
@@ -486,11 +489,11 @@ export const AIRLINER={
     wing:{x0:2.8,span:29.6,root:12.5,tip:2.6,sweep:18.4,dih:6,y0:-1.9,z0:-6.5,tr:0.13,tt:0.1,kink:0.32},winglet:'curved',
     eng:[{x:10.3,len:7.6,r:1.75,k:1.0,fwd:0.62}],fin:{z:23.6,root:11,tip:4.3,h:9.0,sweep:7.2,y:2.6},stab:{x0:1.2,span:9.6,root:6.5,tip:2.4,sweep:6.5,dih:5,y:1.4,z:27.0},
     main:[{x:5.6,z:2.0,ax:3}],ng:-29.2,eye:[-0.55,1.12,-32.3],cg:3.4,winX:[0.1,0.88],doors:[0.097,0.282,0.532,0.792],skip:[[0.085,0.11],[0.27,0.295],[0.52,0.545],[0.78,0.805]],mask:1},
-  l747:{L:70.6,R:3.25,sy:1.14,nose:0.12,tail:0.74,up:1,reg:'HB-LGA',
+  l747:{L:70.6,R:3.25,sy:1.14,nose:0.2,tail:0.74,up:1,reg:'HB-LGA',noseK:'b747',
     wing:{x0:3.0,span:29.2,root:14.5,tip:4.0,sweep:22.5,dih:7,y0:-2.1,z0:-9.2,tr:0.13,tt:0.09,kink:0.34},winglet:'canted',
     eng:[{x:11.8,len:6.0,r:1.42},{x:21.0,len:5.8,r:1.38}],fin:{z:22.0,root:12.5,tip:4.6,h:11.2,sweep:10,y:2.9},stab:{x0:1.3,span:10.4,root:7.6,tip:2.6,sweep:8.4,dih:7,y:1.1,z:26.0},
     main:[{x:5.9,z:1.6,ax:2},{x:1.95,z:4.6,ax:2}],ng:-26.6,eye:[-0.55,4.1,-28.2],cg:3.6,winX:[0.1,0.9],doors:[0.105,0.25,0.43,0.62,0.84],skip:[[0.095,0.118],[0.24,0.262],[0.42,0.442],[0.61,0.632],[0.83,0.852]],
-    hump:{top:0.72,tb:0.16,tc:0.32,td:0.45}},
+    hump:{top:0.48,tb:0.17,tc:0.32,td:0.45,pts:[[0,0],[0.0035,0.11],[0.0085,0.19],[0.0142,0.28],[0.028,0.45],[0.0425,0.57],[0.061,0.69],[0.08,0.8],[0.099,0.89],[0.12,0.95],[0.142,0.98],[0.17,1]]}},
   l380:{L:72.7,R:3.57,sy:1.2,nose:0.17,tail:0.72,up:0.8,reg:'HB-LEA',deck2:1,
     wing:{x0:3.4,span:36.4,root:17.5,tip:4.0,sweep:24.5,dih:5.6,y0:-2.6,z0:-9.8,tr:0.14,tt:0.1,kink:0.31},winglet:'fence',
     eng:[{x:14.7,len:7.0,r:1.6},{x:25.6,len:6.6,r:1.5}],fin:{z:21.5,root:14,tip:5.5,h:13.5,sweep:10.5,y:3.6},stab:{x0:1.8,span:13.2,root:9,tip:3,sweep:8.5,dih:5,y:1.3,z:25.2},
@@ -507,24 +510,27 @@ function buildAirliner(C,body,parts,root,P){
   const {L,R}=C;const sy=C.sy;
   const winA=C.deck2?0.235:0.205,win=[{x0:C.winX[0],x1:C.winX[1],pitch:0.53,ww:0.25,wh:0.36,a:winA,skip:C.skip,pw:2.6,fr:1.2}];
   if(C.deck2)win.push({x0:0.12,x1:0.84,pitch:0.6,ww:0.27,wh:0.36,a:0.14,skip:[[0.165,0.345],[0.54,0.57]],pw:2.6,fr:1.2});
-  if(C.hump){win[0].y=R*sy*Math.cos(winA*2*Math.PI);win.push({x0:0.135,x1:0.3,pitch:0.53,ww:0.25,wh:0.36,y:R*1.27,skip:[[0.205,0.225]],pw:2.6,fr:1.2});}
+  if(C.hump){win[0].y=R*0.2;win.push({x0:0.135,x1:0.3,pitch:0.53,ww:0.25,wh:0.36,y:R*1.15,skip:[[0.205,0.225]],pw:2.6,fr:1.2});}
   const nz=C.nose,PRF=prof(R,C.nose,C.tail,C.up,sy,C.noseK||(C.deck2?'a380':'std')),H=R*sy,cl=(a,b,x)=>Math.min(1,Math.max(0,(x-a)/(b-a)));
   // L-747: Oberdeck-Buckel – die obere Rumpfhälfte wird vorne höher (Stirn mit Cockpit, flacher Rücken, weicher Auslauf)
   if(C.hump){const Hm=C.hump,H1=R*sy+Hm.top*R,hTip=-0.15*R,sm=x=>x*x*(3-2*x);
     const ta=0.022,yA=lerpProf(PRF,ta,'r')*lerpProf(PRF,ta,'sy')+yOff(PRF,ta);
-    const hTop=t=>t<ta?-1e9:t<Hm.tb?yA+(H1-yA)*(1-Math.pow(1-(t-ta)/(Hm.tb-ta),1.9)):t<Hm.tc?H1:t<Hm.td?H1-(H1-R*sy)*sm((t-Hm.tc)/(Hm.td-Hm.tc)):-1e9;
-    for(let t=0.03;t<Hm.td+0.015;t+=0.006)if(!PRF.some(q=>Math.abs(q.t-t)<0.002))PRF.push({t,r:lerpProf(PRF,t,'r'),y:yOff(PRF,t),sy:lerpProf(PRF,t,'sy')});PRF.sort((a,b)=>a.t-b.t);
+    const y0=yOff(PRF,0),pfM=Hm.pts?mono(Hm.pts.map(p=>p[0]),Hm.pts.map(p=>p[1])):null,pf=t=>t>=Hm.pts[Hm.pts.length-1][0]?1:Math.max(0,Math.min(1,pfM(t)));
+    const hTop=Hm.pts?(t=>t<Hm.tb?y0+(H1-y0)*pf(t):t<Hm.tc?H1:t<Hm.td?H1-(H1-R*sy)*sm((t-Hm.tc)/(Hm.td-Hm.tc)):-1e9)
+      :(t=>t<ta?-1e9:t<Hm.tb?yA+(H1-yA)*(1-Math.pow(1-(t-ta)/(Hm.tb-ta),1.9)):t<Hm.tc?H1:t<Hm.td?H1-(H1-R*sy)*sm((t-Hm.tc)/(Hm.td-Hm.tc)):-1e9);
+    for(let t=Hm.pts?0.004:0.03;t<Hm.td+0.015;t+=Hm.pts&&t<0.05?0.003:0.006)if(!PRF.some(q=>Math.abs(q.t-t)<0.002))PRF.push({t,r:lerpProf(PRF,t,'r'),y:yOff(PRF,t),sy:lerpProf(PRF,t,'sy')});PRF.sort((a,b)=>a.t-b.t);
     // oben schmaler (Birnenform des Oberdecks)
-    for(const q of PRF){const yy=q.y||0,top=q.r*q.sy+yy,ht=hTop(q.t);if(ht>top){q.syT=(ht-yy)/q.r;q.sxT=1-0.45*Math.min(1,(ht-top)/(H1-R*sy));}}}
+    for(const q of PRF){const yy=q.y||0,top=q.r*q.sy+yy,ht=hTop(q.t);if(ht>top){q.syT=(ht-yy)/q.r;q.sxT=1-0.45*Math.min(1,Math.max((ht-top)/(H1-R*sy),Hm.pts&&q.t<Hm.tb?0.85*Math.min(1,q.t/0.03):0));}}}
   // Cockpitfenster: Unterkante fast waagrecht, Oberkante der Seitenfenster fällt nach hinten ab
   // A380: Cockpit zwischen den Decks, tief über der runden Nase; A350: kleine Scheiben in schwarzer Maske mit Knick in der Mitte
-  const WS=C.deck2?{ta:nz*0.025,tb:nz*0.62,t0:0,yl:t=>H*(0.02+0.04*cl(0.3,0.5,t/nz)),yh:t=>H*(0.2-0.06*cl(0.35,0.55,t/nz)),posts:[0,30,52,72],maxPd:82,pw:1.3,back:pd=>nz*(0.52-0.06*cl(70,82,pd)),fr:0.05}
-    :C.hump?{ta:0.04,tb:0.12,t0:0,yl:t=>R*(1.12+0.08*cl(0.07,0.1,t)),yh:t=>R*(1.47-0.12*cl(0.08,0.105,t)),posts:[0,30,52,72],maxPd:80,pw:1.4,back:pd=>0.106-0.008*cl(70,80,pd),fr:0.04}
-    :C.ws==='a350'?{ta:nz*0.28,tb:nz*0.82,t0:0,yl:(t,pd)=>H*(0.31+0.05*cl(0.4,0.75,t/nz)-0.05*Math.max(0,1-(pd||0)/24)),yh:(t,pd)=>H*(0.53-0.08*cl(0.5,0.78,t/nz)-0.03*Math.max(0,1-(pd||0)/24)),posts:[0,28,50,68],maxPd:78,pw:1.9,back:pd=>nz*(0.62-0.06*cl(66,78,pd)),fr:0.05}
+  // nach Fotos: A380 Scheiben klein, tief unter der hohen Stirn (57–63 % der Rumpfhöhe), 747 oben auf dem Buckel, A350 hohe Scheiben in schmaler schwarzer Maske
+  const WS=C.deck2?{ta:nz*0.12,tb:nz*0.44,t0:0,yl:t=>H*(0.15+0.01*cl(0.25,0.42,t/nz)),yh:t=>H*(0.28-0.02*cl(0.3,0.44,t/nz)),posts:[0,28,50,70],maxPd:80,pw:1.3,back:pd=>nz*(0.44-0.07*cl(55,80,pd)),fr:0.05}
+    :C.hump?{ta:0.045,tb:0.106,t0:0,yl:t=>R*(1.05+0.07*cl(0.06,0.1,t)),yh:t=>R*(1.31+0.02*cl(0.08,0.1,t)),posts:[0,30,52,72],maxPd:80,pw:1.4,back:pd=>0.102-0.01*cl(62,80,pd),fr:0.04}
+    :C.ws==='a350'?{ta:nz*0.26,tb:nz*0.82,t0:0,yl:(t,pd)=>H*(0.29+0.02*cl(0.4,0.75,t/nz)-0.04*Math.max(0,1-(pd||0)/24)),yh:(t,pd)=>H*(0.57-0.04*cl(0.5,0.78,t/nz)-0.02*Math.max(0,1-(pd||0)/24)),posts:[0,28,50,68],maxPd:78,pw:1.9,back:pd=>nz*(0.64-0.07*cl(60,78,pd)),fr:0.05}
     :{ta:nz*0.36,tb:nz*1.02,t0:0,yl:t=>H*(0.36+0.05*cl(0.5,0.95,t/nz)),yh:t=>H*(0.8-0.14*cl(0.6,0.95,t/nz)),posts:[0,33,57,74],maxPd:86,pw:1.5,back:pd=>nz*(0.97-0.06*cl(74,86,pd)),fr:0.045};
-  if(C.mask&&!MASKF['m'+C.L]){const m=0.075*H;MASKF['m'+C.L]=Object.assign((t,ph)=>{const pd=ph*180/Math.PI;if(pd>WS.maxPd+10)return false;
+  if(C.mask&&!MASKF['m'+C.L]){const m=0.04*H;MASKF['m'+C.L]=Object.assign((t,ph)=>{const pd=ph*180/Math.PI;if(pd>WS.maxPd+10)return false;
     const y=lerpProf(PRF,t,'r')*syAt(PRF,t,ph)*Math.cos(ph)+yOff(PRF,t),yl=WS.yl(t,pd)-m,yh=WS.yh(t,pd)+m*0.6;if(y<yl||y>yh)return false;
-    const mid=(yl+yh)/2,hw=(yh-yl)/2;return t<WS.back(Math.min(pd,WS.maxPd))+nz*(0.02+0.06*Math.pow(Math.max(0,1-Math.abs(y-mid)/hw),1.5));},{tMax:nz*1.3});}
+    const mid=(yl+yh)/2,hw=(yh-yl)/2;return t<WS.back(Math.min(pd,WS.maxPd))+nz*(0.012+0.03*Math.pow(Math.max(0,1-Math.abs(y-mid)/hw),1.5));},{tMax:nz*1.3});}
   const PT=paint({R:R*(1+sy)/2,a0:winA,st:{a:winA+0.05,t1:R*0.11,t2:R*0.05,da:0.018,x0:nz*0.9,x1:0.93},tip:R*1.1,wb:R*0.38,
     nm:{a:C.deck2?0.135:C.hump?0.16:0.125,x:C.nmX||(C.deck2?0.255:C.hump?0.52:0.27),size:R*(C.deck2?0.78:1.15),max:C.deck2?0.2:0.34},reg:{str:C.reg,a:0.2,x:0.89,size:R*0.22},belly:{col:'#e1e4e8',w:0.1,x0:nz*0.5},doors:C.doors,wins:[],seam:nz*0.36,swT:0.38,mask:C.mask?'m'+C.L:null},LV);
   FS=PT.fin;PT.cfg.cargo=C.deck2?[0.27,0.66]:[0.25,0.64];const liv=livery(L,R*(1+sy)/2,PT.cfg);
