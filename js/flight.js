@@ -2,6 +2,7 @@
 import * as THREE from 'three';
 const V3=THREE.Vector3,DEG=Math.PI/180,G=9.81;
 const clamp=(v,a,b)=>v<a?a:v>b?b:v;
+const CO_SIGN=1;
 const _a=new V3(),_f=new V3(),_u=new V3(),_r=new V3(),_v=new V3(),_F=new V3(),_t=new V3(),_l=new V3(),_q=new THREE.Quaternion(),_e=new THREE.Euler(0,0,0,'YXZ');
 function interp(arr,t){const x=t*(arr.length-1),i=Math.min(arr.length-2,Math.floor(x)),f=x-i;return arr[i]*(1-f)+arr[i+1]*f;}
 
@@ -108,7 +109,9 @@ export function stepFlight(F,ctl,dt,W){
     rt=Math.abs(F.rud)>0.05?clamp((rb-bankL)*1.6,-P.rollRate*0.5,P.rollRate*0.5):F.level>0?clamp(-bankL*F.level,-P.rollRate*0.45,P.rollRate*0.45):0;if(over>0)rt=-Math.sign(bankL)*Math.max(Math.abs(rt),over*4+0.05);}
   F.w.z+=(rt-F.w.z)*Math.min(1,dt*4.5);
   const yr=(F.rud*(P.cls==='small'?0.26:P.cls==='regional'?0.19:0.15)+(F.asym||0)*0.1*F.eng)*Math.min(1,0.35+ce);
-  F.w.y+=(-beta*2.2*ceF+(yr-F.w.y)*3.2)*dt;
+  // Kurvenkoordination (mit Flughilfe, wie ein Gierdämpfer): die Nase dreht mit der Kurve mit, kaum Schiebewinkel
+  const wco=F.assist&&Vs>15?CO_SIGN*G*Math.sin(clamp(bankL,-1.2,1.2))/Vs:0;
+  F.w.y+=(-beta*2.2*ceF+(yr+wco-F.w.y)*3.2)*dt;
   const ang=F.w.length()*dt;if(ang>1e-7){_t.copy(F.w).normalize();_q.setFromAxisAngle(_t,ang);F.q.multiply(_q).normalize();}
   F.vel.addScaledVector(_F,dt/P.mass);
   F.pos.addScaledVector(F.vel,dt);

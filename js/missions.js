@@ -19,7 +19,9 @@ export function buildObjectives(mission,S,opt){
   const TX=()=>{const A=APM.ZRH16,p=fromLocal(A,A.len/2-45,-95);return{type:'taxi',x:p.x,z:p.z,y:A.elev+4,r:38};};
   const HL=(lat,lon,name,wait,kind)=>{const p=toXZ(lat,lon);return{type:'hland',x:p.x,z:p.z,y:gnd(p.x,p.z),r:kind==='pad'?16:30,wait,name,kind};};
   const HO=(lat,lon,name,wait)=>{const p=toXZ(lat,lon);return{type:'hover',x:p.x,z:p.z,y:S.waterLevel&&S.isLake(p.x,p.z)?S.waterLevel(p.x,p.z):gnd(p.x,p.z),r:24,h:18,wait,name};};
-  const list=mission.obj({R,RL,F,L,D,DL,P,SC,FI,W,SP,TX,HL,HO});
+  const list0=mission.obj({R,RL,F,L,D,DL,P,SC,FI,W,SP,TX,HL,HO});
+  // doppelte Ringe (gleicher Ort direkt hintereinander) entfernen – sonst entsteht eine Schleife in der Bahn
+  const list=list0.filter((o,i)=>{const q=list0[i-1];return!(o.type==='ring'&&q&&q.type==='ring'&&Math.hypot(o.x-q.x,o.y-q.y,o.z-q.z)<60);});
   return mission.dyn||!opt||!opt.vref?list:roundRings(list,S,opt.vref);
 }
 // Zu enge Ecken im Ringkurs ausrunden: Ring an der Ecke durch Ringe auf einem Bogen ersetzen.

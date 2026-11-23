@@ -136,17 +136,53 @@ export function planRoute(kind,from,to,plane,S,r){
     const roomy=e=>{for(const rr of [TR*0.5,TR])for(let k=0;k<12;k++){const a=k/12*Math.PI*2;if(g(e.x+Math.cos(a)*rr,e.z+Math.sin(a)*rr)>e.y-TC)return false;}return true;};
     for(const ex of [3200,2200,1400,700]){const dO=ap[2][0]+ex,p=fromLocal(A2,-s2*(A2.len/2+dO),0),y=A2.elev+15+dO*sl,e={x:p.x,z:p.z,y:Math.max(y,g(p.x,p.z)+90)};if(e.y-y<120&&segOK(e,AR[0],50)&&roomy(e)){E=e;break;}}
     return{ap,AR,E:E||{...AR[0]},d:Math.hypot(AR[0].x-last0.x,AR[0].z-last0.z)};}).sort((a,b)=>a.d-b.d);
+  // Linienflug mit Jet oder Turboprop: wie in echt auf eine Reiseflughöhe steigen, halten und mit 3° sinken
+  if(kind==='flug'&&!['alpina','saentis','feuer'].includes(plane)){
+    for(const {ap:app,AR,E} of apps){const C=cruiseRoute(r1,E,S,plane,jet,clr);if(!C)continue;
+      const all=[r1,...C.rings,E,...AR];
+      if(!turnOK([prev0,r1,all[1]],S,TR*1.3,TC,0.03)||!turnOK([prev0,...all.slice(0,-AR.length+1||undefined)],S,TR*0.6,25))continue;
+      for(const q of C.rings)spec.push({k:'P',a:[q.x,q.z,q.y]});
+      for(let i=0;i<all.length-1;i++)km+=Math.hypot(all[i+1].x-all[i].x,all[i+1].z-all[i].z)/1000;
+      if(E!==AR[0]&&!AR.includes(E)&&Math.hypot(E.x-AR[0].x,E.z-AR[0].z)>300)spec.push({k:'P',a:[E.x,E.z,E.y]});
+      spec.push({k:'F',a:[app[0],app[1],app[2],app[3]]},{k:'L',a:[app[0]]});
+      return{spec:round(spec,AR[0]),start,km:Math.round(km+Math.hypot(r1.x-st.x,r1.z-st.z)/1000),app,cr:C.cr};}}
   // Weg durch die Täler: Gitter-Wegpunkte, kürzester sicherer Pfad; Anflugvarianten der Reihe nach probieren
   const legs=[];let cur=r1;for(const t of tail){const w=wayPath(cur,t,S,jet);if(!w)return null;legs.push(...w,t);cur=t;}
   for(const {ap:app,AR,E} of apps){const w2=wayPath(cur,E,S,jet);if(!w2)continue;const L2=[...legs,...w2];
     const all=[r1,...L2,E,...AR];if(!turnOK([prev0,r1,all[1]],S,TR*1.3,TC,0.03)||!turnOK([prev0,...all.slice(0,-AR.length+1||undefined)],S,TR*0.6,25))continue;
     for(const q of L2)spec.push({k:'P',a:[q.x,q.z,q.y],name:q.name});
     for(let i=0;i<all.length-1;i++)km+=Math.hypot(all[i+1].x-all[i].x,all[i+1].z-all[i].z)/1000;
-    if(E!==AR[0]&&!AR.includes(E))spec.push({k:'P',a:[E.x,E.z,E.y]});
+    if(E!==AR[0]&&!AR.includes(E)&&Math.hypot(E.x-AR[0].x,E.z-AR[0].z)>300)spec.push({k:'P',a:[E.x,E.z,E.y]});
     spec.push({k:'F',a:[app[0],app[1],app[2],app[3]]},{k:'L',a:[app[0]]});
     return{spec:round(spec,AR[0]),start,km:Math.round(km+Math.hypot(r1.x-st.x,r1.z-st.z)/1000),app};}
   return null;
 }
+// Reiseflug-Profil: möglichst direkt; Steigen (Jet 6,5 %, Turboprop 5 %) auf die Reiseflughöhe, halten, Sinkflug mit 3°.
+// Reiseflughöhe wächst mit der Strecke (realistisch, aber spielbar) und liegt immer sicher über dem Gelände.
+function cruiseRoute(a,b,S,plane,jet,clr){
+  const gc=jet?0.065:0.05,gd=0.0524,g=(x,z)=>S.groundAt(x,z),crMax=jet?9000:plane==='foehn'?6000:4800;
+  const gw=(x,z)=>{let m=g(x,z);for(let k=0;k<8;k++){const t=k/8*Math.PI*2;m=Math.max(m,g(x+Math.cos(t)*600,z+Math.sin(t)*600));}return m;};
+  const build=(path,raise,valley)=>{
+    const cs=[0];for(let i=1;i<path.length;i++)cs.push(cs[i-1]+Math.hypot(path[i].x-path[i-1].x,path[i].z-path[i-1].z));const L=cs[cs.length-1];if(L<8000)return null;
+    const at=s=>{let i=1;while(i<path.length-1&&cs[i]<s)i++;const u=Math.max(0,Math.min(1,(s-cs[i-1])/Math.max(1,cs[i]-cs[i-1]))),p=path[i-1],q=path[i];
+      return{x:p.x+(q.x-p.x)*u,z:p.z+(q.z-p.z)*u,ys:p.ys==null||q.ys==null?-1e9:p.ys+(q.ys-p.ys)*u};};
+    let cr=Math.min(crMax,jet?1800+0.026*L:900+0.016*L);cr=Math.min(cr,(0.7*L+a.y/gc+b.y/gd)/(1/gc+1/gd));
+    if(raise){let t=0;for(let s=0;s<=L;s+=500){const p=at(s);t=Math.max(t,gw(p.x,p.z));}cr=Math.max(cr,t+clr+150);if(cr>crMax+300)return null;}
+    cr=Math.max(cr,a.y+300,b.y+300);cr=Math.ceil(cr/150)*150;
+    const prof=s=>Math.min(a.y+s*gc,cr,b.y+(L-s)*gd),yAt=s=>Math.max(at(s).ys,prof(s));
+    for(let s=0;s<=L;s+=250){const p=at(s);if(yAt(s)-(valley?g(p.x,p.z):gw(p.x,p.z))<clr*(valley?0.6:0.75))return null;}
+    // Ringe: alle 10 km im Steig- und Sinkflug, höchstens 25 km im Reiseflug, an Kurven und an den Knickpunkten
+    let s1=(cr-a.y)/gc,s2=L-(cr-b.y)/gd;if(s2<s1){s1=s2=(b.y+L*gd-a.y)/(gc+gd);}
+    const S0=[];for(let s=10000;s<s1;s+=10000)S0.push([s,0]);S0.push([s1,1]);
+    const nC=Math.ceil((s2-s1)/25000);for(let k=1;k<nC;k++)S0.push([s1+(s2-s1)*k/nC,0]);S0.push([s2,1]);
+    for(let s=s2+10000;s<L-3000;s+=10000)S0.push([s,0]);for(let i=1;i<path.length-1;i++)S0.push([cs[i],2]);
+    S0.sort((p,q)=>p[0]-q[0]);const keep=[];
+    for(const o of S0){if(o[0]<3000||o[0]>L-3000)continue;const l=keep[keep.length-1];if(l&&o[0]-l[0]<2500){if(o[1]>l[1])keep[keep.length-1]=o;continue;}keep.push(o);}
+    const rings=keep.map(([s])=>{const p=at(s);return{x:p.x,z:p.z,y:Math.ceil(yAt(s)/50)*50};});
+    return{rings,cr};};
+  // 1. direkt (falls nötig etwas höher), 2. durch die Täler, aber ebenfalls auf Reiseflughöhe
+  return build([a,b],false)||build([a,b],true)||(()=>{const w=wayPath(a,b,S,jet);if(!w)return null;const P=[a,...w];if(P[P.length-1]!==b)P.push(b);
+    return build(P.map(p=>({x:p.x,z:p.z,ys:p.y})),false,true);})();}
 // Wegpunkt-Gitter über dem Gelände (regelmässig, 2.7 km); Kanten nur, wenn Höhe und Steigung passen
 const GRID={},GS=2700;
 function grid(S,jet){const key=jet?'j':'p';if(GRID[key]&&GRID[key].S===S)return GRID[key];const clr=jet?260:CH?210:170,N=[],NX=Math.floor((2*HALF-3000)/GS)+1;
@@ -199,7 +235,7 @@ function makeJob(n,plane,S,r,owned,FROM){const PK=plane==='l32n'?'l320':plane;
     const brief=kind==='arr'?`Langstreckenflug aus ${city}: Du übernimmst im Anflug auf Zürich. Folge den blauen Ringen zum Gleitpfad und lande sanft – die Passagiere sind müde.`
       :kind==='dep'?`Start in Zürich mit vollen Tanks nach ${city}. Steig ruhig durch die Ringe bis zur Übergabe an die Flugsicherung.`
       :kind==='rund'?`Gäste wollen die Schweiz von oben sehen: ${sights.join(' und ')}. Ruhig fliegen, schöne Kurven, dann zurück nach ${T}.`
-      :cargo?`${gd} müssen dringend von ${T} nach ${D}. Rund ${km} km Strecke.`:lng?`Langstrecke quer durch die Schweiz: Passagiere von ${T} nach ${D}, rund ${km} km. Folge den Ringen über Mittelland und Alpen – der Autopilot (U) hilft auf dem langen Reiseteil.`:`Passagiere von ${T} nach ${D}, rund ${km} km. Sanft fliegen – Komfort zählt.`;
+      :cargo?`${gd} müssen dringend von ${T} nach ${D}. Rund ${km} km Strecke.${R.cr?` Reiseflughöhe ${R.cr} m.`:''}`:lng?`Langstrecke quer durch die Schweiz: Passagiere von ${T} nach ${D}, rund ${km} km. Folge den Ringen über Mittelland und Alpen – der Autopilot (U) hilft auf dem langen Reiseteil.${R.cr?` Reiseflughöhe ${R.cr} m.`:''}`:`Passagiere von ${T} nach ${D}, rund ${km} km. Sanft fliegen – Komfort zählt.${R.cr?` Reiseflughöhe ${R.cr} m.`:''}`;
     return{n,plane,kind,from,to,long:lng,title,brief,pay,km,hour,weather,wind:pick(r,['calm','light','light','mid']),spec:R.spec,start:R.start,pax:!cargo,locked:owned&&!owned.includes(plane)};}
   return null;
 }

@@ -94,17 +94,27 @@ const WEDGE=[[1,0],[0.5,0.5],[0,1],[0,0.6],[0,-0.6],[0,-1],[0.5,-0.5],[1,0]].map
 const afU=x=>{const yt=5*(0.2969*Math.sqrt(x)-0.126*x-0.3516*x*x+0.2843*x*x*x-0.1036*x*x*x*x);return yt+0.02*Math.sin(Math.PI*x);};
 const afL=x=>{const yt=5*(0.2969*Math.sqrt(x)-0.126*x-0.3516*x*x+0.2843*x*x*x-0.1036*x*x*x*x);return -yt+0.02*Math.sin(Math.PI*x);};
 const SPLIT={};
-function splitLoops(fc){const k=fc.toFixed(3);if(SPLIT[k])return SPLIT[k];const n=22,cove=0.07,x0=fc-0.045;
+// ov: wie weit die Ruder-/Klappennase unter der Abdeckung liegt (Klappen tief für Fowler-Weg, Querruder kurz)
+function splitLoops(fc,ov){ov=ov||0.045;const k=fc.toFixed(3)+'_'+ov;if(SPLIT[k])return SPLIT[k];
+  const n=22,x0=fc-ov,FU=0.86,SU=0.93,cx=x0+0.02;
+  const fu=x=>x<fc?FU:FU+(1-FU)*Math.min(1,(x-fc)/0.08);
+  const yU=afU(cx)*FU,yL=afL(cx),yc=(yU+yL)/2,rr=(yU-yL)/2;
   const main=[];for(let i=0;i<=n;i++){const b=i/n,x=fc*(1-Math.cos(b*Math.PI/2));main.push([x,afU(x)]);}main.reverse();
-  for(let i=1;i<=n;i++){const b=i/n,x=(fc-cove)*(1-Math.cos(b*Math.PI/2));main.push([x,afL(x)]);}
-  {const xa=fc-cove,ya=afL(xa),yb=afU(fc)*0.55;for(let i=1;i<=6;i++){const u=i/6,x=xa+(fc-xa)*u,y=ya+(yb-ya)*Math.sin(u*Math.PI/2);main.push([x,y]);}}
+  // Bucht (Cove): Ellipse mit Abstand um die Klappennase, beginnt dort, wo sie die Unterseite schneidet
+  const Rx=0.032,Ry=rr+0.03;let a0=Math.PI*1.5;
+  for(let a=Math.PI*1.5;a>Math.PI;a-=0.01){const x=cx+Rx*Math.cos(a),y=yc+Ry*Math.sin(a);if(y>=afL(x)){a0=a;break;}}
+  const xs=cx+Rx*Math.cos(a0);
+  for(let i=1;i<=n;i++){const b=i/n,x=xs*(1-Math.cos(b*Math.PI/2));main.push([x,afL(x)]);}
+  for(let i=1;i<=10;i++){const a=a0+(Math.PI/2-a0)*i/10;main.push([cx+Rx*Math.cos(a),yc+Ry*Math.sin(a)]);}
+  {const yT=yc+Ry,d=yT-afU(cx)*SU;for(let i=1;i<=6;i++){const u=i/6,x=cx+(fc-cx)*u;main.push([x,afU(x)*SU+d*(1-u)]);}}
   main.push([...main[0]]);
-  // Klappe: x0..1, runde Nase unter der Abdeckung
-  const fl=[],cw=1-x0,m=14,yc=(afU(x0+0.02)*0.9+afL(x0+0.02))/2,rr=(afU(x0+0.02)*0.9-afL(x0+0.02))/2;
-  for(let i=m;i>=0;i--){const b=i/m,x=x0+0.02+(1-x0-0.02)*(1-Math.cos(b*Math.PI/2))**1;fl.push([(x-x0)/cw,afU(x)*0.9]);}
+  // Klappe: x0..1, runde Nase unter der Abdeckung; hinter der Abdeckung wieder volle Profildicke
+  const fl=[],cw=1-x0,m=16;
+  for(let i=m;i>=0;i--){const b=i/m,x=cx+(1-cx)*(1-Math.cos(b*Math.PI/2));fl.push([(x-x0)/cw,afU(x)*fu(x)]);}
   for(let i=1;i<10;i++){const a=Math.PI/2+Math.PI*i/10;fl.push([(0.02+Math.cos(a)*0.02)/cw,yc+Math.sin(a)*rr]);}
-  for(let i=0;i<=m;i++){const b=i/m,x=x0+0.02+(1-x0-0.02)*(1-Math.cos(b*Math.PI/2));fl.push([(x-x0)/cw,afL(x)]);}
-  return SPLIT[k]={main,flap:fl,x0};}
+  for(let i=0;i<=m;i++){const b=i/m,x=cx+(1-cx)*(1-Math.cos(b*Math.PI/2));fl.push([(x-x0)/cw,afL(x)]);}
+  // Fowler-Weg: Klappennase bleibt knapp unter der Abdeckungs-Hinterkante -> von oben keine Lücke
+  return SPLIT[k]={main,flap:fl,x0,ext:Math.max(0,ov-0.016)/cw};}
 function mirror(g){const m=g.clone();m.scale(-1,1,1);const i=m.index.array;for(let k=0;k<i.length;k+=3){const t=i[k];i[k]=i[k+1];i[k+1]=t;}m.index.needsUpdate=true;m.computeVertexNormals();return m;}
 // Ruderfläche zwischen zwei Scharnierpunkten (A,B), Sehnen cA,cB, Dicke tA,tB
 function surface(A,B,cA,cB,th,mat,parent,prof){
@@ -114,25 +124,32 @@ function surface(A,B,cA,cB,th,mat,parent,prof){
   const zA=new THREE.Vector3(0,0,1).addScaledVector(ax,-ax.z).normalize(),yA=new THREE.Vector3().crossVectors(zA,ax);
   h.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(ax,yA,zA));
   const g=loft([{x:0,y:0,z:0,c:cA,t:th/Math.max(cA,0.01)},{x:len,y:0,z:0,c:cB,t:(prof&&prof.th1!=null?prof.th1:th)/Math.max(cB,0.01)}],prof?prof.loop:WEDGE);
-  const m=new THREE.Mesh(g,mat);m.castShadow=true;m.userData.ext=(cA+cB)/2*0.32;h.add(m);parent.add(h);return m;
+  const m=new THREE.Mesh(g,mat);m.castShadow=true;m.userData.ext=(cA+cB)/2*(prof&&prof.ext!=null?prof.ext:0);h.add(m);parent.add(h);return m;
 }
 // Flügel (rechte Hälfte) mit Ruderflächen
 function wing(o,mat,smat,parent,parts,name){
   const {x0,span,root,tip,sweep,dih,y0,z0,tr,tt,split}=o;const tanD=Math.tan(dih);
   if(smat===mat&&mat.userData&&mat.userData.col!=null)smat=surfMat(mat);
   const sec=s=>{const x=x0+s*span;return{x,y:y0+(x-x0)*tanD,z:z0+s*sweep,c:root+(tip-root)*s,t:tr+(tt-tr)*s};};
-  const fc=split||0.72,SP=splitLoops(fc);
-  const main=loft([0,0.5,1].map(s=>({...sec(s),cf:1})),SP.main);
-  const R=new THREE.Mesh(main,mat),Lm=new THREE.Mesh(mirror(main),mat);R.castShadow=Lm.castShadow=true;parent.add(R,Lm);
-  const hp=s=>{const q=sec(s);return new THREE.Vector3(q.x,q.y,q.z+q.c*SP.x0);};
-  const rc=s=>sec(s).c*(1-SP.x0),th=s=>sec(s).t*sec(s).c;
-  const mk=(s0,s1,key)=>{
-    const r=surface(hp(s0),hp(s1),rc(s0),rc(s1),th(s0),smat,parent,{loop:SP.flap,th1:th(s1)});
+  const fc=split||0.72;
+  // Abschnitte: Lücken zwischen Rudern werden mit fester Hinterkante gefüllt
+  const segs=(o.surfaces||[[0,1,null]]).slice().sort((p,q)=>p[0]-q[0]),full=[];let s=0;
+  for(const g of segs){if(g[0]>s+1e-4)full.push([s,g[0],null]);full.push(g);s=Math.max(s,g[1]);}if(s<1-1e-4)full.push([s,1,null]);
+  const gs=[];
+  for(const [s0,s1,key] of full){
+    const ov=!key?0:key.startsWith('flap')?0.12:0.045,SP=ov?splitLoops(fc,ov):null;
+    gs.push(loft([s0,s1].map(q=>({...sec(q),cf:1})),SP?SP.main:AF));
+    if(!SP)continue;
+    const hp=q=>{const e=sec(q);return new THREE.Vector3(e.x,e.y,e.z+e.c*SP.x0);};
+    const rc=q=>sec(q).c*(1-SP.x0),th=q=>sec(q).t*sec(q).c;
+    const r=surface(hp(s0),hp(s1),rc(s0),rc(s1),th(s0),smat,parent,{loop:SP.flap,th1:th(s1),ext:key.startsWith('flap')?SP.ext:0});
     const a=hp(s1).multiply(new THREE.Vector3(-1,1,1)),b=hp(s0).multiply(new THREE.Vector3(-1,1,1));
-    const l=surface(a,b,rc(s1),rc(s0),th(s1),smat,parent,{loop:SP.flap.map(([x,y])=>[x,y]),th1:th(s0)});
-    if(key){parts[key+'R']=r;parts[key+'L']=l;}
-  };
-  for(const [s0,s1,key] of (o.surfaces||[[0,1,null]]))mk(s0,s1,key);
+    const l=surface(a,b,rc(s1),rc(s0),th(s1),smat,parent,{loop:SP.flap,th1:th(s0),ext:key.startsWith('flap')?SP.ext:0});
+    if(key.startsWith('flap')){(parts.flaps=parts.flaps||[]).push({s0,s1,R:r,L:l});if(!parts.flapR){parts.flapR=r;parts.flapL=l;}}
+    else{parts[key+'R']=r;parts[key+'L']=l;}
+  }
+  const main=mergeGeometries(gs,false);main.computeVertexNormals();gs.forEach(g=>g.dispose());
+  const R=new THREE.Mesh(main,mat),Lm=new THREE.Mesh(mirror(main),mat);R.castShadow=Lm.castShadow=true;parent.add(R,Lm);
   return {sec};
 }
 function canvasTex(w,h,draw){const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=8;return t;}
@@ -493,15 +510,15 @@ function buildAirliner(C,body,parts,root,P){
    win.forEach((w,i)=>cabinGlass(L,PR,w,'cw'+C.L+'_'+i,parts));}
   const wm=wingMat(0xd8dce0,{walk:1});
   const W=C.wing,D=W.dih*Math.PI/180;
-  wing({...W,dih:D,surfaces:[[0.0,0.56,'flap'],[0.6,0.9,'ail'],[0.9,1,null]]},wm,wm,body,parts);
+  wing({...W,dih:D,surfaces:[[0.0,0.36,'flap'],[0.36,0.74,'flap'],[0.76,0.94,'ail']]},wm,wm,body,parts);
   const yW=x=>W.y0+(x-W.x0)*Math.tan(D),zLE=x=>W.z0+(x-W.x0)/W.span*W.sweep,cW=x=>W.root+(W.tip-W.root)*(x-W.x0)/W.span;
   // Klappenschienen-Verkleidungen (Kanus): hängen an den Klappen und kippen mit ihnen nach unten
   {const kk=Math.min(R,2.6),ftG=new THREE.SphereGeometry(1,14,10).scale(0.065*kk,0.085*kk,0.5).translate(0,-0.03*kk,0.5);body.updateMatrixWorld(true);
-   for(const s of [0.2,0.36,0.52]){const x=W.x0+s*W.span,c=cW(x),t=W.tr+(W.tt-W.tr)*s,yb=yW(x)-t*c*0.32;for(const sg of [1,-1]){
+   for(const s of [0.2,0.43,0.62]){const x=W.x0+s*W.span,c=cW(x),t=W.tr+(W.tt-W.tr)*s,yb=yW(x)-t*c*0.32;for(const sg of [1,-1]){
      // vorderer Teil fest am Flügel, hinterer Teil hängt an der Klappe und kippt mit
      const f=new THREE.Mesh(ftG,surfMat(wm));f.scale.set(1,1,c*0.34);f.position.set(sg*x,yb,zLE(x)+c*0.5);f.castShadow=true;body.add(f);
      const m=new THREE.Mesh(ftG,surfMat(wm));m.scale.set(1,1,c*0.42);m.position.set(sg*x,yb,zLE(x)+c*0.74);m.castShadow=true;body.add(m);
-     const fl=sg>0?parts.flapR:parts.flapL;if(fl){body.updateMatrixWorld(true);fl.attach(m);}}}}
+     const seg=(parts.flaps||[]).find(f=>s>=f.s0&&s<=f.s1),fl=seg&&(sg>0?seg.R:seg.L);if(fl){body.updateMatrixWorld(true);fl.attach(m);}}}}
   const tipx=W.x0+W.span,tipy=yW(tipx),tipz=zLE(tipx);
   const wlm=solidMat(FS[1],0.35);
   for(const sg of [1,-1]){let g;
@@ -830,7 +847,7 @@ export function bakeModel(root){
 export function animateModel(root,st,t,dt){
   const p=root.userData.parts,P=root.userData.spec;if(!p)return;
   const fl=(st.flapPos||0);
-  if(p.flapR){p.flapR.rotation.x=fl*0.6;p.flapL.rotation.x=fl*0.6;const e=fl*(p.flapR.userData.ext||0);p.flapR.position.z=e;p.flapL.position.z=e;}
+  for(const f of (p.flaps||[]))for(const m of [f.R,f.L]){m.rotation.x=fl*0.6;m.position.z=fl*(m.userData.ext||0);}
   if(p.ailR){p.ailR.rotation.x=(st.ail||0)*0.35;p.ailL.rotation.x=-(st.ail||0)*0.35;}
   if(p.elevR){p.elevR.rotation.x=-(st.elev||0)*0.4;p.elevL.rotation.x=-(st.elev||0)*0.4;}
   if(p.rud)p.rud.rotation.x=-(st.rud||0)*0.45;

@@ -142,7 +142,7 @@ function keyAction(code){
     case'KeyH':F.assist=!F.assist;F.gammaT=Math.asin(clamp(F.vel.y/Math.max(F.vel.length(),1),-1,1));toast(F.assist?'Flughilfe EIN (hält die Flugbahn)':'Flughilfe AUS (manuell)');break;
     case'KeyL':if(G.jobIcao)jobsOpen();else if(!G.mission&&!G.lesson)toast('Aufträge gibt es, wenn du an einem Flughafen stehst');break;
     case'KeyN':toast(audio.toggleMute()?'Ton aus':'Ton an');break;
-    case'KeyU':if(F.P.heli){toast('Der Helikopter hält mit der Flughilfe die Höhe von selbst');break;}if(G.ap){G.ap=null;toast('Autopilot AUS');}else if(F.onGround)toast('Autopilot erst in der Luft');else apAskOpen();break;
+    case'KeyU':if(F.P.heli){toast('Der Helikopter hält mit der Flughilfe die Höhe von selbst');break;}if(G.ap){apOff('Autopilot AUS');}else if(F.onGround)toast('Autopilot erst in der Luft');else apAskOpen();break;
     case'KeyR':startFlight(G.cfg);break;
     case'KeyT':atc.press(atcCtx());break;
   }
@@ -416,21 +416,8 @@ function step(dt){
     if(G.cam!==2&&(Math.abs(pad.rx)>0||Math.abs(pad.ry)>0)){G.look.x-=pad.rx*dt*2.2;G.look.y=clamp(G.look.y+pad.ry*dt*1.6,-1.2,1.3);lastDrag=performance.now();}}
   if(TOUCH.on){if(Math.abs(TOUCH.y)>Math.abs(ctl.pitch))ctl.pitch=TOUCH.y*inv;if(Math.abs(TOUCH.x)>Math.abs(ctl.roll))ctl.roll=-TOUCH.x;if(TOUCH.yaw)ctl.yaw=TOUCH.yaw;}
   if(G.ap){
-    if(Math.abs(ctl.pitch)>0.15||Math.abs(ctl.roll)>0.15){G.ap=null;toast('Autopilot AUS (Steuereingabe)');}
-    else{const A=G.ap,e=new THREE.Euler().setFromQuaternion(F.q,'YXZ'),hdg=((-e.y/DEG)%360+360)%360;
-      if(thrUp)A.spd+=dt*6*thrUp;if(thrDn)A.spd=Math.max(stallSpeed(F)*1.3,A.spd-dt*6*thrDn);
-      if(K.has('KeyQ')||gpYawL){A.hdg=(A.hdg-dt*15+360)%360;A.nav=false;}if(K.has('KeyE')||gpYawR){A.hdg=(A.hdg+dt*15)%360;A.nav=false;}
-      if(A.nav&&G.wp)A.hdg=wpBrg(F);
-      if(A.max)A.spd=apMaxSpd(F,F.P);A.ff=0;
-      if(G.appr&&G.apprG){const g=G.apprG,pts=G.appr.pts,la=pts[Math.min(pts.length-1,g.bi+Math.ceil(Math.max(600,G.appr.R*0.7)/40))];A.hdg=((Math.atan2(la.x-F.pos.x,-(la.z-F.pos.z))/DEG)+360)%360;
-        const pa=pts[Math.min(pts.length-1,g.bi+8)],pb=pts[g.bi];A.alt=g.p.y;A.ff=Math.atan2(pa.y-pb.y,Math.max(1,pa.s-pb.s));
-        if(g.phase!=='route')A.spd=Math.min(A.spd,F.P.Vref*(g.phase==='final'?1.3:1.45));
-        else if(G.appr.iTOD>=0&&g.bi>=G.appr.iTOD)A.spd=Math.min(A.spd,Math.max(F.P.Vref*1.6,apMaxSpd(F,F.P)*0.82));
-        if(g.phase==='final'&&F.pos.y-S.groundAt(F.pos.x,F.pos.z)<110){G.ap=null;toast('Autopilot AUS – jetzt von Hand landen',3500);}}
-      const err=((A.hdg-hdg+540)%360)-180,mb=Math.min(25,F.P.maxBank||30)*DEG,want=clamp(-err*DEG*1.4,-mb,mb);
-      ctl.roll=clamp((want-(F.bank||0))/(8*DEG),-1,1)*0.7;ctl.yaw=0;
-      F.gammaT=clamp((A.ff||0)+clamp((A.alt-F.pos.y)*0.0016,-2.5*DEG,2.5*DEG),-5*DEG,5*DEG);
-      F.thr=clamp(F.thr+clamp((A.spd-F.vel.length())*0.03,-1,1)*dt*0.5,0,1);}
+    if(Math.abs(ctl.pitch)>0.15||Math.abs(ctl.roll)>0.15){apOff('Autopilot AUS (Steuereingabe)');}
+    else apStep(F,ctl,dt,thrUp,thrDn,gpYawL,gpYawR);
   }
   if(!G.ap&&thrUp)F.thr=Math.min(1,F.thr+dt*0.6*thrUp);
   if(!G.ap&&thrDn)F.thr=Math.max(0,F.thr-dt*0.6*thrDn);
@@ -463,9 +450,13 @@ function step(dt){
   {const hitAI=traffic&&traffic.hit(F);if(hitAI){F.crashed=true;audio.crash();pad.rumble(1,1,900);boom(F.pos);G.model.visible=false;{const g=G;setTimeout(()=>{if(G===g&&!g.done)finish(false,'Zusammenstoss mit '+hitAI.cs+'!');},2600);}return;}}
   atc.update(dt,atcCtx());
   if(F.onGround&&F.vel.length()<1&&!G.stopMsg&&G.t>5){G.stopMsg=true;atc.event('stopped');}else if(!F.onGround)G.stopMsg=false;
-  if(G.mission&&G.mission.comfort&&!F.onGround){const bank=Math.abs(F.bank||0)/DEG,vs=F.vel.y;let d=0;if(bank>32)d+=(bank-32)*0.12;if(vs<-9)d+=(-9-vs)*0.25;if(vs>12)d+=(vs-12)*0.2;
-    const e2=new THREE.Euler().setFromQuaternion(F.q,'YXZ');if(Math.abs(e2.x/DEG)>18)d+=(Math.abs(e2.x/DEG)-18)*0.2;const dv=(F.vel.y-(G.lvy??F.vel.y))/dt;G.lvy=F.vel.y;if(Math.abs(dv)>5)d+=(Math.abs(dv)-5)*0.08;
-    if(d>0){G.comfort=Math.max(0,G.comfort-d*dt);if(d>1.5&&G.t-(G.cMsg||0)>8){G.cMsg=G.t;toast('Die Passagiere werden unruhig …',1800);}}}
+  // Passagierkomfort: nur deutlich unruhiges Fliegen kostet; ruhige Phasen lassen die Passagiere langsam wieder entspannen
+  if(G.mission&&G.mission.comfort&&!F.onGround){const bank=Math.abs(F.bank||0)/DEG,vs=F.vel.y;let d=0;if(bank>35)d+=(bank-35)*0.07;if(vs<-12)d+=(-12-vs)*0.12;if(vs>15)d+=(vs-15)*0.1;
+    const e2=new THREE.Euler().setFromQuaternion(F.q,'YXZ');if(Math.abs(e2.x/DEG)>20)d+=(Math.abs(e2.x/DEG)-20)*0.1;
+    // senkrechte Beschleunigung geglättet (einzelne Böen-Spitzen zählen nicht)
+    const ay=(F.vel.y-(G.lvy??F.vel.y))/Math.max(dt,1e-3);G.lvy=F.vel.y;G.ayF=(G.ayF??0)+(ay-(G.ayF??0))*Math.min(1,dt*2);if(Math.abs(G.ayF)>3.5)d+=(Math.abs(G.ayF)-3.5)*0.05;
+    if(d>0){G.comfort=Math.max(0,G.comfort-d*dt);if(d>1&&G.t-(G.cMsg||0)>10){G.cMsg=G.t;toast('Die Passagiere werden unruhig …',1800);}}
+    else G.comfort=Math.min(100,G.comfort+0.02*dt);}
   G.recT+=dt;if(G.recT>=0.1&&G.rec.length<9000){G.recT=0;G.rec.push([F.pos.x,F.pos.y,F.pos.z,F.q.x,F.q.y,F.q.z,F.q.w,F.flapPos,F.gearPos,F.eng,F.onGround?F.vel.length():0,F.ail,F.elev,F.rud]);}
   if(G.lesson&&!G.done){const r=tutorTick(G.lesson,G.tut,tutCtx(F),dt);if(r.stepDone&&!r.done){audio.chime();toast('✓ Gut gemacht!',1600);}if(r.done){audio.chime();return finishLesson();}}
   if(G.P.glider){F.thr=0;F.eng=0;if(!F.onGround&&G.t-(G.varT||0)>0.45){G.varT=G.t;audio.vario(F.vel.y);}}
@@ -576,7 +567,7 @@ function updateHUD(dt){
   setTxt('gearTxt',P.fixedGear?'FEST':gp>0.98?'AUSGEFAHREN':gp<0.02?'EINGEFAHREN':'IN BEWEGUNG');
   if(!G.apAsk&&!$('apAsk').classList.contains('hidden'))$('apAsk').classList.add('hidden');
   {let ic=null;if(!G.mission&&!G.lesson&&F.onGround&&F.vel.length()<4&&!F.crashed){const A=nearAirport(F);if(A)ic=A.icao;}G.jobIcao=ic;const jb=$('jobBtn');if(!!ic===jb.classList.contains('hidden'))jb.classList.toggle('hidden',!ic);}
-  $('brkInd').classList.toggle('on',F.brake);$('splInd').classList.toggle('on',!!F.spoiler);$('astInd').classList.toggle('on',F.assist);$('apInd').classList.toggle('on',!!G.ap);setTxt('apInd',G.ap?`AP ${G.ap.nav&&G.wp?'▸ZIEL ':''}${String(Math.round(G.ap.hdg)).padStart(3,'0')}° · ${Math.round(units.metric?G.ap.alt:G.ap.alt*3.281)} · ${Math.round(units.metric?G.ap.spd*3.6:G.ap.spd*1.944)}${G.ap.max?' MAX':''}`:'AUTOPILOT');
+  $('brkInd').classList.toggle('on',F.brake);$('splInd').classList.toggle('on',!!F.spoiler);$('astInd').classList.toggle('on',F.assist);$('apInd').classList.toggle('on',!!G.ap);setTxt('apInd',G.ap?`AP ${G.ap.mode&&G.ap.mode!=='HDG'?'▸'+G.ap.mode+' ':''}${String(Math.round(G.ap.hdg)).padStart(3,'0')}° · ${Math.round(units.metric?G.ap.alt:G.ap.alt*3.281)} · ${Math.round(units.metric?(G.ap.vT||G.ap.spd)*3.6:(G.ap.vT||G.ap.spd)*1.944)}${G.ap.max?' MAX':''}`:'AUTOPILOT');
   setTxt('crateInd',G.crates>0?`KISTEN ${G.crates}`:'');setSty('crateInd','display',G.crates>0?'':'none');
   const s=Math.floor(G.t);setTxt('timer',`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`);
   // Ziel
@@ -895,6 +886,93 @@ function apprTick(F){if(!G.appr)return;G.apprG=approachGuide(G.appr,F,G.P);const
   if(F.onGround&&g.phase==='final'){clearAppr();toast('Gelandet – Anflug beendet',2200);}}
 // Geschwindigkeitsgrenzen: Höchstgeschwindigkeit, Klappen, Tempolimit im Flugplatz-Nahbereich – mit Erklärung beim ersten Überschreiten
 const VMO={alpina:94,saentis:136,segler:69,titlis:158,foehn:167,feuer:125,rega:89,l320:247,l330:239,l340:267,l350:247,l380:233,l32n:247,l747:260};
+// ---------- Autopilot ----------
+// Folgt der Route wie ein Flugmanagement-System: Ringbahn der Mission/des Auftrags, Anflugplan oder eigenes Ziel.
+// Querführung: «Pure Pursuit» auf einen Punkt voraus (ergibt von selbst Kurvenvorhalt), Querlage gedämpft geregelt.
+// Höhe: Bahnhöhe plus Vorsteuerung der Bahnneigung. Tempo: gewähltes Tempo, aber rechtzeitig langsamer vor engen Kurven,
+// unter Klappen-Grenzen und vor dem Endanflug; Schub mit PI-Regler, Luftbremse wenn es im Sinkflug zu schnell wird.
+function apOff(msg){if(!G||!G.ap)return;if(G.ap.spl&&G.F)G.F.spoiler=false;G.ap=null;if(msg)toast(msg,3000);}
+// Krümmung je Bahnpunkt mit Vorzeichen (+ = Rechtskurve), Kompass-Richtung: atan2(dx,-dz)
+function pathCurv(pts){if(pts.kk)return pts.kk;const n=pts.length,kk=new Float32Array(n);
+  for(let i=0;i<n;i++){const a=pts[Math.max(0,i-4)],b=pts[i],c=pts[Math.min(n-1,i+4)];if(a.brk||c.brk||a===c)continue;
+    const h1=Math.atan2(b.x-a.x,-(b.z-a.z)),h2=Math.atan2(c.x-b.x,-(c.z-b.z)),d=Math.hypot(b.x-a.x,b.z-a.z)/2+Math.hypot(c.x-b.x,c.z-b.z)/2;let e=h2-h1;while(e>Math.PI)e-=2*Math.PI;while(e<-Math.PI)e+=2*Math.PI;kk[i]=d>1?e/d:0;}
+  return pts.kk=kk;}
+// nächster Bahnpunkt (nur vorwärts suchen, damit Schleifen/Kreuzungen nicht verwechselt werden)
+function pathNearest(pts,F,i0,iMax,back){let bi=Math.max(0,i0),bd=Infinity;const i1=Math.min(pts.length-1,iMax??pts.length-1,i0+300);
+  for(let i=Math.max(0,i0-(back??6));i<=i1;i++){if(i>i0&&pts[i].brk)break;const d=Math.hypot(pts[i].x-F.pos.x,pts[i].z-F.pos.z);if(d<bd){bd=d;bi=i;}}return{bi,bd};}
+const ZONE_AP=128*0.93;
+const wrapA=a=>{while(a>Math.PI)a-=2*Math.PI;while(a<-Math.PI)a+=2*Math.PI;return a;};
+function apStep(F,ctl,dt,thrUp,thrDn,gpYawL,gpYawR){
+  const A=G.ap,P=F.P,v=Math.max(1,F.vel.length()),vh=Math.max(1,Math.hypot(F.vel.x,F.vel.z)),e=new THREE.Euler().setFromQuaternion(F.q,'YXZ'),hdg=((-e.y/DEG)%360+360)%360;
+  const trk=Math.atan2(F.vel.x,-F.vel.z),agl=F.pos.y-S.groundAt(F.pos.x,F.pos.z);
+  if(thrUp){A.spd+=dt*6*thrUp;A.max=false;}if(thrDn){A.spd=Math.max(stallSpeed(F)*1.3,A.spd-dt*6*thrDn);A.max=false;}
+  if(K.has('KeyQ')||gpYawL){A.hdg=(A.hdg-dt*15+360)%360;A.nav=false;}if(K.has('KeyE')||gpYawR){A.hdg=(A.hdg+dt*15)%360;A.nav=false;}
+  if(A.max)A.spd=apMaxSpd(F,P);
+  let yT=A.alt,ff=0,cap=Infinity,mode='HDG',want=null,landing=false;
+  const mbCmd=Math.min(30,P.maxBank||30)*DEG,mbPlan=Math.tan(Math.min(24,(P.maxBank||30)-4)*DEG)*9.81;
+  // Bahn folgen: Kurs der Bahn + Krümmung (Vorsteuerung) + Ablage-Korrektur; Höhe und Neigung der Bahn; Tempo vorausplanen
+  const follow=(pts,bi,last)=>{const kk=pathCurv(pts),p0=pts[bi],j1=Math.min(last,bi+3),p1=pts[j1];
+    const psiP=j1>bi?Math.atan2(p1.x-p0.x,-(p1.z-p0.z)):trk,ex=(F.pos.x-p0.x)*Math.cos(psiP)+(F.pos.z-p0.z)*Math.sin(psiP);
+    // Krümmung etwas voraus (Querlage braucht Zeit zum Aufbauen)
+    let j=bi,acc=0;while(j<last&&acc<vh*3&&!pts[j+1].brk){acc+=Math.hypot(pts[j+1].x-pts[j].x,pts[j+1].z-pts[j].z);j++;}
+    const ks=kk[j],Lx=clamp(vh*4.5,250,1600),psiD=psiP-Math.atan(clamp(ex/Lx,-1.2,1.2));
+    const rate=vh*ks+clamp(wrapA(psiD-trk)*0.2,-0.1,0.1);want=-Math.atan(vh*rate/9.81);A.hdg=((psiD/DEG)+360)%360;
+    const k2=Math.min(last,bi+6),p2=pts[k2];yT=p0.y;const ds=Math.hypot(p2.x-p0.x,p2.z-p0.z);ff=ds>1?Math.atan2(p2.y-p0.y,ds):0;
+    if(G.t-(A.capT||-9)>0.25){A.capT=G.t;let c=Infinity,cA=Infinity,d=0;const lo=G.obj&&G.obj.find(q=>q.type==='land'),DST=(G.appr&&G.appr.A)||(lo&&lo.ap)||null;
+      // schon jetzt im Nahbereich eines Flughafens (auch beim Abflug): Tempolimit einhalten
+      if(agl<1100&&AIRPORTS.some(q=>Math.hypot(q.x-F.pos.x,q.z-F.pos.z)<11000)){c=Math.min(c,ZONE_AP);cA=c;}
+      for(let i=bi;i<last&&d<40000;i++){if(pts[i+1].brk)break;d+=Math.hypot(pts[i+1].x-pts[i].x,pts[i+1].z-pts[i].z);const k=Math.abs(kk[i+1]);let vi=k>1e-5?Math.sqrt(mbPlan/k):Infinity;
+        let va=Infinity;const o=G.obj&&pts[i+1].leg!=null?G.obj[pts[i+1].leg]:null;if(o&&(o.final||o.type==='land')&&!P.heli)va=P.Vref*(o.type==='land'?1.25:1.4);
+        if(DST&&(i&3)===0&&pts[i+1].y-DST.elev<1100&&Math.hypot(pts[i+1].x-DST.x,pts[i+1].z-DST.z)<11500)va=Math.min(va,ZONE_AP);
+        const dd=Math.max(0,d-vh*4);if(va<Infinity)cA=Math.min(cA,Math.sqrt(va*va+2*0.32*dd));vi=Math.min(vi,va);
+        if(vi<Infinity)c=Math.min(c,Math.sqrt(vi*vi+2*0.32*dd));}A.cap=c;A.capA=cA;}
+    cap=A.cap;A.ex=Math.abs(ex);return Math.abs(ex);};
+  if(A.nav!==false&&G.appr)G.apprG=approachGuide(G.appr,F,P);
+  if(A.nav!==false&&G.appr&&G.apprG){const g=G.apprG,pts=G.appr.pts;mode='ANFLUG';follow(pts,g.bi,pts.length-1);
+    if(g.phase!=='route')cap=Math.min(cap,P.Vref*(g.phase==='final'?1.3:1.45));
+    else if(G.appr.iTOD>=0&&g.bi>=G.appr.iTOD)cap=Math.min(cap,Math.max(P.Vref*1.6,apMaxSpd(F,P)*0.82));
+    landing=g.phase==='final';if(landing&&agl<110){apOff('Autopilot AUS – jetzt von Hand landen');return;}}
+  else if(A.nav!==false&&G.path&&G.obj&&G.obj[G.oi]&&!P.heli){const o=G.obj[G.oi],pts=G.path;
+    if(o.pi){const lo=o.pi[0],hi=o.pi[1];
+      if(A.pi==null||A.piO!==G.oi||A.pi<lo-2||A.pi>hi+60){A.pi=pathNearest(pts,F,lo,hi,0).bi;A.piO=G.oi;}
+      let r=pathNearest(pts,F,A.pi,Math.min(pts.length-1,hi+60));if(r.bd>3000)r=pathNearest(pts,F,lo,hi,0);A.pi=r.bi;
+      mode=o.type==='land'?'ANFLUG':'ROUTE';follow(pts,A.pi,pts.length-1);landing=(o.type==='land'||!!o.final)&&A.ex<250;
+      // Ring knapp verpasst (Autopilot hat ihn schon hinter sich): weiter zum nächsten statt umzukehren
+      if(o.type==='ring'&&A.pi>=hi-1){const d=Math.hypot(F.pos.x-o.x,F.pos.y-o.y,F.pos.z-o.z);if(d>o.r+5&&d>(A.lastD||0)&&d<2500){G.oi++;refreshRings();toast('Ring knapp verpasst – der Autopilot fliegt weiter',2200);}A.lastD=d;}else A.lastD=0;
+      if(o.type==='land'&&agl<90){apOff('Autopilot AUS – jetzt von Hand landen');return;}}}
+  if(want==null&&A.nav!==false&&G.wp){mode='ZIEL';const b=Math.atan2(G.wp.x-F.pos.x,-(G.wp.z-F.pos.z)),dd=Math.max(300,Math.hypot(G.wp.x-F.pos.x,G.wp.z-F.pos.z)),al=wrapA(b-trk);
+    want=Math.abs(al)>Math.PI/2?-Math.sign(al)*mbCmd:-Math.atan(2*vh*vh*Math.sin(al)/(Math.min(dd,v*8)*9.81));A.hdg=((b/DEG)+360)%360;}
+  if(want==null){const err=((A.hdg-hdg+540)%360)-180;want=-err*DEG*1.4;}
+  // Geländeschutz: Bahn 25 s vorausrechnen, notfalls steigen (nicht im Endanflug)
+  // Geländeschutz (wie ein Bodenannäherungs-Warnsystem): geradeaus und entlang der Kurve vorausrechnen,
+  // notfalls steigen, langsamer werden und zur Seite mit dem tiefsten Gelände ausweichen
+  let pull=false;if(mode==='HDG'||mode==='ZIEL'||(A.ex||0)>300){const mg=P.prop?70:90,bk0=F.bank||0,om=-9.81*Math.tan(clamp(bk0,-0.6,0.6))/vh,H=clamp(v*0.13,17,32);
+    for(const turn of [0,1]){let px=F.pos.x,pz=F.pos.z,py=F.pos.y,ps=trk;for(let t=2.5;t<=H&&!pull;t+=2.5){ps+=om*turn*2.5;px+=Math.sin(ps)*vh*2.5;pz-=Math.cos(ps)*vh*2.5;py+=Math.min(0,F.vel.y)*2.5;if(py-S.groundAt(px,pz)<mg)pull=true;}}}
+  if(pull){if(!A.pullT||G.t-A.pullT>8)toast('Gelände voraus – Autopilot steigt und weicht aus',2200);A.pullT=G.t;A.alt=Math.max(A.alt,F.pos.y+60);cap=Math.min(cap,P.Vref*1.8);
+    const hiAt=a=>{let m=0;for(const r of [1500,3000,4500,6000])m=Math.max(m,S.groundAt(F.pos.x+Math.sin(a)*r,F.pos.z-Math.cos(a)*r));return m;};
+    if(hiAt(trk)>F.pos.y-150){let best=0,bh=Infinity;for(const o of [-100,-60,-30,30,60,100]){const h=hiAt(trk+o*DEG)+Math.abs(o)*2;if(h<bh){bh=h;best=o;}}
+      want=(best<0?1:-1)*28*DEG;if(mode==='HDG')A.hdg=((trk/DEG)+best+360)%360;}
+    else want=clamp(want,-12*DEG,12*DEG);}
+  want=clamp(want,-mbCmd,mbCmd);const bk=F.bank||0,br=A.pb==null?0:(bk-A.pb)/Math.max(dt,1e-3);A.pb=bk;
+  ctl.roll=clamp((want-bk)/(6*DEG)*0.85-br*0.32,-1,1);ctl.yaw=0;
+  // Höhe
+  if(mode!=='HDG'&&mode!=='ZIEL')A.alt=yT;
+  const gMax=(P.prop?7:8)*DEG;let gT=clamp(ff,-gMax,gMax)+clamp((A.alt-F.pos.y)*0.0012,-3.5*DEG,3.5*DEG);
+  gT+=Math.min(0.03,(1/Math.cos(Math.min(Math.abs(bk),0.6))-1)*0.12);// in der Kurve etwas mehr ziehen
+  if(pull)gT=Math.max(gT,(P.prop?9:10)*DEG);F.gammaT=clamp(gT,-gMax-2*DEG,pull?12*DEG:gMax+2*DEG);
+  // Tempo
+  const n=(P.flapNames||[]).length,fk=F.flaps|0,vfe=fk>0&&n>1?P.Vref*(1.75-0.45*fk/(n-1))*0.95:Infinity;
+  // Klappen und Fahrwerk wie ein Copilot: nach dem Start einfahren, vor dem Anflug schrittweise ausfahren
+  if((mode==='ROUTE'||mode==='ANFLUG')&&!P.heli){const nf=(P.flapNames||[]).length;
+    if(nf>1&&G.t-(A.flT||-99)>4){const vc=Math.min(A.spd,A.capA??Infinity),fd=landing&&agl<1500?nf-1:vc<P.Vref*1.42?Math.min(2,nf-1):vc<P.Vref*1.58?1:0,fk=F.flaps|0;
+      const vfeK=k=>P.Vref*(1.75-0.45*k/(nf-1));
+      if(fk<fd&&v<vfeK(fk+1)){F.flaps=fk+1;A.flT=G.t;audio.click();toast('Autopilot: Klappen '+P.flapNames[F.flaps],1600);}
+      else if(fk>fd&&!landing&&v>P.Vref*(1.2+0.1*(fk-1))){F.flaps=fk-1;A.flT=G.t;audio.click();toast('Autopilot: Klappen '+P.flapNames[F.flaps],1600);}}
+    if(!G.gearStuck&&!P.fixedGear){if(landing&&!F.gear&&agl<1200){F.gear=true;audio.gear&&audio.gear();toast('Autopilot: Fahrwerk aus',1600);}
+      else if(!landing&&F.gear&&agl>120&&F.vel.y>1.5&&(G.oi===0||mode==='ROUTE')&&!(G.obj[G.oi]&&G.obj[G.oi].final)){F.gear=false;audio.gear&&audio.gear();toast('Autopilot: Fahrwerk ein',1600);}}}
+  const vT=Math.max(stallSpeed(F)*1.25,pull?P.Vref*1.45:0,Math.min(A.spd,cap,vfe));A.vT=vT;A.mode=mode;
+  const er=vT-v;if(A.ti==null)A.ti=F.thr;A.ti=clamp(A.ti+er*0.012*dt,0,1);F.thr=pull&&er>-15?1:clamp(A.ti+er*0.045+Math.sin(F.gammaT)*2.2,0,1);
+  if(er<-4&&F.thr<0.04&&!F.onGround&&agl>250){F.spoiler=true;A.spl=true;}else if(A.spl&&(er>-1.5||agl<250)){F.spoiler=false;A.spl=false;}}
 function speedWarn(F,P,V){if(F.onGround||!G||G.lesson&&G.lesson.noWarn)return null;const u=save.settings.units==='metric',f=v=>u?`${Math.round(v*3.6/10)*10} km/h`:`${Math.round(v*1.944/5)*5} kt`;
   const vmo=VMO[P.id]||P.Vr*3,n=(P.flapNames||[]).length,k=F.flaps|0,vfe=k>0&&n>1?P.Vref*(1.75-0.45*k/(n-1)):Infinity,z=atc.zone;let w=null;
   if(V>vmo)w={k:'vmo',lbl:'MAX '+f(vmo).replace(' km/h','').replace(' kt',''),msg:`Tempo rot = zu schnell! Die Höchstgeschwindigkeit der ${P.name} ist ${f(vmo)}. Schub reduzieren (S), Nase etwas hoch oder Luftbremse (B).`};
@@ -909,9 +987,9 @@ function apAskOpen(){const F=G.F,u=save.settings.units==='metric',f=v=>u?`${Math
 function apAskClose(){G.apAsk=false;$('apAsk').classList.add('hidden');}
 function apMaxSpd(F,P){const vmo=VMO[P.id]||P.Vr*3,z=atc.zone;let v=vmo*0.92;if(z&&z.limit)v=Math.min(v,z.limit*0.97);return Math.max(v,P.Vref*1.4);}
 function apEngage(max){apAskClose();const F=G.F;if(G.ap||F.onGround)return;const e=new THREE.Euler().setFromQuaternion(F.q,'YXZ');
-  G.ap={hdg:((-e.y/DEG)%360+360)%360,alt:Math.max(F.pos.y,S.groundAt(F.pos.x,F.pos.z)+150),spd:max?apMaxSpd(F,G.P):F.vel.length(),max,nav:!!G.wp};if(G.wp)G.ap.alt=Math.max(G.ap.alt,routeSafeAlt(F.pos,G.wp));F.assist=true;
+  G.ap={hdg:((-e.y/DEG)%360+360)%360,alt:Math.max(F.pos.y,S.groundAt(F.pos.x,F.pos.z)+150),spd:max?apMaxSpd(F,G.P):F.vel.length(),max,nav:true};if(G.wp)G.ap.alt=Math.max(G.ap.alt,routeSafeAlt(F.pos,G.wp));F.assist=true;
   const sp=max?' · beschleunigt auf Höchstgeschwindigkeit':' · hält das Tempo';
-  toast(G.appr?`Autopilot EIN – fliegt den Anflug auf Piste ${G.appr.rwy}${sp} (Landung von Hand)`:G.wp?`Autopilot EIN – fliegt zum Ziel ${G.wp.name||''} (${Math.round(G.ap.alt)} m)${sp}`:`Autopilot EIN – hält Kurs und Höhe${sp}`,3200);}
+  toast(G.appr?`Autopilot EIN – fliegt den Anflug auf Piste ${G.appr.rwy}${sp} (Landung von Hand)`:G.path&&G.obj[G.oi]&&!G.P.heli?`Autopilot EIN – folgt der Route durch die Ringe${sp} (Landung von Hand)`:G.wp?`Autopilot EIN – fliegt zum Ziel ${G.wp.name||''} (${Math.round(G.ap.alt)} m)${sp}`:`Autopilot EIN – hält Kurs und Höhe${sp}`,3200);}
 // Freier Flug: am Flughafen stehen → Passagier- und Frachtflüge annehmen
 function nearAirport(F){let best=null,bd=1e9;for(const A of AIRPORTS){const l=toLocal(A,F.pos.x,F.pos.z);if(Math.abs(l.along)<A.len/2+700&&Math.abs(l.across)<900){const d=Math.hypot(l.along,l.across);if(d<bd){bd=d;best=A;}}}return best;}
 let JOBS=[];
@@ -1383,7 +1461,7 @@ function loop(now){
 }
 const P_shadow=P=>P.shadow;
 boot().then(()=>requestAnimationFrame(loop)).catch(e=>{console.error(e);$('lstep').textContent='Fehler: '+e.message;});
-window.__af={animateModel,AIRLINER,get attr(){return attr;},buildObjectives,AIRPORTS,fromLocal,get airports(){return airports;},apprTest:(icao,i)=>{setAppr(approachOptions(icao)[i]);return G.appr;},apprMenu,mapXf,get groundT(){return groundT;},MSH,THUMB,TH,thumbTick,setWp,clearWp,MV,mapZoom,mapCenter,__jm:jobMission,career,showMenu,setSub,renderCareer,openCareer,getDaily,showBrief,finish,award,toXZ,get S(){return S;},MISSIONS,get traffic(){return traffic;},atc,keyAction,startReplay,get env(){return env;},renderer,get world(){return world;},get composer(){return composer;},set noComp(v){window.__noComp=v;},buildModel,PLANES,THREE,get G(){return G;},startFlight,K,get state(){return state;},MISSIONS,cam,scene,simAP:(sec)=>{for(let t=0;t<sec;t+=1/30){const F=G.F;K.clear();const A=G.obj.find(o=>o.type==='land')?.ap||(G.lesson&&AP[G.lesson.ap]);if(!A)break;const l=toLocal(A,F.pos.x,F.pos.z);const sgn0=(F.vel.x*A.sin-F.vel.z*A.cos)>=0?1:-1;const d=(-sgn0*A.len/2-l.along)*sgn0;const ideal=A.elev+F.P.gearH+Math.max(0,d+150)*0.0524;const agl=F.pos.y-F.P.gearH-S.heightAt(F.pos.x,F.pos.z);
+window.__af={apEngage,animateModel,AIRLINER,get attr(){return attr;},buildObjectives,AIRPORTS,fromLocal,get airports(){return airports;},apprTest:(icao,i)=>{setAppr(approachOptions(icao)[i]);return G.appr;},apprMenu,mapXf,get groundT(){return groundT;},MSH,THUMB,TH,thumbTick,setWp,clearWp,MV,mapZoom,mapCenter,__jm:jobMission,career,showMenu,setSub,renderCareer,openCareer,getDaily,showBrief,finish,award,toXZ,get S(){return S;},MISSIONS,get traffic(){return traffic;},atc,keyAction,startReplay,get env(){return env;},renderer,get world(){return world;},get composer(){return composer;},set noComp(v){window.__noComp=v;},buildModel,PLANES,THREE,get G(){return G;},startFlight,K,get state(){return state;},MISSIONS,cam,scene,simAP:(sec)=>{for(let t=0;t<sec;t+=1/30){const F=G.F;K.clear();const A=G.obj.find(o=>o.type==='land')?.ap||(G.lesson&&AP[G.lesson.ap]);if(!A)break;const l=toLocal(A,F.pos.x,F.pos.z);const sgn0=(F.vel.x*A.sin-F.vel.z*A.cos)>=0?1:-1;const d=(-sgn0*A.len/2-l.along)*sgn0;const ideal=A.elev+F.P.gearH+Math.max(0,d+150)*0.0524;const agl=F.pos.y-F.P.gearH-S.heightAt(F.pos.x,F.pos.z);
   const wantVs=F.onGround?0:agl>6?clamp((ideal-F.pos.y)*0.15-0.0524*F.vel.length(),-6,2):-0.5;const vs=F.vel.y;if(!F.onGround){if(vs<wantVs-0.3)K.add('ArrowDown');else if(vs>wantVs+0.3)K.add('ArrowUp');}
   {const sgn=(F.vel.x*A.sin-F.vel.z*A.cos)>=0?1:-1;const ac=l.across*sgn;const vlat=(F.vel.x*A.cos+F.vel.z*A.sin)*sgn;const want=clamp(-ac*0.05,-25,25);const err=want-vlat;const bk=(F.bank||0)/DEG;const wb=clamp(-err*3,-20,20);if(F.onGround){if(ac>2)K.add('KeyA');else if(ac<-2)K.add('KeyD');}else if(bk<wb-3)K.add('KeyA');else if(bk>wb+3)K.add('KeyD');}const V=F.vel.length();if(!F.onGround){if(V<F.P.Vref*1.05)K.add('KeyW');else if(V>F.P.Vref*1.15)K.add('KeyS');}else{K.add('KeyS');K.add('KeyB');}
   step(1/30);if(G.done||F.crashed)break;}K.clear();const F=G.F;return{v:F.vel.length(),y:F.pos.y,gnd:F.onGround,done:G.done,crashed:F.crashed,lt:G.lastTouch&&G.lastTouch.letter,oi:G.oi,n:G.obj.length};},

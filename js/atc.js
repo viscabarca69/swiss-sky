@@ -84,13 +84,14 @@ export function createATC(audio,opts){
         else if(!A.depCall&&d<16000&&(A.phase==='enroute'||A.phase==='landed')&&!(A.depT!=null&&!A.leftHome&&A.t-A.depT<240&&A.home&&A.home.icao===Ap.icao)){p=`Funk: ${key} drücken – Landefreigabe für ${Ap.name} anfordern`;
           if(d<4500&&ctrl(Ap)&&!A.warned['call'+Ap.icao]&&ctx.agl<350&&F.vel.y<-1){A.warned['call'+Ap.icao]=1;A.twrName=(TWR[Ap.icao]||{n:Ap.name}).n;say('twr',`Unbekanntes Flugzeug im Anflug, melden Sie sich bei ${A.twrName}!`,`Unbekanntes Flugzeug im Anflug, melden Sie sich`);}}
         // Nahbereich kontrollierter Plätze: unter 1000 m über Grund und näher als 10 km höchstens 460 km/h (250 Knoten)
-        const inZone=d<10000&&ctx.agl<1000&&ctrl(Ap)&&!(A.depT!=null&&A.t-A.depT<120&&A.home&&A.home.icao===Ap.icao);
+        const inZone=d<10000&&ctx.agl<1000&&ctrl(Ap)&&!(A.depT!=null&&A.t-A.depT<240&&A.home&&A.home.icao===Ap.icao);
         A.zone=inZone?{name:Ap.name,limit:ZONE_V,d}:null;
-        if(inZone&&F.ias>ZONE_V){const f=A.fast[Ap.icao]||(A.fast[Ap.icao]={t:0,warned:false});f.t+=dt;const [lt,ls]=spdTxt(ZONE_V,ctx.metric),[vt]=spdTxt(F.ias,ctx.metric);
+        if(inZone&&F.ias>ZONE_V){const f=A.fast[Ap.icao]||(A.fast[Ap.icao]={t:0,warned:false});f.t+=F.ias>ZONE_V*1.07?dt:dt*0.3;const [lt,ls]=spdTxt(ZONE_V,ctx.metric),[vt]=spdTxt(F.ias,ctx.metric);
           if(!f.warned){f.warned=true;A.twrName=(TWR[Ap.icao]||{n:Ap.name}).n;say('twr',`${A.cs}, Sie sind im Nahbereich von ${Ap.name}: reduzieren Sie auf höchstens ${lt}.`,`${A.csS}, reduzieren Sie auf höchstens ${ls}`,0.3);
             opts.onInfo&&opts.onInfo(`Tempolimit: im Umkreis von 10 km um ${Ap.name} und unter 1000 m über Grund gilt höchstens ${lt}. Du fliegst ${vt} – Schub reduzieren (S) oder Luftbremse (B).`);}
-          if(f.t>20)penalty(`zu schnell im Nahbereich von ${Ap.name} (${vt} statt höchstens ${lt})`,'zu schnell im Nahbereich');}
-        else if(A.fast[Ap.icao]&&F.ias<=ZONE_V)A.fast[Ap.icao].t=Math.max(0,A.fast[Ap.icao].t-dt*2);}
+          if(f.t>25&&!f.warn2){f.warn2=true;say('twr',`${A.cs}, letzte Warnung: reduzieren Sie sofort auf ${lt}.`,`${A.csS}, letzte Warnung, reduzieren Sie auf ${ls}`,0.3);}
+          if(f.t>50)penalty(`zu schnell im Nahbereich von ${Ap.name} (${vt} statt höchstens ${lt})`,'zu schnell im Nahbereich');}
+        else if(A.fast[Ap.icao]&&F.ias<=ZONE_V)A.fast[Ap.icao].t=Math.max(0,A.fast[Ap.icao].t-dt*3);}
       else A.zone=null;}
     if(p!==A.prompt){A.prompt=p;render();}};
   A.score=()=>Math.max(0,100-A.pen.length*30);
