@@ -14,6 +14,8 @@ import {createCareer,PRICE,ORDER,fmtCHF,jobMission,dailyJob,freeJobs,BADGES,enco
 import {createFlight,stepFlight,stallSpeed} from './flight.js';
 import {MISSIONS as ALL_MISSIONS,buildObjectives,objPath,turnRadius} from './missions.js';
 import {runwayAt,approachOptions,planApproach,approachGuide} from './approach.js';
+import {initOrtho,onOrthoReady} from './ortho.js';
+let orthoUp=null;
 const MISSIONS=ALL_MISSIONS;
 import {createHUD} from './hud.js';
 import {createAudio} from './audio.js';
@@ -80,6 +82,7 @@ async function boot(){
   prog(0.01,'Höhenmodell wird berechnet');await new Promise(r=>setTimeout(r,30));
   const {H,LK}=await buildGrid(p=>prog(p*0.08,'Höhendaten der Schweiz werden geladen'));S=makeSampler(H,LK);
   world=await buildWorld(scene,H,LK,S,Q,(p,t)=>prog(0.08+p*1.1,t));
+  orthoUp=initOrtho(renderer);onOrthoReady(()=>{if(world)world.updateTrees(cam.position,true);});
   prog(0.85,'Himmel und Licht');await new Promise(r=>setTimeout(r,0));
   env=createEnv(renderer,scene,Q);env.onSun=d=>world.uSun.value.copy(d);
   if(Q.bloom){const rt=new THREE.WebGLRenderTarget(innerWidth,innerHeight,{type:THREE.HalfFloatType,samples:4});composer=new EffectComposer(renderer,rt);composer.setPixelRatio(renderer.getPixelRatio());composer.setSize(innerWidth,innerHeight);
@@ -101,9 +104,11 @@ async function boot(){
   $('loading').classList.add('fade');setTimeout(()=>$('loading').remove(),900);
   showMenu();
 }
-function addParked(id,A,along,across,rot,nose){const m=bakeModel(buildModel(id));let info=null;if(nose){m.updateMatrixWorld(true);const b=new THREE.Box3().setFromObject(m);const nf=-b.min.z;across=Math.sign(nose)*(Math.abs(nose)-nf);info={nf,across};}const p=fromLocal(A,along,across);m.position.set(p.x,A.elev+PLANES[id].gearH,p.z);m.rotation.y=-A.a+rot;
+function addParked(id,A,along,across,rot,nose,abs){const m=bakeModel(buildModel(id));let info=null;
+  // echte Standplätze (Weltkoordinaten + Kurs in Grad)
+  if(abs){m.position.set(abs.x,S.heightAt(abs.x,abs.z)+PLANES[id].gearH,abs.z);m.rotation.y=-abs.h*DEG;const pr=m.userData.parts;if(pr.lights)pr.lights.P.visible=false;scene.add(m);PARKED.push({id,m,A,along:2000,rot:0,abs:true});return{m};}if(nose){m.updateMatrixWorld(true);const b=new THREE.Box3().setFromObject(m);const nf=-b.min.z;across=Math.sign(nose)*(Math.abs(nose)-nf);info={nf,across};}const p=fromLocal(A,along,across);m.position.set(p.x,A.elev+PLANES[id].gearH,p.z);m.rotation.y=-A.a+rot;
   const pr=m.userData.parts;if(pr.lights)pr.lights.P.visible=false;scene.add(m);PARKED.push({id,m,A,along,rot});return Object.assign(info||{},{m});}
-const PARKED=[];
+const PARKED=[];let parkT=0;
 
 // ---------- Eingabe ----------
 const K=new Set();
@@ -161,7 +166,7 @@ const ringMat=(fin)=>new THREE.MeshBasicMaterial({color:0xffffff,map:fin?RING_TE
 const ringHalo=(r,col)=>{const h=new THREE.Mesh(new THREE.TorusGeometry(r,3.0,8,48),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:0.1,blending:THREE.AdditiveBlending,depthWrite:false,fog:true,toneMapped:false}));h.name='halo';return h;};
 const crateGeo=new THREE.BoxGeometry(1.4,1.4,1.4),crateMat=new THREE.MeshStandardMaterial({color:0x9a6a36,roughness:0.85});
 const chuteGeo=new THREE.SphereGeometry(4,16,8,0,Math.PI*2,0,Math.PI/2),chuteMat=new THREE.MeshStandardMaterial({color:0xff6a1a,roughness:0.7,side:THREE.DoubleSide});
-function cleanup(){{const b=$('tdb');if(b)b.className='';}if(G&&G.cshadow){try{G.cshadow.userData.rt.dispose();}catch(e){}}atc.stop();PARKED.forEach(p=>p.m.visible=true);wx.set({dir:240},0);audio.setRain&&audio.setRain(0);if(!G)return;for(const o of G.dyn){scene.remove(o);}if(G.rfx)G.rfx.forEach(f=>scene.remove(f.m));G=null;}
+function cleanup(){{const b=$('tdb');if(b)b.className='';}if(G&&G.cshadow){try{G.cshadow.userData.rt.dispose();}catch(e){}}atc.stop();PARKED.forEach(p=>{p.gate=false;p.m.visible=true;});wx.set({dir:240},0);audio.setRain&&audio.setRain(0);if(!G)return;for(const o of G.dyn){scene.remove(o);}if(G.rfx)G.rfx.forEach(f=>scene.remove(f.m));G=null;}
 function startFlight(cfg){
   perf.hold=3;cleanup();audio.init();
   const mission=cfg.dyn||(cfg.mission?MISSIONS.find(m=>m.id===cfg.mission):null);
@@ -177,7 +182,7 @@ function startFlight(cfg){
       pos=new THREE.Vector3(p.x,alt,p.z);}
     else{const p=fromLocal(A,-s*(A.len/2-25-(P.prop?0:30)),0);pos=new THREE.Vector3(p.x,A.elev+P.gearH,p.z);}}
   let gateP=null;if((mission?mission.gate:cfg.gate)&&P.cls==='jet'){const cand=PARKED.filter(q=>q.A.icao==='LSZH'&&AIRLINER[q.id]);gateP=cand.find(q=>q.id===planeId&&q.along>1500)||cand.find(q=>q.id===planeId)||cand.sort((a,b)=>b.along-a.along)[0];
-    if(gateP){gateP.m.visible=false;pos=gateP.m.position.clone();yaw=gateP.m.rotation.y;air=false;}}
+    if(gateP){gateP.m.visible=false;gateP.gate=true;pos=gateP.m.position.clone();yaw=gateP.m.rotation.y;air=false;}}
   let startAP=null,startRev=false;if(!(mission&&mission.air)){const st=mission?mission.start:lesson?[lesson.ap,lesson.rev]:[cfg.ap,cfg.rev];startAP=AP[st[0]];startRev=!!st[1];}
   if(P.heli&&!air&&!(mission&&mission.air)){const st=mission?mission.start:[cfg.ap,cfg.rev];const A=AP[st[0]],s=st[1]?-1:1,p=fromLocal(A,-s*(A.len/2-120),A.side*Math.min(75,(A.flatW||100)-30));pos=new THREE.Vector3(p.x,S.heightAt(p.x,p.z)+P.gearH,p.z);}
   const F=P.heli?createHeli(P,pos,yaw,{air,assist:save.settings.assist,speed:25}):createFlight(P,pos,yaw,{air,assist:save.settings.assist,level:LEVEL[save.settings.level]??0.35,speed:P.Vref*1.3});
@@ -1451,7 +1456,8 @@ function loop(now){
   }else if(state==='menu'){if(FLARE)FLARE.visible=false;menuCam(T);env.update(cam.position.clone().add(new THREE.Vector3(0,-60,0)),cam,120);audio.update({silent:true});}
   if(traffic&&state!=='load')traffic.update(state==='pause'?0:dt,G&&state!=='menu'?G.F:null,T,env.night,{s:glowU.uScale.value,f:glowU.uFogD.value});
   if(attr&&state!=='load')attr.update(state==='pause'?0:dt,T,cam,env.night,glowU.uScale.value,wx.wind);
-  world.updateTrees(cam.position);
+  if(T-(parkT||0)>0.5){parkT=T;for(const p of PARKED){p.m.visible=!p.gate&&p.m.position.distanceToSquared(cam.position)<81e6;}}
+  world.updateTrees(cam.position);if(orthoUp)orthoUp(cam.position,cam.position.y-S.groundAt(cam.position.x,cam.position.z));
   airports.update(G&&G.cam!==1?G.F.pos:cam.position,T,glowU.uScale.value,glowU.uFogD.value);
   cityU.uI.value=env.night*1.25;cityU.uScale.value=glowU.uScale.value;cityU.uFogD.value=glowU.uFogD.value;
   world.waterTex.offset.x=T*0.006;world.waterTex.offset.y=T*0.004;

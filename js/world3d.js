@@ -5,6 +5,7 @@ import {buildExtras,windowShader} from './gfx.js';
 import {loadRealCity,coverTest,buildRealCity} from './realcity.js';
 import {makeSimplex,fbm,hash2,clamp,sstep,mulberry} from './noise.js';
 import {WORLD,HALF,G,N1,CELL,AIRPORTS,FLATS,TOWNS,ROADS,RIVERS,LAKES,BORDER,toLocal} from './worldgen.js';
+import {ORU,ORTHO_GLSL_HEAD,ORTHO_GLSL_BODY,inOrtho,orthoTree} from './ortho.js';
 
 const tick=()=>new Promise(r=>setTimeout(r,0));
 const SF=makeSimplex(71),SV=makeSimplex(97);
@@ -13,7 +14,7 @@ export async function buildWorld(scene,H,LK,S,Q,progress){
   const W={uWin:{value:0},uSun:{value:new THREE.Vector3(0.3,0.8,0.3)}};
   progress(0.01,'Echte Gebäude von swisstopo werden geladen');await tick();
   let RC=null;try{RC=await loadRealCity();}catch(e){console.warn('Echte Gebäude nicht geladen:',e.message);}
-  const inReal=coverTest(RC);W.inReal=inReal;
+  const inReal=coverTest(RC);W.inReal=inReal;W.inOrtho=inOrtho;
   // ---------- Hilfsgitter ----------
   const SL=new Float32Array(N1*N1),FO=new Float32Array(N1*N1),VA=new Float32Array(N1*N1),TW=new Float32Array(N1*N1);
   for(let j=0;j<N1;j++){const z=-HALF+j*CELL;
@@ -110,11 +111,12 @@ export async function buildWorld(scene,H,LK,S,Q,progress){
   // ---------- Gelände-Mesh ----------
   const tmat=new THREE.MeshStandardMaterial({map:sat,roughness:0.97,metalness:0,envMapIntensity:0.55});
   tmat.onBeforeCompile=sh=>{
-    sh.uniforms.clsMap={value:clsTex};sh.uniforms.uWin=W.uWin;sh.uniforms.uSun=W.uSun;
+    sh.uniforms.clsMap={value:clsTex};sh.uniforms.uWin=W.uWin;sh.uniforms.uSun=W.uSun;Object.assign(sh.uniforms,ORU);
     sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vWP;varying vec3 vWN;')
       .replace('#include <worldpos_vertex>','#include <worldpos_vertex>\nvWP=(modelMatrix*vec4(transformed,1.0)).xyz;vWN=normalize(mat3(modelMatrix)*objectNormal);');
     sh.fragmentShader=sh.fragmentShader.replace('#include <common>',`#include <common>
 uniform sampler2D clsMap;uniform float uWin;uniform vec3 uSun;varying vec3 vWP;varying vec3 vWN;
+${ORTHO_GLSL_HEAD}
 float h21(vec2 p){p=fract(p*vec2(123.34,456.21));p+=dot(p,p+45.32);return fract(p.x*p.y);}
 float vn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.0-2.0*f);return mix(mix(h21(i),h21(i+vec2(1,0)),f.x),mix(h21(i+vec2(0,1)),h21(i+vec2(1,1)),f.x),f.y);}
 float fbm3(vec2 p){return vn(p)*0.62+vn(p*2.7+7.1)*0.38;}
@@ -175,9 +177,10 @@ float dCam=length(vWP-cameraPosition);float near=1.0-smoothstep(500.0,7000.0,dCa
   base=mix(base,base*vec3(0.88,0.96,1.05)*(1.0-0.18*crev*(1.0-smoothstep(500.0,1800.0,dCam))*(1.0-smoothstep(2.0,6.0,mpp))),gl);}
  // Relief betonen: Hänge zur Sonne heller, abgewandte dunkler (stärker im Schnee)
  {float ndl=clamp(dot(normalize(vWN),normalize(uSun)),0.0,1.0)*smoothstep(-0.05,0.25,uSun.y);base*=mix(mix(0.8,0.62,snow),1.04,ndl);}
- diffuseColor.rgb=base;}`)
+ diffuseColor.rgb=base;}
+${ORTHO_GLSL_BODY}`)
     .replace('#include <normal_fragment_maps>',`#include <normal_fragment_maps>
-{float e=1.2;float s=(1.0-smoothstep(300.0,2500.0,dCam))*0.55;if(s>0.01){vec2 p=vWP.xz;float h0=detH(p),hx=detH(p+vec2(e,0.0)),hz=detH(p+vec2(0.0,e));
+{float e=1.2;float s=(1.0-smoothstep(300.0,2500.0,dCam))*0.55*(1.0-oM*0.85);if(s>0.01){vec2 p=vWP.xz;float h0=detH(p),hx=detH(p+vec2(e,0.0)),hz=detH(p+vec2(0.0,e));
  vec3 dW=vec3(-(hx-h0)/e,0.0,-(hz-h0)/e)*6.0;normal=normalize(normal+(viewMatrix*vec4(dW,0.0)).xyz*s);}}
 // Grat- und Rinnenrelief in Fels/Schnee: zerklüftete Berge auch aus der Ferne (nur Schattierung, keine Geometrie)
 {float sl2=1.0-vWN.y;float k=smoothstep(0.1,0.22,sl2)*smoothstep(1100.0,1600.0,vWP.y)*(1.0-smoothstep(14000.0,30000.0,dCam))*(1.0-smoothstep(40.0,120.0,mpp));
@@ -245,7 +248,7 @@ float dCam=length(vWP-cameraPosition);float near=1.0-smoothstep(500.0,7000.0,dCa
   // ---------- Häuser ----------
   progress(0.62,'Städte und Dörfer werden gebaut');await tick();
   const rnd=mulberry(5);const houses=[],towers=[],churches=[];
-  function okSpot(x,z){if(S.isLake(x,z)||S.lakeId(x,z))return false;if(sample(SL,x,z)>0.32)return false;if(airportNear(x,z,200))return false;if(inReal(x,z))return false;return true;}
+  function okSpot(x,z){if(S.isLake(x,z)||S.lakeId(x,z))return false;if(inOrtho(x,z,-200))return false;if(sample(SL,x,z)>0.32)return false;if(airportNear(x,z,200))return false;if(inReal(x,z))return false;return true;}
   for(const Tn of TOWNS){
     const n=Math.round(Tn.r*Tn.r/(Tn.city?1500:2400)*Q.house*(Tn.name==='Zürich'?2.2:Tn.city?1.3:1));const ang=rnd()*Math.PI;
     for(let i=0;i<n;i++){const rr=Math.sqrt(rnd())*Tn.r*1.0,a=rnd()*Math.PI*2,x=Tn.x+Math.cos(a)*rr,z=Tn.z+Math.sin(a)*rr;
@@ -316,7 +319,9 @@ float dCam=length(vWP-cameraPosition);float near=1.0-smoothstep(500.0,7000.0,dCa
     for(let j=j0;j<=j1;j++){
       for(let i=i0;i<=i1;i++){
         const x=(i+hash2(i,j*3+1))*SP,z=(j+hash2(i*5+2,j))*SP;const dx=x-cx,dz=z-cz;if(dx*dx+dz*dz>RAD*RAD||Math.abs(x)>HALF||Math.abs(z)>HALF)continue;
-        const hv=hash2(i+11,j-7);const t=isForest(x,z,(hv-0.5)*0.08);
+        const hv=hash2(i+11,j-7);
+        if(inOrtho(x,z,-150)){const ot=orthoTree(x,z);if(ot){const hz=hash2(i*3-1,j*7+5),kd=ot===2||hv<0.4?0:1;if(out[kd].length<CAP*5)out[kd].push(x,S.heightAt(x,z)-0.3,z,0.8+hz*0.45,hv);}if((i+j)%40===0)yield;continue;}
+        const t=isForest(x,z,(hv-0.5)*0.08);
         if(!t){// offenes Land: Hochstamm-Obstgärten in Reihen, Einzelbäume auf Feldern, Gartenbäume in Dörfern
           if(dx*dx+dz*dz>RAD*RAD*0.55)continue;const hz=hash2(i*3-1,j*7+5);
           const orch=SV(x/480,z/480)>0.56&&SV(x/2600+7,z/2600)>-0.1,lone=hz<0.016,gard=hz<0.16;if(!orch&&!lone&&!gard)continue;

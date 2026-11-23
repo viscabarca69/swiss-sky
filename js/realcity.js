@@ -1,6 +1,7 @@
 // Echte Gebäude aus swissBUILDINGS3D 3.0 (Quelle: swisstopo) für ausgewählte Städte
 // Datei: data/buildings.txt (Base64 einer gzip-Datei, weil der Artifact-Server keine .gz ausliefert) – pro 1-km-Kachel Gebäude-Köpfe, Positions-Deltas (Byte-Ebenen) und Index-Codes
 import * as THREE from 'three';
+import {ORU,ORTHO_GLSL_HEAD} from './ortho.js';
 import {BUILDINGS} from './swissdata.js';
 import {nightU} from './gfx.js';
 
@@ -32,11 +33,12 @@ export function coverTest(RC){
 function cityMaterial(){
   const m=new THREE.MeshStandardMaterial({roughness:0.86,metalness:0.0,side:THREE.DoubleSide,flatShading:true});
   m.onBeforeCompile=sh=>{
-    sh.uniforms.uNight=nightU;
+    sh.uniforms.uNight=nightU;Object.assign(sh.uniforms,ORU);
     sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nattribute vec2 aInfo;varying vec2 vInfo;varying vec3 vWP;')
       .replace('#include <worldpos_vertex>','#include <worldpos_vertex>\nvInfo=aInfo;vWP=(modelMatrix*vec4(transformed,1.0)).xyz;');
     sh.fragmentShader=sh.fragmentShader.replace('#include <common>',`#include <common>
 uniform float uNight;varying vec2 vInfo;varying vec3 vWP;float winLit;float winMask;float farLit;
+${ORTHO_GLSL_HEAD}
 float hh(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}`)
       .replace('#include <map_fragment>',`#include <map_fragment>
 vec3 nW=normalize(cross(dFdx(vWP),dFdy(vWP)));if(dot(nW,cameraPosition-vWP)<0.0)nW=-nW;
@@ -68,7 +70,9 @@ if(abs(nW.y)<0.4){
   if(k>1.5&&k<2.5)c=t<0.5?vec3(0.32,0.52,0.43):vec3(0.30,0.29,0.30);
   if(k>0.5&&k<1.5)c=vec3(0.42,0.43,0.44);
 }
-diffuseColor.rgb*=pow(c,vec3(2.2));`)
+diffuseColor.rgb*=pow(c,vec3(2.2));
+// Dächer im Luftbild-Gebiet: echte Dachfarbe aus dem Luftbild
+if(nW.y>0.4){vec4 o4=orthoAt(vWP.xz);if(o4.a>0.0)diffuseColor.rgb=mix(diffuseColor.rgb,o4.rgb*0.82,o4.a*(nW.y>0.94?0.95:0.85));}`)
       .replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\ntotalEmissiveRadiance+=vec3(1.0,0.74,0.44)*(winLit*1.5+farLit)*uNight;')
       .replace('#include <roughnessmap_fragment>','#include <roughnessmap_fragment>\nroughnessFactor=mix(roughnessFactor,0.15,winMask);');
   };

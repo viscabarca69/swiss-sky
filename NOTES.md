@@ -156,3 +156,10 @@ Morgen-Zusammenfassung an Luis gesendet. Offene Grenzen: Flugschule nur ZS; L-32
 - atc.js: Bussen erst nach 2 Warnungen (~50 s), 7 % Toleranz; Komfort mit geglätteter Vertikalbeschleunigung, lockerere Grenzen, langsame Erholung.
 - Strengelbach in TOWNS (area_ch.js).
 - Tests: /tmp/ap_test.py (PID, JN, SEED, DUR, STEP) – ganze Auftragsflüge mit AP; /tmp/appr_ap.py, /tmp/hdg.py.
+
+## 2026-11-23 – Version 10.4: Luftbilder Zürich-Flughafen + Strengelbach
+- SWISSIMAGE 10 cm (44 Kacheln, von Luis heruntergeladen, Downloads\swissimage) → prep: /home/claude/prep/ortho.py (python3.12 + GDAL + Pillow) → data/ortho/{E}_{N}_h.webp (2048², 0,49 m) und _l.webp (512², 2 m). Gebiete (LV95 km): ZRH E 2682–2686, N 1254–1261; SBG E 2636–2640, N 1235–1239.
+- js/ortho.js: affine Abbildung Spiel(x,z)→LV95 je Gebiet (Fit über LV95→WGS84-Formeln), im Shader relativ zur Gebietsecke. Übersichtsatlas je Gebiet (Canvas), 4 scharfe Kacheln nahe der Kamera (unter 3500 m über Grund). GLSL `orthoAt(xz)` für Gelände (world3d) und Dächer (realcity). `inOrtho` sperrt prozedurale Häuser/Strassen/Flüsse/Kirchtürme; Bäume nur wo das Luftbild Wald zeigt (`orthoTree`, dunkles Grün im 2-m-Bild).
+- Gebäude: sb3d_build.py ohne Flughafen-Ausschluss für LSZH; FINE-Kacheln (Strengelbach/Zofingen) mit ERR×0,35, DIV×0,3, MINA×0,5 → 104 330 Gebäude.
+- airports3d: in Zürich (mit Luftbild) keine prozeduralen Terminals/Vorfelder/Rollwege mehr; ZRH_STANDS (aus dem Luftbild abgelesen, LV95 + Kurs) für geparkte Flugzeuge (addParked mit abs), Flutlichtmasten. Geparkte Flugzeuge > 9 km ausgeblendet.
+- build_offline.mjs bettet data/ortho als Data-URLs ein (ORTHO_DATA). Aufruf aus /home/claude/buildtools (Schriften).

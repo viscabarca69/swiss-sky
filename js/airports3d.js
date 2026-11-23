@@ -1,5 +1,7 @@
 // Flughäfen: Pisten mit Markierungen, Rollwege, Gebäude, Befeuerung, PAPI
 import * as THREE from 'three';
+import {inOrtho,lv95ToXZ} from './ortho.js';
+const ZRH_STANDS=[["l380",2683861.8,1257401.9,156],["l350",2683939.9,1257401.9,186],["l340",2684013.2,1257399.4,186],["l747",2684096.2,1257394.5,186],["l350",2684164.6,1257389.6,186],["l330",2684242.7,1257382.3,186],["l350",2684313.5,1257375.0,186],["l340",2684384.3,1257372.6,186],["l340",2683981.4,1257250.5,6],["l330",2684052.2,1257243.2,6],["l350",2684123.0,1257238.3,6],["l330",2684198.7,1257231.0,6],["l350",2684269.5,1257223.6,6],["l747",2684352.5,1257216.3,6],["l330",2684425.8,1257216.3,6],["l320",2684336.6,1256292.0,184.5],["l32n",2684377.6,1256285.5,184.5],["l320",2684419.9,1256279.0,184.5],["l32n",2684518.9,1256272.5,184.5],["l320",2684559.9,1256262.7,184.5],["l32n",2684296.2,1256458.0,4.5],["l320",2684337.2,1256458.0,4.5],["l32n",2684377.6,1256448.2,4.5],["l320",2684418.6,1256441.7,4.5],["l32n",2684459.0,1256454.8,4.5],["l320",2684518.9,1256435.2,4.5],["l330",2684462.2,1256103.2,4.5]];
 import {bakeStatic} from './bake.js';
 import {AIRPORTS,fromLocal} from './worldgen.js';
 import {mulberry} from './noise.js';
@@ -95,7 +97,8 @@ export function buildAirports(scene,S,addParked){
     rw.receiveShadow=true;place(A,rw,0,0,A.elev+0.06);scene.add(rw);
     const sh=new THREE.Mesh(new THREE.PlaneGeometry(A.w+(A.small?6:16),A.len+(A.small?20:80)).rotateX(-Math.PI/2),asph);sh.receiveShadow=true;place(A,sh,0,0,A.elev+0.03);scene.add(sh);
     const s=A.side;const zrh=A.icao==='LSZH';
-    const tx=A.id==='ZRH16'?190:zrh?0:A.small?0:85,tw=zrh?25:16;
+    const zO=zrh&&inOrtho(A.x,A.z);// Zürich mit Luftbild: Rollwege, Vorfeld und Gebäude sind echt (Luftbild + swisstopo-Gebäude)
+    const tx=zO?0:A.id==='ZRH16'?190:zrh?0:A.small?0:85,tw=zrh?25:16;
     if(tx){
       flat(A,0,s*(A.w/2+tx),tw,A.len*0.92,asph2);
       const cons=zrh?[-A.len*0.45,-A.len*0.22,A.len*0.05,A.len*0.3,A.len*0.45]:[-A.len*0.45,0,A.len*0.45];
@@ -103,7 +106,14 @@ export function buildAirports(scene,S,addParked){
         for(let k=0;k<tx;k+=30){L(fromLocal(A,al+tw/2+1,s*(A.w/2+k)),A.elev+0.3,[0.2,0.35,1],1.6);L(fromLocal(A,al-tw/2-1,s*(A.w/2+k)),A.elev+0.3,[0.2,0.35,1],1.6);}}
       for(let al=-A.len*0.46;al<A.len*0.46;al+=60)for(const q of [-1,1])L(fromLocal(A,al,s*(A.w/2+tx)+q*(tw/2+1)),A.elev+0.3,[0.2,0.35,1],1.6);
     }
-    if(A.id==='ZRH16'){
+    if(A.id==='ZRH16'&&zO){
+      // Flugzeuge an den echten Standplätzen (aus dem Luftbild abgelesen): Dock E (Grossraum), Dock A/B (L-320)
+      if(addParked)for(const [id,E,N,h] of ZRH_STANDS){const p=lv95ToXZ(E,N);addParked(id,A,0,0,0,0,{x:p.x,z:p.z,h});}
+      // Vorfeld-Flutlicht an den Docks
+      for(const [e0,e1,n] of [[2683800,2684460,1257470],[2683930,2684470,1257150],[2684270,2684600,1256215],[2684270,2684570,1256525]])
+        for(let e=e0;e<=e1;e+=90){const p=lv95ToXZ(e,n),gy=S.heightAt(p.x,p.z);const ms=new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.6,28,8),metal);ms.position.set(p.x,gy+14,p.z);ms.castShadow=true;scene.add(ms);
+          for(const o of [-1.4,0,1.4])L({x:p.x+o,z:p.z},gy+28,[1,0.92,0.75],6);}
+    }else if(A.id==='ZRH16'){
       const SX=s;const NOSE=740,FACE=792;
       flat(A,1300,s*620,440,960,apronMat(A));flat(A,1300,s*(A.w/2+tx/2+205),tx+30,40,asph2,0.045);
       // Terminal mit Glasfassade

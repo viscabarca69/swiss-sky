@@ -41,15 +41,15 @@ export function buildExtras(scene,S,Q,W,airportNear){
   // ---------- Strassen & Flüsse ----------
   const rt=roadTex();
   const rm=new THREE.MeshStandardMaterial({map:rt,roughness:0.85,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4});
-  const road=new THREE.Mesh(ribbon(ROADS,S,R=>R.w>2?22:12,0.8,(x,z)=>S.isLake(x,z)||!!airportNear(x,z,0)),rm);road.receiveShadow=true;scene.add(road);
+  const road=new THREE.Mesh(ribbon(ROADS,S,R=>R.w>2?22:12,0.8,(x,z)=>S.isLake(x,z)||!!airportNear(x,z,0)||(W.inOrtho&&W.inOrtho(x,z,-60))),rm);road.receiveShadow=true;scene.add(road);
   const rvm=new THREE.MeshStandardMaterial({color:0x1d4148,roughness:0.12,metalness:0.1,envMapIntensity:1.0,normalMap:W.waterTex,normalScale:new THREE.Vector2(0.25,0.25),polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3});
-  const river=new THREE.Mesh(ribbon(RIVERS,S,R=>Math.max(18,R.w),0.5,(x,z)=>S.isLake(x,z)),rvm);scene.add(river);
+  const river=new THREE.Mesh(ribbon(RIVERS,S,R=>Math.max(18,R.w),0.5,(x,z)=>S.isLake(x,z)||(W.inOrtho&&W.inOrtho(x,z,-60))),rvm);scene.add(river);
 
   // ---------- Kirchtürme ----------
   const rnd=mulberry(77);const spots=[];
   for(const T of TOWNS){const n=T.city?(T.name==='Zürich'?6:3):1;
     for(let k=0;k<n;k++){for(let tr=0;tr<12;tr++){const a=rnd()*6.28,r=(k===0?0.05:0.35)*T.r*rnd(),x=T.x+Math.cos(a)*r,z=T.z+Math.sin(a)*r;
-      if(S.isLake(x,z)||S.lakeId(x,z)||S.slopeAt(x,z)>0.25||airportNear(x,z,150)||(W.inReal&&W.inReal(x,z)))continue;spots.push({x,z,h:24+rnd()*22+(T.city?10:0),a:rnd()*3});break;}}}
+      if(S.isLake(x,z)||S.lakeId(x,z)||S.slopeAt(x,z)>0.25||airportNear(x,z,150)||(W.inReal&&W.inReal(x,z))||(W.inOrtho&&W.inOrtho(x,z,-100)))continue;spots.push({x,z,h:24+rnd()*22+(T.city?10:0),a:rnd()*3});break;}}}
   {const shaft=new THREE.BoxGeometry(1,1,1).translate(0,0.5,0);const spire=new THREE.ConeGeometry(0.75,1,4).rotateY(Math.PI/4).translate(0,0.5,0);
     const nave=new THREE.BoxGeometry(1,1,1).translate(0,0.5,0);
     const sm=new THREE.InstancedMesh(shaft,new THREE.MeshStandardMaterial({color:0xece6d8,roughness:0.9}),spots.length*2);
