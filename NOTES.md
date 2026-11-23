@@ -178,3 +178,4 @@ Morgen-Zusammenfassung an Luis gesendet. Offene Grenzen: Flugschule nur ZS; L-32
 - Nachtrag 11 (nach Fotos von Luis): NOSE.a380 und NOSE.b747 aus Seitenfotos vermessen (Spitze A380 −0.35H, 747 +0.11H); 747-Buckel top 0.48 mit gemessener Stirnkurve (Hm.pts, monotone Spline), Front schmal+kastig (sxF);
   paneLayout: A380 Scheiben 0.16–0.285H, 747 1.04–1.25R, A350 0.29–0.55H; A350-Maske schmaler.
 - Nachtrag 11b: Nasen spitzer (a380/b747/a350-Tabellen schmaler, A380 nose 0.2), A320/330/340-Scheiben höher (0.36–0.64H); paneLayout neu (A-Pfosten ≤ 1.3·Höhe, Seitenscheiben nur leicht geneigt), A350-Maske als Rand im Scheibenbild (MASKF aus).
+- 11c: L-380 Standardlackierung 'bauch' (Navy-Bauch mit scharfer, geschwungener Vorderkante, B.sw), LUIS-Weiss kühler (#f3f5f8).

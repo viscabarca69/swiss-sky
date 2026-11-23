@@ -188,7 +188,11 @@ function livery(L,R,cfg){
     const pa=w/L,pr=h/(2*Math.PI*R);
     x.fillStyle=cfg.base;x.fillRect(0,0,w,h);
     if(cfg.belly){const B=typeof cfg.belly==='string'?{col:cfg.belly,w:cfg.bellyW}:cfg.belly,x0=(B.x0||0)*w,fd=B.x0?0.05*w:0;
-      const gr=x.createLinearGradient(x0,0,x0+fd+1,0);gr.addColorStop(0,hexA(B.col,0));gr.addColorStop(1,hexA(B.col,1));x.fillStyle=B.x0?gr:B.col;x.fillRect(x0,h*0.5-h*B.w,w-x0,h*B.w*2);}
+      if(B.sw){// Bauch mit scharfer, nach hinten oben gezogener Vorderkante (kein verwaschener Übergang)
+        const sl=B.sw*w,yU=h*0.5-h*B.w,yD=h*0.5+h*B.w;x.fillStyle=B.col;x.beginPath();x.moveTo(x0,h*0.5);
+        for(let i=1;i<=16;i++){const u=i/16;x.lineTo(x0+sl*Math.pow(u,0.6),h*0.5-(h*0.5-yU)*u);}x.lineTo(w,yU);x.lineTo(w,yD);
+        for(let i=16;i>=1;i--){const u=i/16;x.lineTo(x0+sl*Math.pow(u,0.6),h*0.5+(yD-h*0.5)*u);}x.closePath();x.fill();}
+      else{const gr=x.createLinearGradient(x0,0,x0+fd+1,0);gr.addColorStop(0,hexA(B.col,0));gr.addColorStop(1,hexA(B.col,1));x.fillStyle=B.x0?gr:B.col;x.fillRect(x0,h*0.5-h*B.w,w-x0,h*B.w*2);}}
     // Swoosh-Flächen: Ober-/Unterkante a(t)=a0+(a1-a0)*s^pw
     for(const S of cfg.sweeps||[]){x.fillStyle=S.col;for(const sd of [1,-1]){x.beginPath();const N=48,Y=a=>sd>0?h*a:h*(1-a),f=(e,u)=>e[0]+(e[1]-e[0])*Math.pow(u,S.pw);
       for(let i=0;i<=N;i++){const u=i/N;x.lineTo((S.t0+(S.t1-S.t0)*u)*w,Y(f(S.top,u)));}for(let i=N;i>=0;i--){const u=i/N;x.lineTo((S.t0+(S.t1-S.t0)*u)*w,Y(f(S.bot,u)));}x.closePath();x.fill();}}
@@ -233,11 +237,11 @@ const MASKF={};
 export const LIV_TPL=[['clean','Clean'],['klassisch','Klassisch'],['retro','Retro'],['bauch','Farbbauch'],['voll','Vollfarbe'],['swoosh','Swoosh'],['schweiz','Schweizerkreuz']];
 export const LIV_COL=['#0b2545','#1d3a7a','#1d4ed8','#38a3e8','#0f766e','#1f8a5b','#0f4d36','#d7263d','#9b1c2c','#f26b1d','#e8b330','#6d28d9','#d9467a','#15171b','#8a939e'];
 export const LIV_BASE=[['#f8f8f7','Weiss'],['#dfe3e8','Perlgrau'],['#efe6d2','Creme'],['#2a2e35','Anthrazit']];
-const LUISL={tpl:'clean',c1:'#0b2545',c2:'#d7263d',base:'#f8f8f7',name:'LUIS AIRLINES'};
+const LUISL={tpl:'clean',c1:'#0b2545',c2:'#d7263d',base:'#f3f5f8',name:'LUIS AIRLINES'};
 export const LIV_DEF={alpina:{tpl:'klassisch',c1:'#1d3a7a',c2:'#c8202f',base:'#f8f8f7',name:''},saentis:{...LUISL,name:''},titlis:{...LUISL},foehn:{tpl:'klassisch',c1:'#0f4d36',c2:'#1f8a5b',base:'#f8f8f7',name:'FÖHN AIR'},
   feuer:{tpl:'bauch',c1:'#e8b330',c2:'#d7263d',base:'#f8f8f7',name:'LUIS FEUERWEHR'},segler:{tpl:'klassisch',c1:'#d7263d',c2:'#0b2545',base:'#f8f8f7',name:''},
   rega:{tpl:'bauch',c1:'#e30613',c2:'#e30613',base:'#f8f8f7',name:'REGA'},
-  l320:{...LUISL},l32n:{...LUISL},l330:{...LUISL},l340:{...LUISL},l350:{...LUISL},l747:{...LUISL},l380:{...LUISL}};
+  l320:{...LUISL},l32n:{...LUISL},l330:{...LUISL},l340:{...LUISL},l350:{...LUISL},l747:{...LUISL},l380:{...LUISL,tpl:'bauch',base:'#f3f5f8'}};
 export const livSpec=(id,c)=>({...(LIV_DEF[id]||LUISL),...(c||{})});
 function lum(c){const n=parseInt(c.slice(1),16),f=v=>{v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4);};return 0.2126*f(n>>16&255)+0.7152*f(n>>8&255)+0.0722*f(n&255);}
 const cRatio=(a,b)=>{const A=lum(a),B=lum(b);return(Math.max(A,B)+0.05)/(Math.min(A,B)+0.05);};
@@ -249,7 +253,7 @@ function paint(G,S){const {c1,c2}=S,base=S.base||'#f8f8f7',am=m=>m/(2*Math.PI*G.
   const S1=(a,th,col,o)=>({a,th,col,x0:st.x0,x1:st.x1,tip:G.tip||0,...o});
   switch(S.tpl){
     case 'retro':stripes=[S1(G.a0,G.wb,c1),S1(G.a0+am(G.wb*0.68),G.wb*0.16,c2)];fin='solid';break;
-    case 'bauch':{const sa=G.a0+am(G.wb*0.8);belly={col:c1,w:0.5-sa,x0:G.belly&&G.belly.x0};stripes=[S1(sa,G.wb*0.18,c2)];break;}
+    case 'bauch':{const sa=G.a0+am(G.wb*0.8);belly={col:c1,w:0.5-sa,x0:G.belly&&G.belly.x0?Math.max(0.03,G.belly.x0*0.5):0.03,sw:0.12};stripes=[S1(sa,G.wb*0.18,c2)];break;}
     case 'voll':cfg.base=c1;belly={col:base,w:G.belly?Math.max(0.08,G.belly.w):0.08,x0:G.belly&&G.belly.x0};stripes=[S1(st.a,st.t2*1.5,c2)];nameC=onCol(base,c1);subC=onCol(c2,c1);regC=onCol(base,c1);fin='solid';break;
     case 'swoosh':{const t0=G.swT||0.36;cfg.sweeps=[{t0,t1:1,top:[0.5,0.03],bot:[0.5,0.5],pw:1.7,col:c1},{t0,t1:1,top:[0.47,0.0],bot:[0.488,0.018],pw:1.7,col:c2}];stripes=[];regC=onCol(base,c1);fin='swoosh';break;}
     case 'schweiz':stripes=[S1(st.a,st.t2*1.6,c1)];subC=nameC;fin='cross';break;
