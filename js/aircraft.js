@@ -89,15 +89,31 @@ function loft(secs,loop){
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(idx);g.computeVertexNormals();return g;
 }
 const WEDGE=[[1,0],[0.5,0.5],[0,1],[0,0.6],[0,-0.6],[0,-1],[0.5,-0.5],[1,0]].map(([x,y])=>[x,y*0.5]);
+// Flügelprofil geteilt in Hauptflügel (mit Abdeckung über der Klappennase) und Klappe (Rest desselben Profils mit runder Nase):
+// eingefahren ergibt beides wieder genau ein Profil, ausgefahren gleitet die Klappe unter der Abdeckung nach hinten
+const afU=x=>{const yt=5*(0.2969*Math.sqrt(x)-0.126*x-0.3516*x*x+0.2843*x*x*x-0.1036*x*x*x*x);return yt+0.02*Math.sin(Math.PI*x);};
+const afL=x=>{const yt=5*(0.2969*Math.sqrt(x)-0.126*x-0.3516*x*x+0.2843*x*x*x-0.1036*x*x*x*x);return -yt+0.02*Math.sin(Math.PI*x);};
+const SPLIT={};
+function splitLoops(fc){const k=fc.toFixed(3);if(SPLIT[k])return SPLIT[k];const n=22,cove=0.07,x0=fc-0.045;
+  const main=[];for(let i=0;i<=n;i++){const b=i/n,x=fc*(1-Math.cos(b*Math.PI/2));main.push([x,afU(x)]);}main.reverse();
+  for(let i=1;i<=n;i++){const b=i/n,x=(fc-cove)*(1-Math.cos(b*Math.PI/2));main.push([x,afL(x)]);}
+  {const xa=fc-cove,ya=afL(xa),yb=afU(fc)*0.55;for(let i=1;i<=6;i++){const u=i/6,x=xa+(fc-xa)*u,y=ya+(yb-ya)*Math.sin(u*Math.PI/2);main.push([x,y]);}}
+  main.push([...main[0]]);
+  // Klappe: x0..1, runde Nase unter der Abdeckung
+  const fl=[],cw=1-x0,m=14,yc=(afU(x0+0.02)*0.9+afL(x0+0.02))/2,rr=(afU(x0+0.02)*0.9-afL(x0+0.02))/2;
+  for(let i=m;i>=0;i--){const b=i/m,x=x0+0.02+(1-x0-0.02)*(1-Math.cos(b*Math.PI/2))**1;fl.push([(x-x0)/cw,afU(x)*0.9]);}
+  for(let i=1;i<10;i++){const a=Math.PI/2+Math.PI*i/10;fl.push([(0.02+Math.cos(a)*0.02)/cw,yc+Math.sin(a)*rr]);}
+  for(let i=0;i<=m;i++){const b=i/m,x=x0+0.02+(1-x0-0.02)*(1-Math.cos(b*Math.PI/2));fl.push([(x-x0)/cw,afL(x)]);}
+  return SPLIT[k]={main,flap:fl,x0};}
 function mirror(g){const m=g.clone();m.scale(-1,1,1);const i=m.index.array;for(let k=0;k<i.length;k+=3){const t=i[k];i[k]=i[k+1];i[k+1]=t;}m.index.needsUpdate=true;m.computeVertexNormals();return m;}
 // Ruderfläche zwischen zwei Scharnierpunkten (A,B), Sehnen cA,cB, Dicke tA,tB
-function surface(A,B,cA,cB,th,mat,parent){
+function surface(A,B,cA,cB,th,mat,parent,prof){
   const ax=B.clone().sub(A),len=ax.length();ax.normalize();
   const h=new THREE.Group();h.position.copy(A);
   // Achsen ohne Verdrehung: x = Scharnier, z = Sehne (nach hinten), y = Dicke
   const zA=new THREE.Vector3(0,0,1).addScaledVector(ax,-ax.z).normalize(),yA=new THREE.Vector3().crossVectors(zA,ax);
   h.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(ax,yA,zA));
-  const g=loft([{x:0,y:0,z:0,c:cA,t:th/Math.max(cA,0.01)},{x:len,y:0,z:0,c:cB,t:th/Math.max(cB,0.01)}],WEDGE);
+  const g=loft([{x:0,y:0,z:0,c:cA,t:th/Math.max(cA,0.01)},{x:len,y:0,z:0,c:cB,t:(prof&&prof.th1!=null?prof.th1:th)/Math.max(cB,0.01)}],prof?prof.loop:WEDGE);
   const m=new THREE.Mesh(g,mat);m.castShadow=true;m.userData.ext=(cA+cB)/2*0.32;h.add(m);parent.add(h);return m;
 }
 // Flügel (rechte Hälfte) mit Ruderflächen
@@ -105,15 +121,15 @@ function wing(o,mat,smat,parent,parts,name){
   const {x0,span,root,tip,sweep,dih,y0,z0,tr,tt,split}=o;const tanD=Math.tan(dih);
   if(smat===mat&&mat.userData&&mat.userData.col!=null)smat=surfMat(mat);
   const sec=s=>{const x=x0+s*span;return{x,y:y0+(x-x0)*tanD,z:z0+s*sweep,c:root+(tip-root)*s,t:tr+(tt-tr)*s};};
-  const fc=split||0.72;
-  const main=loft([0,0.5,1].map(s=>({...sec(s),cf:fc})));
+  const fc=split||0.72,SP=splitLoops(fc);
+  const main=loft([0,0.5,1].map(s=>({...sec(s),cf:1})),SP.main);
   const R=new THREE.Mesh(main,mat),Lm=new THREE.Mesh(mirror(main),mat);R.castShadow=Lm.castShadow=true;parent.add(R,Lm);
-  const hp=s=>{const q=sec(s);return new THREE.Vector3(q.x,q.y,q.z+q.c*fc);};
-  const rc=s=>sec(s).c*(1-fc),th=s=>sec(s).t*sec(s).c*0.55;
+  const hp=s=>{const q=sec(s);return new THREE.Vector3(q.x,q.y,q.z+q.c*SP.x0);};
+  const rc=s=>sec(s).c*(1-SP.x0),th=s=>sec(s).t*sec(s).c;
   const mk=(s0,s1,key)=>{
-    const r=surface(hp(s0),hp(s1),rc(s0),rc(s1),th(s0),smat,parent);
+    const r=surface(hp(s0),hp(s1),rc(s0),rc(s1),th(s0),smat,parent,{loop:SP.flap,th1:th(s1)});
     const a=hp(s1).multiply(new THREE.Vector3(-1,1,1)),b=hp(s0).multiply(new THREE.Vector3(-1,1,1));
-    const l=surface(a,b,rc(s1),rc(s0),th(s1),smat,parent);
+    const l=surface(a,b,rc(s1),rc(s0),th(s1),smat,parent,{loop:SP.flap.map(([x,y])=>[x,y]),th1:th(s0)});
     if(key){parts[key+'R']=r;parts[key+'L']=l;}
   };
   for(const [s0,s1,key] of (o.surfaces||[[0,1,null]]))mk(s0,s1,key);
@@ -331,7 +347,7 @@ function halfW(PR,t,y){const r=lerpProf(PR,t,'r'),sx=lerpProf(PR,t,'sx'),yo=yOff
 function uAtWidth(PR,L,x,y,t0,t1){let a=t0,b=t1;if(halfW(PR,b,y)<x)return b*L;for(let k=0;k<40;k++){const m=(a+b)/2;if(halfW(PR,m,y)<x)a=m;else b=m;}return (a+b)/2*L;}
 // Scheiben-Layout: Airbus (Unterkante waagrecht, hintere Seitenscheibe mit stark abfallender Oberkante) oder Boeing 747 (auf dem Oberdeck)
 function paneLayout(C,PR,L,R,H){const k=1+(R/1.98-1)*0.3,nz=C.nose,F=[],S=[];
-  if(C.hump){const yb=R*1.0,yt=R*1.32,xo=0.74,xt=0.62,pst=0.05*k;
+  if(C.hump){const yb=R*1.12,yt=R*1.44,xo=0.78,xt=0.64,pst=0.05*k;
     F.push([[pst,yb],[pst,yt],[xt,yt-0.03*k],[xo,yb+0.02*k]]);
     const uB=uAtWidth(PR,L,xo,yb+0.02*k,0.02,0.2),uT=uAtWidth(PR,L,xt,yt-0.03*k,0.02,0.2),g=0.1*k;
     S.push([[uB+g,yb+0.02*k],[uT+g,yt-0.03*k],[uT+g+0.66*k,yt-0.05*k],[uB+g+0.66*k,yb+0.06*k]]);
@@ -427,11 +443,11 @@ export const AIRLINER={
     wing:{x0:2.8,span:29.6,root:12.5,tip:2.6,sweep:18.4,dih:6,y0:-1.9,z0:-6.5,tr:0.13,tt:0.1},winglet:'curved',
     eng:[{x:10.3,len:7.6,r:1.75,k:1.0,fwd:0.62}],fin:{z:23.6,root:11,tip:4.3,h:10.5,sweep:8.4,y:2.6},stab:{x0:1.2,span:9.6,root:6.5,tip:2.4,sweep:6.5,dih:5,y:1.4,z:27.0},
     main:[{x:5.6,z:2.0,ax:3}],ng:-29.2,eye:[-0.55,1.12,-32.3],cg:3.4,winX:[0.1,0.88],doors:[0.097,0.282,0.532,0.792],skip:[[0.085,0.11],[0.27,0.295],[0.52,0.545],[0.78,0.805]],mask:1},
-  l747:{L:70.6,R:3.25,sy:1.08,nose:0.095,tail:0.74,up:1,reg:'HB-LGA',
+  l747:{L:70.6,R:3.25,sy:1.14,nose:0.12,tail:0.74,up:1,reg:'HB-LGA',
     wing:{x0:3.0,span:29.2,root:14.5,tip:4.0,sweep:22.5,dih:7,y0:-2.1,z0:-9.2,tr:0.13,tt:0.09},winglet:'canted',
     eng:[{x:11.8,len:6.0,r:1.42},{x:21.0,len:5.8,r:1.38}],fin:{z:22.0,root:12.5,tip:4.6,h:11.2,sweep:10,y:2.9},stab:{x0:1.3,span:10.4,root:7.6,tip:2.6,sweep:8.4,dih:7,y:1.1,z:26.0},
-    main:[{x:5.9,z:1.6,ax:2},{x:1.95,z:4.6,ax:2}],ng:-26.6,eye:[-0.55,3.75,-29.4],cg:3.6,winX:[0.1,0.9],doors:[0.105,0.25,0.43,0.62,0.84],skip:[[0.095,0.118],[0.24,0.262],[0.42,0.442],[0.61,0.632],[0.83,0.852]],
-    hump:{top:0.6,tb:0.135,tc:0.31,td:0.43}},
+    main:[{x:5.9,z:1.6,ax:2},{x:1.95,z:4.6,ax:2}],ng:-26.6,eye:[-0.55,4.1,-28.2],cg:3.6,winX:[0.1,0.9],doors:[0.105,0.25,0.43,0.62,0.84],skip:[[0.095,0.118],[0.24,0.262],[0.42,0.442],[0.61,0.632],[0.83,0.852]],
+    hump:{top:0.72,tb:0.16,tc:0.32,td:0.45}},
   l380:{L:72.7,R:3.57,sy:1.2,nose:0.17,tail:0.72,up:0.8,reg:'HB-LEA',deck2:1,
     wing:{x0:3.4,span:36.4,root:17.5,tip:4.0,sweep:24.5,dih:5.6,y0:-2.6,z0:-9.8,tr:0.14,tt:0.1},winglet:'fence',
     eng:[{x:14.7,len:7.0,r:1.6},{x:25.6,len:6.6,r:1.5}],fin:{z:21.5,root:14,tip:5.5,h:13.5,sweep:10.5,y:3.6},stab:{x0:1.8,span:13.2,root:9,tip:3,sweep:8.5,dih:5,y:1.3,z:25.2},
@@ -480,8 +496,11 @@ function buildAirliner(C,body,parts,root,P){
   wing({...W,dih:D,surfaces:[[0.0,0.56,'flap'],[0.6,0.9,'ail'],[0.9,1,null]]},wm,wm,body,parts);
   const yW=x=>W.y0+(x-W.x0)*Math.tan(D),zLE=x=>W.z0+(x-W.x0)/W.span*W.sweep,cW=x=>W.root+(W.tip-W.root)*(x-W.x0)/W.span;
   // Klappenschienen-Verkleidungen (Kanus): hängen an den Klappen und kippen mit ihnen nach unten
-  {const ftG=new THREE.SphereGeometry(1,14,10).scale(0.13*R,0.16*R,0.5).translate(0,-0.05*R,0.5);body.updateMatrixWorld(true);
-   for(const s of [0.2,0.36,0.52]){const x=W.x0+s*W.span,c=cW(x);for(const sg of [1,-1]){const m=new THREE.Mesh(ftG,surfMat(wm));m.scale.set(1,1,c*0.62);m.position.set(sg*x,yW(x)-0.12*R,zLE(x)+c*0.56);m.castShadow=true;body.add(m);
+  {const kk=Math.min(R,2.6),ftG=new THREE.SphereGeometry(1,14,10).scale(0.065*kk,0.085*kk,0.5).translate(0,-0.03*kk,0.5);body.updateMatrixWorld(true);
+   for(const s of [0.2,0.36,0.52]){const x=W.x0+s*W.span,c=cW(x),t=W.tr+(W.tt-W.tr)*s,yb=yW(x)-t*c*0.32;for(const sg of [1,-1]){
+     // vorderer Teil fest am Flügel, hinterer Teil hängt an der Klappe und kippt mit
+     const f=new THREE.Mesh(ftG,surfMat(wm));f.scale.set(1,1,c*0.34);f.position.set(sg*x,yb,zLE(x)+c*0.5);f.castShadow=true;body.add(f);
+     const m=new THREE.Mesh(ftG,surfMat(wm));m.scale.set(1,1,c*0.42);m.position.set(sg*x,yb,zLE(x)+c*0.74);m.castShadow=true;body.add(m);
      const fl=sg>0?parts.flapR:parts.flapL;if(fl){body.updateMatrixWorld(true);fl.attach(m);}}}}
   const tipx=W.x0+W.span,tipy=yW(tipx),tipz=zLE(tipx);
   const wlm=solidMat(FS[1],0.35);

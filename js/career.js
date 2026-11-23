@@ -4,7 +4,7 @@ const BO=AREA_ID==='bo',CH=AREA_ID==='ch';
 
 export const PRICE={alpina:0,saentis:25000,segler:40000,titlis:60000,foehn:120000,feuer:180000,rega:450000,l320:300000,l330:500000,l340:650000,l350:700000,l380:1000000,l32n:380000,l747:850000};
 const BASEPAY={alpina:1500,saentis:2500,titlis:4000,foehn:8000,feuer:7000,l320:18000,l330:28000,l340:32000,l350:38000,l380:55000,l32n:19500,l747:46000};
-const MINRWY={alpina:0,saentis:0,titlis:650,foehn:1100,feuer:900,l320:BO||CH?1700:2000,l330:2400};
+const MINRWY={alpina:0,saentis:0,titlis:650,foehn:1100,feuer:900,l320:BO||CH?1700:2000,l32n:BO||CH?1700:2000,l330:2400};
 // Linienflugzeuge nur auf echten Linienflughäfen
 const ONLY={};
 export const NOJOB=['segler','rega'];
@@ -179,22 +179,22 @@ export const specObj=spec=>H=>spec.flatMap(o=>o.k==='F'?H.F(...o.a):[o.k==='P'?{
 
 // ---------- Aufträge ----------
 const CARGO=['Ersatzteile','Post','Medikamente','Uhren','Schokolade','Blumen','Zeitungen','Käse'];
-function makeJob(n,plane,S,r,owned){
-  const icaos=Object.keys(APT).filter(i=>canUse(plane,i));
+function makeJob(n,plane,S,r,owned,FROM){const PK=plane==='l32n'?'l320':plane;
+  const icaos=Object.keys(APT).filter(i=>canUse(plane,i));if(FROM&&!WIDE.includes(plane)&&!icaos.includes(FROM))return null;
   for(let tries=0;tries<14;tries++){
     let kind,from,to;
-    if(WIDE.includes(plane)){if(!APT.LSZH)return null;kind=r()<0.55?'arr':'dep';from=to='LSZH';}
-    else if((plane==='alpina'||plane==='saentis')&&r()<0.35){kind='rund';from=to=pick(r,icaos);}
-    else{if(icaos.length<2)continue;from=pick(r,icaos);
+    if(WIDE.includes(plane)){if(!APT.LSZH||(FROM&&FROM!=='LSZH'))return null;kind=FROM?'dep':r()<0.55?'arr':'dep';from=to='LSZH';}
+    else if((plane==='alpina'||plane==='saentis')&&r()<0.35){kind='rund';from=to=FROM||pick(r,icaos);}
+    else{if(icaos.length<2)continue;from=FROM||pick(r,icaos);
       // grosse Karte: kurze Hüpfer oder Langstrecke quer durch die Schweiz
-      let pool=icaos.filter(i=>i!==from);if(CH){const far=plane==='l320'||plane==='l330'||(['titlis','foehn'].includes(plane)&&r()<0.5),d=i=>apDist(from,i);
+      let pool=icaos.filter(i=>i!==from);if(CH){const far=PK==='l320'||PK==='l330'||(['titlis','foehn'].includes(PK)&&r()<0.5),d=i=>apDist(from,i);
         const f=pool.filter(i=>far?d(i)>55000:d(i)<(plane==='alpina'||plane==='saentis'?38000:50000));if(f.length)pool=f;else if(!far)continue;}
       to=pick(r,pool);kind='flug';}
-    const R=planRoute(kind,from,to,plane,S,r);if(!R||R.km>((CH?{alpina:48,saentis:55,titlis:200,foehn:230,feuer:70,l320:290,l330:300}:{alpina:26,saentis:28,titlis:34,foehn:42,feuer:40,l320:60})[plane]||99))continue;
+    const R=planRoute(kind,from,to,plane,S,r);if(!R||R.km>((CH?{alpina:48,saentis:55,titlis:200,foehn:230,feuer:70,l320:290,l330:300}:{alpina:26,saentis:28,titlis:34,foehn:42,feuer:40,l320:60})[PK]||99))continue;
     const cargo=kind==='flug'&&r()<0.4,P=BASEPAY[plane],km=R.km,df=kind==='arr'||kind==='dep'?1:CH?Math.min(5,Math.max(0.8,0.7+km/30)):Math.min(2.2,Math.max(0.8,0.7+km/25)),lng=kind==='flug'&&km>=70;
     const pay=Math.round(P*df*(cargo?1.1:1)/50)*50,fn=n%900+100,hour=pick(r,[8.5,10,11.5,13,14.5,16,17.5,19.8,21.5]),weather=hour>21||hour<7?'clear':pick(r,['clear','fair','fair','cloudy']);
     const T=APT[from].name,D=APT[to].name,city=pick(r,FAR),gd=pick(r,CARGO);
-    const title=kind==='arr'?`Ankunft LUIS ${fn} aus ${city}`:kind==='dep'?`Abflug LUIS ${fn} nach ${city}`:kind==='rund'?`Rundflug ab ${T}`:cargo?`Fracht: ${gd} nach ${D}`:(lng?'Langstrecke: ':'')+(plane==='l320'||plane==='l330'?`Linienflug LUIS ${fn} · ${T} → ${D}`:plane==='foehn'?`Regionalflug ${T} → ${D}`:`Lufttaxi ${T} → ${D}`);
+    const title=kind==='arr'?`Ankunft LUIS ${fn} aus ${city}`:kind==='dep'?`Abflug LUIS ${fn} nach ${city}`:kind==='rund'?`Rundflug ab ${T}`:cargo?`Fracht: ${gd} nach ${D}`:(lng?'Langstrecke: ':'')+(PK==='l320'||PK==='l330'?`Linienflug LUIS ${fn} · ${T} → ${D}`:plane==='foehn'?`Regionalflug ${T} → ${D}`:`Lufttaxi ${T} → ${D}`);
     const sights=R.spec.filter(o=>o.name).map(o=>o.name);
     const brief=kind==='arr'?`Langstreckenflug aus ${city}: Du übernimmst im Anflug auf Zürich. Folge den blauen Ringen zum Gleitpfad und lande sanft – die Passagiere sind müde.`
       :kind==='dep'?`Start in Zürich mit vollen Tanks nach ${city}. Steig ruhig durch die Ringe bis zur Übergabe an die Flugsicherung.`
@@ -203,6 +203,10 @@ function makeJob(n,plane,S,r,owned){
     return{n,plane,kind,from,to,long:lng,title,brief,pay,km,hour,weather,wind:pick(r,['calm','light','light','mid']),spec:R.spec,start:R.start,pax:!cargo,locked:owned&&!owned.includes(plane)};}
   return null;
 }
+// Aufträge ab einem bestimmten Flugplatz (freier Flug): Passagier- und Frachtflüge mit dem aktuellen Flugzeug
+export function freeJobs(plane,from,S,seed){if(NOJOB.includes(plane))return[];const r=rng(hashStr('F'+plane+from+seed)),out=[],seen=new Set();
+  for(let i=0;i<14&&out.length<4;i++){const j=makeJob(7000+i,plane,S,r,null,from);if(!j||j.from!==from)continue;const k=j.to+j.kind;if(seen.has(k))continue;seen.add(k);j.free=true;out.push(j);}
+  return out;}
 export function jobMission(j,id){return{id:id||('job'+j.n),name:j.title,plane:j.plane,start:j.start,hour:j.hour,weather:j.weather,wind:j.wind,season:j.season,brief:j.brief,
   tip:j.kind==='arr'?'Klappen schrittweise, Fahrwerk spätestens beim zweiten blauen Ring. Schub früh reduzieren.':j.kind==='dep'?'Nach dem Abheben Fahrwerk ein (G), Klappen schrittweise ein (F) und mit ca. 8° Nase hoch steigen.':'Folge den gelben Ringen, dann dem blauen Gleitpfad. Bei Bedarf Karte (M) öffnen.',
   obj:specObj(j.spec),comfort:j.pax,contract:j,dyn:true};}

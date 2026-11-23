@@ -10,7 +10,7 @@ import {buildAirports} from './airports3d.js';
 import {PLANES,AIRLINER,buildModel,bakeModel,animateModel,LIV_TPL,LIV_COL,LIV_BASE,livSpec} from './aircraft.js';
 import {createGround} from './ground.js';
 import {createHeli,stepHeli} from './heli.js';
-import {createCareer,PRICE,ORDER,fmtCHF,jobMission,dailyJob,BADGES,encodeShare,decodeShare,todayKey} from './career.js';
+import {createCareer,PRICE,ORDER,fmtCHF,jobMission,dailyJob,freeJobs,BADGES,encodeShare,decodeShare,todayKey} from './career.js';
 import {createFlight,stepFlight,stallSpeed} from './flight.js';
 import {MISSIONS as ALL_MISSIONS,buildObjectives,objPath,turnRadius} from './missions.js';
 import {runwayAt,approachOptions,planApproach,approachGuide} from './approach.js';
@@ -43,7 +43,7 @@ save.lessons={};
 try{const s=JSON.parse(localStorage.getItem('alpenflug-ch1'));if(s){save.lessons=s.lessons||{};save.stars=s.stars||{};save.grades=s.grades||{};Object.assign(save.settings,s.settings||{});Object.assign(save.free,s.free||{});save.edelweiss=s.edelweiss||[];save.edelweissBO=s.edelweissBO||[];save.edelweissCH=s.edelweissCH||[];if(s.career)save.career=s.career;}}catch(e){}
 const persist=()=>{try{localStorage.setItem('alpenflug-ch1',JSON.stringify(save));}catch(e){}};
 const career=createCareer(save,persist);
-const myLivery=id=>career.owns(id)?career.C.liv[id]||null:null;
+const myLivery=id=>career.C.liv[id]||null;
 const QUAL={ultra:{tex:4096,trees:50000,treeSpacing:18,treeRadius:4400,farms:2200,house:1.15,shadows:true,aniso:16,pr:2,reflect:true,bloom:true},
   high:{tex:4096,trees:36000,treeSpacing:20,treeRadius:4000,farms:1900,house:1,shadows:true,aniso:8,pr:1.5,reflect:false,bloom:false},
   medium:{tex:4096,trees:20000,treeSpacing:25,treeRadius:3200,farms:1200,house:0.75,shadows:true,aniso:4,pr:1.25,reflect:false,bloom:false},
@@ -121,9 +121,10 @@ addEventListener('keydown',e=>{
 });
 function keyAction(code){
   if(G&&G.tut&&G.tut.s)G.tut.s[code]=true;
-  if(state==='replay'){if(code==='Escape'||code==='KeyP'||code==='Backspace')endReplay();else if(code==='Space'||code==='KeyC')RP.next=true;return;}
+  if(state==='replay'){if(code==='Escape'||code==='KeyP'||code==='Backspace')endReplay();else if(code==='Space'||code==='KeyC'){RP.next=true;RP.lock=true;}else if(code==='KeyE')rpSpeed(1);else if(code==='KeyQ')rpSpeed(-1);else if(code==='ArrowLeft')rpSeek(-5);else if(code==='ArrowRight')rpSeek(5);else if(code==='KeyA'){RP.lock=!RP.lock;rpLbl();}return;}
   if(state==='pause'&&['KeyP','Escape','Tab'].includes(code)){togglePause();return;}
   if(state==='map'){if(['KeyM','Escape'].includes(code)){toggleMap();return;}if(code==='Equal'||code==='NumpadAdd'||code==='BracketRight'){mapZoom(1.5);return;}if(code==='Minus'||code==='NumpadSubtract'||code==='Slash'){mapZoom(1/1.5);return;}if(code==='Delete'||code==='Backspace'||code==='KeyX'){clearWp();return;}if(code==='Digit0'||code==='Numpad0'){mapCenter();return;}}
+  if(state==='jobs'){if(code==='Escape'||code==='KeyL'||code==='Backspace')jobsClose();else{const k=/^(Digit|Numpad)([1-4])$/.exec(code);if(k)jobsTake(+k[2]-1);}return;}
   if(state==='photo'){photoKey(code);return;}
   if(code==='KeyK'&&G&&(state==='fly'||state==='pause')){togglePhoto();return;}
   if(state!=='fly'||!G)return;const F=G.F;
@@ -139,6 +140,7 @@ function keyAction(code){
     case'KeyP':case'Escape':case'Tab':togglePause();break;
     case'Space':dropCrate();break;
     case'KeyH':F.assist=!F.assist;F.gammaT=Math.asin(clamp(F.vel.y/Math.max(F.vel.length(),1),-1,1));toast(F.assist?'Flughilfe EIN (hält die Flugbahn)':'Flughilfe AUS (manuell)');break;
+    case'KeyL':if(G.jobIcao)jobsOpen();else if(!G.mission&&!G.lesson)toast('Aufträge gibt es, wenn du an einem Flughafen stehst');break;
     case'KeyN':toast(audio.toggleMute()?'Ton aus':'Ton an');break;
     case'KeyU':if(F.P.heli){toast('Der Helikopter hält mit der Flughilfe die Höhe von selbst');break;}if(G.ap){G.ap=null;toast('Autopilot AUS');}else if(F.onGround)toast('Autopilot erst in der Luft');else apAskOpen();break;
     case'KeyR':startFlight(G.cfg);break;
@@ -573,6 +575,7 @@ function updateHUD(dt){
   const gl=$('gearLights');const gp=F.gearPos;gl.className='gear '+(P.fixedGear?'fixed':gp>0.98?'down':gp<0.02?'up':'transit');
   setTxt('gearTxt',P.fixedGear?'FEST':gp>0.98?'AUSGEFAHREN':gp<0.02?'EINGEFAHREN':'IN BEWEGUNG');
   if(!G.apAsk&&!$('apAsk').classList.contains('hidden'))$('apAsk').classList.add('hidden');
+  {let ic=null;if(!G.mission&&!G.lesson&&F.onGround&&F.vel.length()<4&&!F.crashed){const A=nearAirport(F);if(A)ic=A.icao;}G.jobIcao=ic;const jb=$('jobBtn');if(!!ic===jb.classList.contains('hidden'))jb.classList.toggle('hidden',!ic);}
   $('brkInd').classList.toggle('on',F.brake);$('splInd').classList.toggle('on',!!F.spoiler);$('astInd').classList.toggle('on',F.assist);$('apInd').classList.toggle('on',!!G.ap);setTxt('apInd',G.ap?`AP ${G.ap.nav&&G.wp?'▸ZIEL ':''}${String(Math.round(G.ap.hdg)).padStart(3,'0')}° · ${Math.round(units.metric?G.ap.alt:G.ap.alt*3.281)} · ${Math.round(units.metric?G.ap.spd*3.6:G.ap.spd*1.944)}${G.ap.max?' MAX':''}`:'AUTOPILOT');
   setTxt('crateInd',G.crates>0?`KISTEN ${G.crates}`:'');setSty('crateInd','display',G.crates>0?'':'none');
   const s=Math.floor(G.t);setTxt('timer',`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`);
@@ -697,24 +700,27 @@ function renderJobs(){const C=career.C;const ic={arr:'🛬',dep:'🛫',rund:'�
   $('jNew').onclick=()=>{career.refill(S,true);renderJobs();toast('Neue Aufträge sind da.');};}
 function renderBadges(){const C=career.C;
   $('cBad').innerHTML=`<div class="bgrid">${BADGES.map(([id,n,dsc,ico])=>`<div class="badge ${C.badges[id]?'on':''}"><div class="bm">${ico}</div><b>${n}</b><span>${dsc}</span></div>`).join('')}</div>`;}
+// Lackier-Editor (Hangar und freier Flug)
+function livHTML(id){const C=career.C,L=livSpec(id,C.liv[id]),named=!['alpina','saentis'].includes(id);
+  const sw=(k,v)=>LIV_COL.map(c=>`<button class="sw ${v===c?'sel':''}" data-k="${k}" data-v="${c}" style="background:${c}" aria-label="${c}"></button>`).join('');
+  return `<h4>Lackierung · Vorlage</h4><div class="chips">${LIV_TPL.map(([k,n])=>`<button class="chip ${L.tpl===k?'sel':''}" data-k="tpl" data-v="${k}">${n}</button>`).join('')}</div>
+      <h4>Hauptfarbe</h4><div class="sws">${sw('c1',L.c1)}</div><h4>Akzentfarbe</h4><div class="sws">${sw('c2',L.c2)}</div>
+      <h4>Rumpf</h4><div class="chips">${LIV_BASE.map(([c,n])=>`<button class="chip ${L.base===c?'sel':''}" data-k="base" data-v="${c}"><i class="dot" style="background:${c}"></i>${n}</button>`).join('')}</div>
+      ${named?`<h4>Schriftzug</h4><input type="text" class="lvN" maxlength="16" value="${esc(L.name)}" placeholder="z. B. LUIS AIRLINES">`:''}
+      <div class="btnrow"><button class="ghost small lvAll">Auf alle Flugzeuge übertragen</button><button class="ghost small lvReset">Standard</button></div>`;}
+function livBind(root,id,rerender,fleet){const C=career.C;const setL=(k,v)=>{C.liv[id]={...livSpec(id,C.liv[id]),[k]:v};persist();rerender();};
+  root.querySelectorAll('[data-k]').forEach(el=>el.onclick=()=>setL(el.dataset.k,el.dataset.v));
+  const n=root.querySelector('.lvN');if(n)n.onchange=e=>setL('name',e.target.value.toUpperCase());
+  const a=root.querySelector('.lvAll');if(a)a.onclick=()=>{const L=livSpec(id,C.liv[id]);for(const k of (fleet||Object.keys(PLANES))){const o={...livSpec(k,C.liv[k]),tpl:L.tpl,c1:L.c1,c2:L.c2,base:L.base};if(!['alpina','saentis'].includes(k)&&!['alpina','saentis'].includes(id))o.name=L.name;C.liv[k]=o;}persist();toast('Lackierung auf die ganze Flotte übertragen.');rerender();};
+  const r=root.querySelector('.lvReset');if(r)r.onclick=()=>{delete C.liv[id];persist();rerender();};}
 function renderHangar(){const C=career.C;HSEL=HSEL||save.free.plane||'alpina';const id=HSEL,P=PLANES[id],own=career.owns(id);
   let det='';
   if(!own){const can=C.money>=PRICE[id];det=`<div class="hbuy"><b>${P.name}</b><span>${P.type}</span><p>${P.desc}</p><button id="hBuy" ${can?'':'disabled'}>Kaufen für ${fmtCHF(PRICE[id])}</button>${can?'':`<small>Es fehlen noch ${fmtCHF(PRICE[id]-C.money)} – erledige Aufträge und Missionen.</small>`}</div>`;}
-  else{const L=livSpec(id,C.liv[id]),named=!['alpina','saentis'].includes(id);
-    const sw=(k,v)=>LIV_COL.map(c=>`<button class="sw ${v===c?'sel':''}" data-k="${k}" data-v="${c}" style="background:${c}" aria-label="${c}"></button>`).join('');
-    det=`<h4>Lackierung · Vorlage</h4><div class="chips">${LIV_TPL.map(([k,n])=>`<button class="chip ${L.tpl===k?'sel':''}" data-k="tpl" data-v="${k}">${n}</button>`).join('')}</div>
-      <h4>Hauptfarbe</h4><div class="sws">${sw('c1',L.c1)}</div><h4>Akzentfarbe</h4><div class="sws">${sw('c2',L.c2)}</div>
-      <h4>Rumpf</h4><div class="chips">${LIV_BASE.map(([c,n])=>`<button class="chip ${L.base===c?'sel':''}" data-k="base" data-v="${c}"><i class="dot" style="background:${c}"></i>${n}</button>`).join('')}</div>
-      ${named?`<h4>Schriftzug</h4><input type="text" id="lvN" maxlength="16" value="${esc(L.name)}" placeholder="z. B. LUIS AIRLINES">`:''}
-      <div class="btnrow"><button class="ghost small" id="lvAll">Auf alle Flugzeuge übertragen</button><button class="ghost small" id="lvReset">Standard</button></div>`;}
+  else det=livHTML(id);
   $('cHang').innerHTML=`<div class="hgrid">${ORDER.map(k=>{const o=career.owns(k);return`<div class="pc hp ${k===id?'sel':''} ${o?'own':''}" data-id="${k}">${thumbImg(k,'sm')}<b>${PLANES[k].name}</b><span>${o?'✓ im Hangar':fmtCHF(PRICE[k])}</span></div>`;}).join('')}</div><div id="hDet">${det}</div>`;
   $('cHang').querySelectorAll('.hp').forEach(el=>el.onclick=()=>{HSEL=el.dataset.id;renderHangar();});
   if($('hBuy'))$('hBuy').onclick=()=>{if(career.buy(id)){audio.chime();toast(`${P.name} gehört jetzt dir! Gestalte die Lackierung.`,3500);checkBadges();career.refill(S);renderCareer();}};
-  const setL=(k,v)=>{C.liv[id]={...livSpec(id,C.liv[id]),[k]:v};persist();renderHangar();};
-  $('cHang').querySelectorAll('[data-k]').forEach(el=>el.onclick=()=>setL(el.dataset.k,el.dataset.v));
-  if($('lvN')){$('lvN').onchange=e=>setL('name',e.target.value.toUpperCase());}
-  if($('lvAll'))$('lvAll').onclick=()=>{const L=livSpec(id,C.liv[id]);for(const k of C.owned){const o={...livSpec(k,C.liv[k]),tpl:L.tpl,c1:L.c1,c2:L.c2,base:L.base};if(!['alpina','saentis'].includes(k)&&!['alpina','saentis'].includes(id))o.name=L.name;C.liv[k]=o;}persist();toast('Lackierung auf die ganze Flotte übertragen.');};
-  if($('lvReset'))$('lvReset').onclick=()=>{delete C.liv[id];persist();renderHangar();};
+  livBind($('cHang'),id,renderHangar,C.owned);
   $('cHead').querySelector('b').textContent=fmtCHF(C.money);
   showroomSet(id);}
 function shareObj(){const C=career.C;return{n:C.name||'Pilot',s:save.stars,t:C.best,e:(save.edelweiss||[]).length,b:Object.keys(C.badges).length};}
@@ -772,6 +778,7 @@ function renderFree(){
   $('fArea').innerHTML=`<button class="chip sel" disabled>Ganze Karte<small>Zürich · Luzern · Bern · Berner Oberland · Wallis – alles verbunden</small></button>`;
   $('fPlanes').innerHTML=Object.values(PLANES).map(p=>`<div class="pc ${f.plane===p.id?'sel':''}" data-id="${p.id}">${thumbImg(p.id)}<b>${p.name}</b><span>${p.type}</span><small>${p.desc}</small></div>`).join('');
   $('fPlanes').querySelectorAll('.pc').forEach(el=>el.onclick=()=>{f.plane=el.dataset.id;persist();renderFree();});
+  if(PLANES[f.plane]&&!PLANES[f.plane].heli){$('fLiv').innerHTML=livHTML(f.plane);livBind($('fLiv'),f.plane,renderFree);}else $('fLiv').innerHTML='<p class="hint">Dieses Luftfahrzeug hat eine feste Lackierung.</p>';
   const cur=AP[f.ap];
   {const P=PLANES[f.plane];$('fSum').textContent=`${P?P.name:''} · ${cur?cur.name:''} · ${f.air?'in der Luft':'auf der Piste'}`;}
   $('fAP').innerHTML=ICAOS.map(I=>`<button class="chip ${cur.icao===I.icao?'sel':''}" data-i="${I.icao}">${I.name}<small>${I.icao} · ${Math.max(...I.rwys.map(r=>r.len))} m</small></button>`).join('');
@@ -905,6 +912,21 @@ function apEngage(max){apAskClose();const F=G.F;if(G.ap||F.onGround)return;const
   G.ap={hdg:((-e.y/DEG)%360+360)%360,alt:Math.max(F.pos.y,S.groundAt(F.pos.x,F.pos.z)+150),spd:max?apMaxSpd(F,G.P):F.vel.length(),max,nav:!!G.wp};if(G.wp)G.ap.alt=Math.max(G.ap.alt,routeSafeAlt(F.pos,G.wp));F.assist=true;
   const sp=max?' · beschleunigt auf Höchstgeschwindigkeit':' · hält das Tempo';
   toast(G.appr?`Autopilot EIN – fliegt den Anflug auf Piste ${G.appr.rwy}${sp} (Landung von Hand)`:G.wp?`Autopilot EIN – fliegt zum Ziel ${G.wp.name||''} (${Math.round(G.ap.alt)} m)${sp}`:`Autopilot EIN – hält Kurs und Höhe${sp}`,3200);}
+// Freier Flug: am Flughafen stehen → Passagier- und Frachtflüge annehmen
+function nearAirport(F){let best=null,bd=1e9;for(const A of AIRPORTS){const l=toLocal(A,F.pos.x,F.pos.z);if(Math.abs(l.along)<A.len/2+700&&Math.abs(l.across)<900){const d=Math.hypot(l.along,l.across);if(d<bd){bd=d;best=A;}}}return best;}
+let JOBS=[];
+function jobsOpen(){if(!G||!G.jobIcao)return;const A=AIRPORTS.find(a=>a.icao===G.jobIcao),name=AP_NAME(G.jobIcao);JOBS=freeJobs(G.P.id,G.jobIcao,S,Math.floor(Date.now()/900000));
+  $('jobsT').textContent='Aufträge ab '+name;
+  $('jobsL').innerHTML=JOBS.length?JOBS.map((j,i)=>`<button class="job" data-i="${i}"><kbd>${i+1}</kbd><div><b>${esc(j.title)}</b><small>${j.km} km · ${j.pax?'Passagiere':'Fracht'} · ${esc(j.brief.slice(0,90))}…</small></div><span class="pay">${fmtCHF(j.pay)}</span></button>`).join('')
+    :`<p class="hint">Mit der ${G.P.name} gibt es hier gerade keine passenden Flüge${['l340','l350','l747','l380'].includes(G.P.id)?' – Grossraumflugzeuge fliegen nur ab Zürich':''}.</p>`;
+  $('jobsL').querySelectorAll('.job').forEach(el=>el.onclick=()=>jobsTake(+el.dataset.i));
+  state='jobs';$('jobsOv').classList.remove('hidden');nav.clear();audio.click();}
+function jobsClose(){$('jobsOv').classList.add('hidden');if(state==='jobs')state='fly';nav.clear();}
+function jobsTake(i){const j=JOBS[i];if(!j)return;jobsClose();const m=jobMission(j,'free'+j.n);if(G.cfg&&G.cfg.hour!=null){m.hour=G.cfg.hour;m.weather=G.cfg.weather||m.weather;}
+  startFlight({dyn:m});toast(`Auftrag angenommen: ${j.title} · Lohn ${fmtCHF(j.pay)}`,4200);}
+const AP_NAME=icao=>{const a=AIRPORTS.find(q=>q.icao===icao);return (a&&a.name)||icao;};
+$('jobsX').onclick=()=>jobsClose();
+$('jobBtn').onclick=()=>{if(state==='fly')jobsOpen();};
 function wpBrg(F){return((Math.atan2(G.wp.x-F.pos.x,-(G.wp.z-F.pos.z))/DEG)+360)%360;}
 // höchstes Gelände entlang der Strecke + Reserve (für den Autopiloten)
 function routeSafeAlt(p,w){let m=0;for(let i=0;i<=40;i++){const u=i/40,x=p.x+(w.x-p.x)*u,z=p.z+(w.z-p.z)*u;for(const o of [-500,0,500])m=Math.max(m,S.groundAt(x+o,z),S.groundAt(x,z+o));}return Math.min(m+350,5200);}
@@ -1225,12 +1247,17 @@ function checkBadges(r){
 const fmtT=s=>`${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
 function atcCtx(){const F=G.F,A=G.startAP;return{F,metric:save.settings.units==='metric',wind:{...wx.cur,gustTxt:wx.cfg.gust>3},traffic,startRwy:A?(G.startRev?A.rwyB:A.rwyA):'',startRwyObj:A,pad:pad.connected,agl:F.pos.y-S.groundAt(F.pos.x,F.pos.z)-F.P.gearH};}
 // ---------- Wiederholung ----------
-const RP={t:0,mode:0,camT:0,next:false,anchor:new THREE.Vector3(),speed:1};
-function startReplay(){if(!G||G.rec.length<10)return;state='replay';RP.t=0;RP.mode=0;RP.camT=0;RP.next=false;RP.prevState=G.done?'result':'pause';
+const RP={t:0,mode:0,camT:0,next:false,anchor:new THREE.Vector3(),speed:1,lock:false};
+const RPS=[0.25,0.5,1,2,4,8];
+function rpLbl(){$('rpCam').textContent=CAMN[RP.mode]+(RP.lock?' · fest':' · automatisch')+(RP.speed!==1?' · ×'+RP.speed:'');}
+function rpSpeed(d){const i=RPS.indexOf(RP.speed);RP.speed=RPS[clamp((i<0?2:i)+d,0,RPS.length-1)];rpLbl();}
+function rpSeek(sec){if(!G||!G.rec)return;const dur=(G.rec.length-1)*0.1;RP.t=clamp(RP.t+sec,0,Math.max(0,dur-0.2));RP.reanchor=true;}
+function startReplay(){if(!G||G.rec.length<10)return;state='replay';RP.t=0;RP.mode=0;RP.camT=0;RP.next=false;RP.speed=1;RP.lock=false;RP.prevState=G.done?'result':'pause';
   ['result','pause','hud','mapov'].forEach(id=>$(id).classList.add('hidden'));$('replay').classList.remove('hidden');G.model.visible=true;G.cockpit.visible=false;atc.stop();}
 function endReplay(){if(state!=='replay')return;$('replay').classList.add('hidden');const F=G.F;G.model.position.copy(F.pos);G.model.quaternion.copy(F.q);G.model.visible=!F.crashed;
   if(RP.prevState==='result'){state='result';$('result').classList.remove('hidden');}else{state='pause';$('pause').classList.remove('hidden');}nav.clear();}
 const CAMN=['Verfolger','Vorbeiflug','Boden','Flügel','Tower'];
+$('replay').querySelector('.rpb').addEventListener('pointerdown',e=>{if(state!=='replay'||!G)return;const r=e.currentTarget.getBoundingClientRect(),dur=(G.rec.length-1)*0.1;RP.t=clamp((e.clientX-r.left)/r.width,0,0.999)*dur;RP.reanchor=true;});
 const _rc=new THREE.Raycaster();
 // freie Sicht? Gelände entlang der Linie abtasten und Häuser per Strahl prüfen
 function rpClear(a,b){const d=a.distanceTo(b);for(let i=1;i<12;i++){const u=i/12,x=a.x+(b.x-a.x)*u,z=a.z+(b.z-a.z)*u,y=a.y+(b.y-a.y)*u;if(S.groundAt(x,z)>y-0.5)return false;}
@@ -1240,7 +1267,7 @@ function replayTick(dt){const R=G.rec,dur=(R.length-1)*0.1;RP.t+=dt*RP.speed;if(
   const p=new THREE.Vector3(a[0]+(b[0]-a[0])*u,a[1]+(b[1]-a[1])*u,a[2]+(b[2]-a[2])*u),q=new THREE.Quaternion(a[3],a[4],a[5],a[6]).slerp(new THREE.Quaternion(b[3],b[4],b[5],b[6]),u);
   G.model.position.copy(p);G.model.quaternion.copy(q);animateModel(G.model,{flapPos:a[7],gearPos:a[8],rpm:0.2+0.8*a[9],groundSpeed:a[10],ail:a[11],elev:a[12],rud:a[13],landingLight:env.night>0.2&&a[8]>0.5,night:env.night},T,dt);
   RP.camT-=dt;const vel=new THREE.Vector3(b[0]-a[0],b[1]-a[1],b[2]-a[2]).multiplyScalar(10);const sp=vel.length(),dir=sp>1?vel.clone().normalize():new THREE.Vector3(0,0,-1).applyQuaternion(q);
-  if(RP.camT<=0||RP.next){RP.next=false;RP.mode=(RP.mode+1+(RP.camT>0?0:Math.floor(Math.random()*2)))%5;RP.camT=5+Math.random()*3;
+  if(RP.camT<=0||RP.next||RP.reanchor){if(RP.next)RP.mode=(RP.mode+1)%5;else if(RP.camT<=0&&!RP.lock)RP.mode=(RP.mode+1+Math.floor(Math.random()*2))%5;RP.next=false;RP.reanchor=false;RP.camT=5+Math.random()*3;
     const side=new THREE.Vector3(-dir.z,0,dir.x).normalize(),P=G.P;
     if(RP.mode===1)RP.anchor.copy(p).addScaledVector(dir,Math.max(120,sp*4)).addScaledVector(side,P.wingTip*3+12).add(new THREE.Vector3(0,P.wingTip*0.5+3,0));
     if(RP.mode===2){// Bodenkamera: Standort ohne Haus oder Hügel in der Sichtlinie suchen
@@ -1250,7 +1277,7 @@ function replayTick(dt){const R=G.rec,dur=(R.length-1)*0.1;RP.t+=dt*RP.speed;if(
       if(!ok){RP.mode=0;}}
     if(RP.mode===4){let best=null,bd=1e9;for(const A of AIRPORTS){const d=Math.hypot(A.x-p.x,A.z-p.z);if(d<bd){bd=d;best=A;}}const tp=bd<6000?fromLocal(best,best.len*0.2,best.side*420):{x:p.x+side.x*600,z:p.z+side.z*600};
       RP.anchor.set(tp.x,(bd<6000?best.elev+55:S.groundAt(tp.x,tp.z)+40),tp.z);}
-    $('rpCam').textContent=CAMN[RP.mode];}
+    rpLbl();}
   const P=G.P;cam.up.set(0,1,0);let fov=55;
   if(RP.mode===0){const want=p.clone().addScaledVector(dir,-P.camDist*1.3).add(new THREE.Vector3(0,P.camH*0.6+P.camDist*0.18,0));const gh=S.groundAt(want.x,want.z)+2;if(want.y<gh)want.y=gh;cam.position.lerp(want,1-Math.exp(-dt*4));cam.lookAt(p);}
   else if(RP.mode===3){const off=new THREE.Vector3(P.wingTip*0.75,P.camH*0.25,P.camDist*0.05).applyQuaternion(q);cam.position.copy(p).add(off);cam.lookAt(p.clone().addScaledVector(dir,-P.camDist*0.2).add(new THREE.Vector3(0,P.camH*0.2,0)));cam.up.set(0,1,0).applyQuaternion(q);fov=68;}
@@ -1296,7 +1323,7 @@ function perfTick(raw){
 }
 
 // ---------- Controller ----------
-const PADFLY={[BTN.O]:'KeyG',[BTN.SQ]:'KeyF',[BTN.TRI]:'KeyV',[BTN.UP]:'KeyM',[BTN.DOWN]:'Space',[BTN.LEFT]:'KeyU',[BTN.RIGHT]:'KeyH',[BTN.R3]:'KeyC',[BTN.L3]:'KeyT',[BTN.CREATE]:'KeyT',[BTN.PAD]:'KeyM',[BTN.OPTIONS]:'KeyP'};
+const PADFLY={[BTN.O]:'KeyG',[BTN.SQ]:'KeyF',[BTN.TRI]:'KeyV',[BTN.UP]:'KeyM',[BTN.DOWN]:'Space',[BTN.LEFT]:'KeyU',[BTN.RIGHT]:'KeyH',[BTN.R3]:'KeyC',[BTN.L3]:'KeyT',[BTN.CREATE]:'KeyL',[BTN.PAD]:'KeyM',[BTN.OPTIONS]:'KeyP'};
 function padTick(dt){pad.poll(dt);if(!pad.connected)return;if(state==='photo'){PH.yaw-=pad.rx*dt*1.6+pad.lx*dt*1.6;PH.pit=clamp(PH.pit+(pad.ry+pad.ly)*dt*1.2,-0.35,1.45);PH.dist=clamp(PH.dist*(1+(pad.l2-pad.r2)*dt*1.5),4,600);}
   if(state!=='fly'&&state!=='replay'&&state!=='load'&&state!=='photo'&&state!=='map')nav.sync();
   if(state==='map')mapPad(dt);
@@ -1305,7 +1332,7 @@ function padTick(dt){pad.poll(dt);if(!pad.connected)return;if(state==='photo'){P
     if(state==='fly'){const c=PADFLY[b];if(c){audio.init();keyAction(c);}continue;}
     if(state==='map'){if(b===BTN.O||b===BTN.UP||b===BTN.PAD||b===BTN.OPTIONS)toggleMap();else if(b===BTN.X){if(MV.cur&&!apprAuto(MV.cur.x,MV.cur.z))setWp(MV.cur.x,MV.cur.z);}else if(b===BTN.SQ){clearWp();clearAppr();}else if(b===BTN.TRI)mapCenter();else if(b===BTN.R1)mapZoom(1.5);else if(b===BTN.L1)mapZoom(1/1.5);continue;}
     if(state==='photo'){if(!$('phOv').classList.contains('hidden')){if(b===BTN.X||b===BTN.O)$('phOv').classList.add('hidden');continue;}if(b===BTN.X)photoKey('Enter');else if(b===BTN.O||b===BTN.OPTIONS)photoKey('Escape');else if(b===BTN.SQ)photoKey('KeyF');else if(b===BTN.TRI)photoKey('KeyH');continue;}
-    if(state==='replay'){if(b===BTN.X||b===BTN.R3)RP.next=true;else if(b===BTN.O||b===BTN.OPTIONS)endReplay();else if(b===BTN.R1)RP.speed=RP.speed>=4?1:RP.speed*2;continue;}
+    if(state==='replay'){if(b===BTN.X||b===BTN.R3){RP.next=true;RP.lock=true;}else if(b===BTN.O||b===BTN.OPTIONS)endReplay();else if(b===BTN.R1)rpSpeed(1);else if(b===BTN.L1)rpSpeed(-1);else if(b===BTN.LEFT)rpSeek(-5);else if(b===BTN.RIGHT)rpSeek(5);else if(b===BTN.TRI){RP.lock=!RP.lock;rpLbl();}continue;}
     if(state==='load')continue;
     audio.init();nav.sync();
     if(b===BTN.UP)nav.move('u');else if(b===BTN.DOWN)nav.move('d');else if(b===BTN.LEFT)nav.move('l');else if(b===BTN.RIGHT)nav.move('r');
@@ -1325,7 +1352,7 @@ function loop(now){
   perfTick(raw);padTick(dt);thumbTick();if((T*4|0)!==TOUCH.tk){TOUCH.tk=T*4|0;touchSync();}if(TOUCH.on&&G&&G.F){const f=$('tThrFill');if(f)f.style.height=(G.F.thr*100)+'%';}if(groundT&&state!=='pause'&&state!=='photo')groundT.update(dt,cam.position,env.night>0.35);
   if(G&&state==='photo'){photoTick(dt);env.update(G.model.position,cam,P_shadow(G.P));audio.update({silent:true});}
   else if(G&&state==='replay'){replayTick(dt);wx.updateRain(dt,cam);env.update(G.model.position,cam,P_shadow(G.P));audio.update({silent:true});}
-  else if(G&&(state==='fly'||state==='map'||state==='result'||state==='pause')){
+  else if(G&&(state==='fly'||state==='map'||state==='result'||state==='pause'||state==='jobs')){
     const F=G.F;
     if(state==='fly'||state==='map'){step(dt);if(env.weather==='storm')lightning(dt);}
     G.model.position.copy(F.pos);G.model.quaternion.copy(F.q);

@@ -3,7 +3,7 @@ const DEG=Math.PI/180,clampN=(v,a,b)=>Math.max(a,Math.min(b,v));
 export function createHUD(){
   const H={};
   const pfd=document.getElementById('pfd'),ctx=pfd.getContext('2d');
-  const W=520,Hh=360;pfd.width=W*2;pfd.height=Hh*2;ctx.scale(2,2);H.pfdCanvas=pfd;
+  const W=584,Hh=360;pfd.width=W*2;pfd.height=Hh*2;ctx.scale(2,2);H.pfdCanvas=pfd;
   const mini=document.getElementById('mini'),mctx=mini.getContext('2d');mini.width=mini.height=420;
   H.drawPFD=(d)=>{
     const u=d.units;const c=ctx;c.clearRect(0,0,W,Hh);
@@ -33,7 +33,6 @@ export function createHUD(){
     // Modus
     c.font='700 11px Inter,sans-serif';c.textAlign='center';c.fillStyle=d.assist?'#3dff8a':'#9aa4b0';c.fillText(d.assist?(d.prot?'FLUGHILFE · SCHUTZ':'FLUGHILFE'):'MANUELL',cx,22);
     if(d.stall&&(Date.now()%600<380)){c.fillStyle='#ff3030';c.font='900 26px Inter,sans-serif';c.fillText('STALL',cx,cy+70);}
-    if(d.agl<760&&d.agl>-1){c.fillStyle='#fff';c.font='700 15px Inter,sans-serif';c.fillText((u.metric?Math.round(d.agl):Math.round(d.agl*3.281/10)*10)+'',cx,cy+112);c.font='600 10px Inter';c.fillStyle='#9aa4b0';c.fillText('RA',cx,cy+127);}
     // Geschwindigkeitsband
     const sp=u.metric?d.speed*3.6:d.speed*1.944,spp=u.metric?1.6:3.2,step=u.metric?20:10;
     c.save();c.beginPath();rr(c,6,8,76,300,8);c.clip();c.fillStyle='rgba(20,24,30,0.78)';c.fillRect(6,8,76,300);
@@ -57,10 +56,20 @@ export function createHUD(){
     for(let v=Math.floor((alt-160/ap)/ast)*ast;v<alt+160/ap;v+=ast){const y=ay(v);c.beginPath();c.moveTo(428,y);c.lineTo(v%(ast*2)===0?440:435,y);c.stroke();if(v%(ast*2)===0)c.fillText(Math.round(v),444,y+4);}
     c.restore();
     box(c,430,cy-16,78,32,Math.round(alt)+'','#fff');
-    c.fillStyle='#9aa4b0';c.font='600 10px Inter';c.textAlign='center';c.fillText(u.metric?'m ü. M.':'ft',469,326);
-    // Vario
-    const vsv=u.metric?d.vspeed:d.vspeed*196.85;c.font='700 12px Inter';c.fillStyle=Math.abs(d.vspeed)>8?'#ffb000':'#fff';c.textAlign='center';
-    c.fillText((vsv>0?'+':'')+(u.metric?vsv.toFixed(1):Math.round(vsv/10)*10),469,cy+40);c.fillStyle='#9aa4b0';c.font='600 9px Inter';c.fillText(u.metric?'m/s':'ft/min',469,cy+52);
+    c.fillStyle='#9aa4b0';c.font='600 10px Inter';c.textAlign='center';c.fillText(u.metric?'m ü. M.':'ft MSL',469,321);
+    // Höhe über Grund (eigenes Feld unter dem Höhenband)
+    {const ag=Math.max(0,d.agl??(d.alt-d.ground)),agv=u.metric?ag:ag*3.281,low=ag<150;c.fillStyle='rgba(20,24,30,0.85)';c.beginPath();rr(c,430,327,78,27,7);c.fill();
+     c.fillStyle=low?'#ffb000':'#e9eef5';c.font='800 13px Inter';c.textAlign='center';c.fillText(String(Math.round(agv>2000?agv/10:agv)*(agv>2000?10:1)),469,341);
+     c.fillStyle='#9aa4b0';c.font='600 8px Inter';c.fillText(u.metric?'m über Grund':'ft AGL',469,351);}
+    // Variometer: eigene Spalte rechts neben dem Höhenband
+    {const vs=d.vspeed,vsv=u.metric?vs:vs*196.85,X=514,Y0=8,HH=300,mid=Y0+HH/2,sc=v=>Math.sign(v)*Math.min(1,Math.sqrt(Math.abs(v)/20))*(HH/2-14);
+     c.save();c.beginPath();rr(c,X,Y0,62,HH,8);c.clip();c.fillStyle='rgba(20,24,30,0.7)';c.fillRect(X,Y0,62,HH);
+     c.strokeStyle='rgba(255,255,255,0.55)';c.fillStyle='#c9d1db';c.font='600 9px Inter';c.textAlign='left';c.lineWidth=1;
+     for(const m of [-20,-10,-5,-2,0,2,5,10,20]){const y=mid-sc(m);c.beginPath();c.moveTo(X,y);c.lineTo(X+(m===0?14:8),y);c.stroke();if(m)c.fillText(Math.abs(m),X+11,y+3);}
+     const y=mid-sc(vs);c.strokeStyle=Math.abs(vs)>8?'#ffb000':'#3dff8a';c.lineWidth=3;c.beginPath();c.moveTo(X+2,mid);c.lineTo(X+30,y);c.stroke();c.restore();
+     c.fillStyle='rgba(20,24,30,0.9)';c.beginPath();rr(c,X+4,mid-13,56,26,6);c.fill();
+     c.fillStyle=Math.abs(vs)>8?'#ffb000':'#fff';c.font='800 12px Inter';c.textAlign='center';c.fillText((vsv>0.05?'+':'')+(u.metric?vsv.toFixed(1):Math.round(vsv/10)*10),X+32,mid+4);
+     c.fillStyle='#9aa4b0';c.font='600 9px Inter';c.fillText(u.metric?'m/s':'ft/min',X+31,321);}
     // Kursband
     c.save();c.beginPath();rr(c,140,316,230,38,8);c.clip();c.fillStyle='rgba(20,24,30,0.78)';c.fillRect(140,316,230,38);
     const hd=d.heading,hp=4.2;c.strokeStyle='#fff';c.fillStyle='#fff';c.textAlign='center';c.font='600 11px Inter';

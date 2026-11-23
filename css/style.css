@@ -78,7 +78,7 @@ h2{font-size:30px;font-weight:900;margin:6px 0 10px}
 #tr{position:absolute;top:18px;right:18px;display:flex;flex-direction:column;align-items:flex-end;gap:10px}
 #timer{font-weight:800;font-size:18px;text-shadow:0 1px 4px rgba(0,0,0,.6)}
 #mini{width:210px;height:210px;border-radius:50%;border:2px solid rgba(255,255,255,.25);box-shadow:0 6px 24px rgba(0,0,0,.4)}
-#pfd{position:absolute;left:16px;bottom:16px;width:520px;height:360px;max-width:44vw;max-height:30.5vw;filter:drop-shadow(0 6px 20px rgba(0,0,0,.45))}
+#pfd{position:absolute;left:16px;bottom:16px;width:470px;height:290px;max-width:38vw;max-height:23.4vw;filter:drop-shadow(0 6px 20px rgba(0,0,0,.45))}
 #sys{position:absolute;right:16px;bottom:16px;width:236px;padding:14px 16px}
 .srow{display:flex;justify-content:space-between;font-size:11px;letter-spacing:.1em;color:var(--mut);font-weight:700;margin-top:6px}.srow b{color:#fff;letter-spacing:0;font-size:13px}
 .sbar{position:relative;height:6px;border-radius:3px;background:rgba(255,255,255,.1);margin:6px 0 8px;overflow:hidden}
@@ -116,7 +116,7 @@ body.haspad #keys{display:none}body.haspad #hud:not(.hidden)~#padkeys{display:bl
 /* Wiederholung */
 #replay{position:fixed;left:0;right:0;bottom:0;padding:18px 28px 22px;background:linear-gradient(transparent,rgba(0,0,0,.55));color:#fff;z-index:20}
 #replay .rpt{display:flex;gap:14px;align-items:baseline}#replay .rpt b{letter-spacing:.2em;color:#ff4d5e;font-size:13px}#replay .rpt span{font-size:18px;font-weight:700}
-#replay .rpb{height:4px;background:rgba(255,255,255,.2);border-radius:2px;margin:10px 0 8px}#replay #rpBar{height:100%;background:#ffd23a;border-radius:2px;width:0}
+#replay .rpb{height:8px;background:rgba(255,255,255,.2);border-radius:4px;margin:10px 0 8px;cursor:pointer}#replay #rpBar{height:100%;background:#ffd23a;border-radius:2px;width:0}
 #replay .rph{font-size:12px;color:rgba(255,255,255,.65)}
 
 /* ---------- Desktop (Mac-Stil) ---------- */
@@ -305,11 +305,11 @@ body.touchui #padkeys,body.touchui .keyhint{display:none}
 .kgrid{display:grid;grid-template-columns:1fr auto 1fr auto;gap:5px 12px;margin-top:10px;font-size:12.5px;align-items:center}
 .kgrid span{color:#c9d2dc}.kgrid kbd{font:700 11.5px Inter,system-ui;background:rgba(255,255,255,.08);border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:3px 7px;text-align:center;min-width:28px;color:#fff}
 /* HUD passt sich der Fenstergrösse an */
-:root{--pfdw:min(520px,40vw,56vh)}
-#pfd{width:var(--pfdw);height:auto;aspect-ratio:520/360;max-width:none;max-height:none}
+:root{--pfdw:min(470px,36vw,50vh)}
+#pfd{width:var(--pfdw);height:auto;aspect-ratio:584/360;max-width:none;max-height:none}
 #radio{left:calc(30px + var(--pfdw));right:266px}
 @media (max-width:900px){#radio{right:212px}}
-@media (max-aspect-ratio:1/1){#radio{left:16px;right:16px;bottom:calc(30px + var(--pfdw)*0.6923);max-width:none}}
+@media (max-aspect-ratio:1/1){#radio{left:16px;right:16px;bottom:calc(30px + var(--pfdw)*0.6164);max-width:none}}
 @media (max-height:700px){#tr{top:12px;right:12px}#mini{width:170px;height:170px}#sys{padding:10px 12px;width:214px}}
 #rMap{display:block;width:100%;height:auto;aspect-ratio:760/220;border-radius:12px;margin:12px 0 4px;border:1px solid var(--line)}
 #resbody .btnrow button{padding:12px 17px}#resbody .btnrow #rMenu{margin-left:auto}
@@ -372,3 +372,11 @@ body.touchui #keys{display:none}
 #apAsk button small{margin-left:auto;font-weight:500;opacity:.75}
 #apAsk kbd{display:inline-block;min-width:20px;padding:1px 6px;border-radius:5px;background:rgba(255,255,255,.14);font:700 12px Inter,sans-serif;text-align:center}
 #apAsk span{font-size:11px;opacity:.6}
+
+details.fliv{margin:10px 0 4px;border:1px solid rgba(255,255,255,.12);border-radius:12px;padding:8px 12px;background:rgba(255,255,255,.04)}
+details.fliv summary{cursor:pointer;font-weight:700}
+#jobBtn{position:absolute;right:16px;top:150px;z-index:30;padding:10px 14px;border-radius:12px;border:1px solid rgba(127,209,255,.5);background:rgba(14,18,26,.9);color:#eef2f7;font:700 14px Inter,sans-serif;cursor:pointer}
+#jobBtn.hidden{display:none}#jobBtn kbd{margin-left:6px;padding:1px 6px;border-radius:5px;background:rgba(255,255,255,.14);font-size:12px}
+#jobsL .job{display:flex;gap:12px;align-items:center;padding:10px 12px;margin:6px 0;border-radius:10px;background:rgba(255,255,255,.06);cursor:pointer;border:1px solid rgba(255,255,255,.08)}
+#jobsL .job:hover,#jobsL .job.focus{background:rgba(127,209,255,.16);border-color:rgba(127,209,255,.5)}
+#jobsL .job b{display:block}#jobsL .job small{opacity:.7}#jobsL .job .pay{margin-left:auto;font-weight:800;color:#ffd23f;white-space:nowrap}
