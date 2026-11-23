@@ -1,5 +1,5 @@
 // Echte Gebäude aus swissBUILDINGS3D 3.0 (Quelle: swisstopo) für ausgewählte Städte
-// Datei: data/buildings.bin.gz – pro 1-km-Kachel Gebäude-Köpfe, Positions-Deltas (Byte-Ebenen) und Index-Codes
+// Datei: data/buildings.txt (Base64 einer gzip-Datei, weil der Artifact-Server keine .gz ausliefert) – pro 1-km-Kachel Gebäude-Köpfe, Positions-Deltas (Byte-Ebenen) und Index-Codes
 import * as THREE from 'three';
 import {BUILDINGS} from './swissdata.js';
 import {nightU} from './gfx.js';
@@ -7,7 +7,9 @@ import {nightU} from './gfx.js';
 export async function loadRealCity(){
   let u8;
   if(BUILDINGS.startsWith('data:')){const b64=BUILDINGS.slice(BUILDINGS.indexOf(',')+1),bin=atob(b64);u8=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i);}
-  else{const r=await fetch(BUILDINGS);if(!r.ok)throw new Error('Gebäudedaten fehlen ('+r.status+')');u8=new Uint8Array(await r.arrayBuffer());}
+  else{const r=await fetch(BUILDINGS);if(!r.ok)throw new Error('Gebäudedaten fehlen ('+r.status+')');
+    if(BUILDINGS.endsWith('.txt')){const bin=atob((await r.text()).trim());u8=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i);}
+    else u8=new Uint8Array(await r.arrayBuffer());}
   if(u8[0]===0x1f&&u8[1]===0x8b){
     if(typeof DecompressionStream==='undefined')throw new Error('Browser kann gzip nicht entpacken');
     u8=new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer());}
