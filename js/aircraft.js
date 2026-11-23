@@ -392,22 +392,25 @@ function halfW(PR,t,y){const r=lerpProf(PR,t,'r'),sx=lerpProf(PR,t,'sx'),yo=yOff
 function uAtWidth(PR,L,x,y,t0,t1){let a=t0,b=t1;if(halfW(PR,b,y)<x)return b*L;for(let k=0;k<40;k++){const m=(a+b)/2;if(halfW(PR,m,y)<x)a=m;else b=m;}return (a+b)/2*L;}
 // Scheiben-Layout: Airbus (Unterkante waagrecht, hintere Seitenscheibe mit stark abfallender Oberkante) oder Boeing 747 (auf dem Oberdeck)
 function paneLayout(C,PR,L,R,H){const k=1+(R/1.98-1)*0.3,nz=C.nose,F=[],S=[];
-  if(C.hump){const yb=R*1.04,yt=R*1.25,xo=0.8,xt=0.66,pst=0.05*k;
-    F.push([[pst,yb],[pst,yt],[xt,yt-0.03*k],[xo,yb+0.02*k]]);
-    const uB=uAtWidth(PR,L,xo,yb+0.02*k,0.02,0.2),uT=uAtWidth(PR,L,xt,yt-0.03*k,0.02,0.2),g=0.1*k;
-    S.push([[uB+g,yb+0.02*k],[uT+g,yt-0.03*k],[uT+g+0.66*k,yt-0.05*k],[uB+g+0.66*k,yb+0.06*k]]);
-    S.push([[uB+2*g+0.66*k,yb+0.06*k],[uT+2*g+0.66*k,yt-0.05*k],[uT+2*g+1.05*k,yt-0.1*k],[uB+2*g+1.12*k,yb+0.12*k]]);
-    return{F,S,fr:0.055*k,rc:0.07*k,ta:0.02,tb:Math.min(0.3,(uB+2*g+1.3*k)/L)};}
-  const a=C.deck2?{yb:0.16,yt:0.285,xo:0.78,xt:0.72,w2:0.6,w3:0.46,drop:0.62}:C.ws==='a350'?{yb:0.29,yt:0.55,xo:0.95,xt:0.82,w2:0.7,w3:0.52,drop:0.55}:{yb:0.27,yt:0.65,xo:1.0,xt:0.85,w2:0.66,w3:0.52,drop:0.62};
-  const yb=a.yb*H,yt=a.yt*H,hgt=yt-yb,pst=0.045*k,g=0.1*k;
-  F.push([[pst,yb],[pst,yt],[a.xt*k,yt-0.06*hgt],[a.xo*k,yb+0.04*hgt]]);
-  const uB=uAtWidth(PR,L,a.xo*k,yb+0.04*hgt,0.003,nz*1.6),uT=uAtWidth(PR,L,a.xt*k,yt-0.06*hgt,0.003,nz*1.6);
-  const w2=a.w2*k,w3=a.w3*k;
-  S.push([[uB+g,yb+0.04*hgt],[uT+g,yt-0.06*hgt],[uT+g+w2,yt-0.16*hgt],[uB+g+w2+0.02*k,yb+0.02*hgt]]);
-  const x0b=uB+2*g+w2+0.02*k,x0t=uT+2*g+w2;
-  S.push([[x0b,yb+0.02*hgt],[x0t,yt-0.18*hgt],[x0b+w3,yt-a.drop*hgt],[x0b+w3,yb+0.02*hgt]]);
-  return{F,S,fr:0.05*k,rc:0.06*k,ta:0.003,tb:Math.min(nz*2.2,(x0b+w3+0.4*k)/L)};}
-function cockpitGlass(L,PR,R,C,key){const H=R*(C.sy||1),lay=paneLayout(C,PR,L,R,H),ta=lay.ta,tb=lay.tb,PA=104*Math.PI/180;
+  // Frontscheiben in der Frontansicht (x = halbe Breite, y = Höhe), Seitenscheiben auf der Rumpfseite (u = Abstand ab Nase, y)
+  // Seitenscheiben: vordere Kante folgt dem A-Pfosten, hintere Kanten nur leicht geneigt – keine verdrehten Vierecke
+  const a=C.hump?{yb:R*1.04,yt:R*1.27,xo:0.82,xt:0.7,w2:0.7,w3:0.5,drop:0.5,g:0.09,r0:0.02,r1:0.2}
+    :C.deck2?{yb:0.155*H,yt:0.285*H,xo:0.8*k,xt:0.74*k,w2:0.62,w3:0.46,drop:0.55,g:0.08,r0:0.003,r1:nz*1.6}
+    :C.ws==='a350'?{yb:0.3*H,yt:0.53*H,xo:0.95*k,xt:0.84*k,w2:0.68,w3:0.5,drop:0.5,g:0.07,r0:0.003,r1:nz*1.6}
+    :{yb:0.27*H,yt:0.65*H,xo:1.0*k,xt:0.85*k,w2:0.66,w3:0.52,drop:0.62,g:0.1,r0:0.003,r1:nz*1.6};
+  const yb=a.yb,yt=a.yt,hgt=yt-yb,pst=0.045*k,g=a.g*k;
+  F.push([[pst,yb],[pst,yt],[a.xt,yt-0.05*hgt],[a.xo,yb+0.04*hgt]]);
+  const uB=uAtWidth(PR,L,a.xo,yb+0.04*hgt,a.r0,a.r1);let uT=uAtWidth(PR,L,a.xt,yt-0.05*hgt,a.r0,a.r1);
+  uT=Math.min(uT,uB+1.3*hgt);// A-Pfosten nicht flacher als ~37°
+  const lean=0.12*hgt,w2=a.w2*k,w3=a.w3*k;
+  // Scheibe 2: vorne am Pfosten, hinten fast senkrecht; oben mindestens 0,25 m breit
+  let r2b=uB+g+w2;if(r2b+lean<uT+g+0.25*k)r2b=uT+g+0.25*k-lean;const r2t=r2b+lean;
+  S.push([[uB+g,yb+0.04*hgt],[uT+g,yt-0.05*hgt],[r2t,yt-0.1*hgt],[r2b,yb+0.02*hgt]]);
+  // Scheibe 3: kleiner, Oberkante fällt nach hinten ab, hintere Kante schräg
+  const f3b=r2b+g,f3t=r2t+g,r3b=f3b+w3,r3t=Math.max(f3t+0.15*k,f3b+w3*0.55);
+  S.push([[f3b,yb+0.02*hgt],[f3t,yt-0.12*hgt],[r3t,yt-a.drop*hgt],[r3b,yb+0.02*hgt]]);
+  return{F,S,fr:0.05*k,rc:0.06*k,ta:C.hump?0.02:0.003,tb:Math.min(C.hump?0.3:nz*2.2,(r3b+0.5*k)/L)};}
+function cockpitGlass(L,PR,R,C,key){const H=R*(C.sy||1),lay=paneLayout(C,PR,L,R,H),ta=lay.ta,tb=lay.tb,PA=104*Math.PI/180,k0=1+(R/1.98-1)*0.3;
   const g=patchGeo(L,PR,ta,tb,-PA,PA,48,96);
   if(!GC[key]){const FP=lay.F.map(p=>roundPane(p,lay.rc)),SP=lay.S.map(p=>roundPane(p,lay.rc)),fr=lay.fr,TW=2048,TH=1024;
     const rows=[],st=(t)=>({r:lerpProf(PR,t,'r'),sx:lerpProf(PR,t,'sx'),sy:lerpProf(PR,t,'sy'),syT:lerpProf(PR,t,'syT'),sxT:lerpProf(PR,t,'sxT'),yo:yOff(PR,t),z:t*L});
@@ -422,7 +425,7 @@ function cockpitGlass(L,PR,R,C,key){const H=R*(C.sy||1),lay=paneLayout(C,PR,L,R,
       if(Math.abs(nx)>0.3)for(const f of SP)d=Math.min(d,f(uu,P[1]));
       if(d<0){const kk=Math.min(1,Math.max(0,(P[1]-lay.F[0][0][1])/(lay.F[0][1][1]-lay.F[0][0][1]+1e-6)));return[yC[0]*255+kk*(yR[0]-yC[0])*255,yC[1]*255+kk*(yR[1]-yC[1])*255,yC[2]*255+kk*(yR[2]-yC[2])*255];}
       // Rahmen in Rumpffarbe (durchsichtig -> Lack darunter), nur eine schmale dunkle Dichtung um jede Scheibe
-      if(d<Math.min(fr*0.45,0.028))return[30,32,36];return null;})[0];}
+      if(C.mask&&d<0.11*k0)return[20,22,26];if(d<Math.min(fr*0.45,0.028))return[30,32,36];return null;})[0];}
   const m=new THREE.Mesh(g,cockpitGlassMat(GC[key]));m.castShadow=false;return m;}
 let CGM=new Map();function cockpitGlassMat(tex){if(CGM.has(tex))return CGM.get(tex);const m=new THREE.MeshStandardMaterial({map:tex,transparent:true,alphaTest:0.5,roughness:0.06,metalness:0.55,envMapIntensity:1.5,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});CGM.set(tex,m);return m;}
 // Kabinenfenster einer Reihe (beide Seiten), echtes Glas mit Rahmen, nachts beleuchtet
@@ -528,7 +531,7 @@ function buildAirliner(C,body,parts,root,P){
     :C.hump?{ta:0.045,tb:0.106,t0:0,yl:t=>R*(1.05+0.07*cl(0.06,0.1,t)),yh:t=>R*(1.31+0.02*cl(0.08,0.1,t)),posts:[0,30,52,72],maxPd:80,pw:1.4,back:pd=>0.102-0.01*cl(62,80,pd),fr:0.04}
     :C.ws==='a350'?{ta:nz*0.26,tb:nz*0.82,t0:0,yl:(t,pd)=>H*(0.29+0.02*cl(0.4,0.75,t/nz)-0.04*Math.max(0,1-(pd||0)/24)),yh:(t,pd)=>H*(0.57-0.04*cl(0.5,0.78,t/nz)-0.02*Math.max(0,1-(pd||0)/24)),posts:[0,28,50,68],maxPd:78,pw:1.9,back:pd=>nz*(0.64-0.07*cl(60,78,pd)),fr:0.05}
     :{ta:nz*0.36,tb:nz*1.02,t0:0,yl:t=>H*(0.36+0.05*cl(0.5,0.95,t/nz)),yh:t=>H*(0.8-0.14*cl(0.6,0.95,t/nz)),posts:[0,33,57,74],maxPd:86,pw:1.5,back:pd=>nz*(0.97-0.06*cl(74,86,pd)),fr:0.045};
-  if(C.mask&&!MASKF['m'+C.L]){const m=0.04*H;MASKF['m'+C.L]=Object.assign((t,ph)=>{const pd=ph*180/Math.PI;if(pd>WS.maxPd+10)return false;
+  if(false&&C.mask&&!MASKF['m'+C.L]){const m=0.04*H;MASKF['m'+C.L]=Object.assign((t,ph)=>{const pd=ph*180/Math.PI;if(pd>WS.maxPd+10)return false;
     const y=lerpProf(PRF,t,'r')*syAt(PRF,t,ph)*Math.cos(ph)+yOff(PRF,t),yl=WS.yl(t,pd)-m,yh=WS.yh(t,pd)+m*0.6;if(y<yl||y>yh)return false;
     const mid=(yl+yh)/2,hw=(yh-yl)/2;return t<WS.back(Math.min(pd,WS.maxPd))+nz*(0.012+0.03*Math.pow(Math.max(0,1-Math.abs(y-mid)/hw),1.5));},{tMax:nz*1.3});}
   const PT=paint({R:R*(1+sy)/2,a0:winA,st:{a:winA+0.05,t1:R*0.11,t2:R*0.05,da:0.018,x0:nz*0.9,x1:0.93},tip:R*1.1,wb:R*0.38,
