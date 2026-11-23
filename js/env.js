@@ -53,12 +53,12 @@ export function createEnv(renderer,scene,Q){
   // Alle Wolken in EINEM Draw-Call: instanzierte Billboards mit Textur-Atlas (3×2), von hinten nach vorne sortiert
   const atlas=(()=>{const c=document.createElement('canvas');c.width=768;c.height=512;const x=c.getContext('2d');ctex.forEach((t,i)=>x.drawImage(t.image,(i%3)*256,Math.floor(i/3)*256));
     const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;})();
-  const CU={uCC:{value:new THREE.Color(1,1,1)},uCU:{value:new THREE.Color(0.8,0.8,0.8)}};
+  const CU={uCC:{value:new THREE.Color(1,1,1)},uCU:{value:new THREE.Color(0.8,0.8,0.8)},uCam:{value:new THREE.Vector3()},uP:{value:150000}};
   const cmat=new THREE.MeshBasicMaterial({map:atlas,transparent:true,depthWrite:false,fog:true});
   cmat.onBeforeCompile=sh=>{Object.assign(sh.uniforms,CU);
-    sh.vertexShader='attribute vec3 aOff;attribute vec2 aScl;attribute vec2 aTile;attribute float aLo;varying float vLo;\n'+sh.vertexShader
+    sh.vertexShader='uniform vec3 uCam;uniform float uP;attribute vec3 aOff;attribute vec2 aScl;attribute vec2 aTile;attribute float aLo;varying float vLo;\n'+sh.vertexShader
       .replace('#include <uv_vertex>','#include <uv_vertex>\n vMapUv=(uv+aTile)*vec2(1.0/3.0,0.5);vLo=aLo;')
-      .replace('#include <project_vertex>','vec4 mvPosition=modelViewMatrix*vec4(aOff,1.0);mvPosition.xy+=position.xy*aScl;gl_Position=projectionMatrix*mvPosition;');
+      .replace('#include <project_vertex>','vec3 wo=aOff;wo.xz=uCam.xz+mod(aOff.xz-uCam.xz+0.5*uP,uP)-0.5*uP;vec4 mvPosition=modelViewMatrix*vec4(wo,1.0);mvPosition.xy+=position.xy*aScl;gl_Position=projectionMatrix*mvPosition;');
     sh.fragmentShader='uniform vec3 uCC;uniform vec3 uCU;varying float vLo;\n'+sh.fragmentShader.replace('vec4 diffuseColor = vec4( diffuse, opacity );','vec4 diffuseColor = vec4( mix(uCC,uCU,vLo), opacity );');};
   cmat.customProgramCacheKey=()=>'cloudsInst';
   const CL={n:0,off:null,scl:null,tile:null,lo:null,mesh:null,last:new THREE.Vector3(1e9,0,0),t:0};
@@ -71,9 +71,10 @@ export function createEnv(renderer,scene,Q){
   fogSheet.position.y=980;fogSheet.visible=false;fogSheet.renderOrder=2;scene.add(fogSheet);E.fogSheet=fogSheet;
   function buildClouds(weather,seed){
     cloudGroup.clear();if(CL.mesh){CL.mesh.geometry.dispose();CL.mesh=null;}const r=mulberry(seed||9);const L=[];
-    const sc=((Q.world||40000)/40000)**2*0.6;const n=Math.round(({clear:6,cloudy:75,rain:95,fog:10,foehn:5,snow:90,storm:70}[weather]??32)*sc);
+    // Wolkenfeld mit fester Kachelgrösse, das im Shader um die Kamera herum wiederholt wird (grosse Karte: nicht 50'000 Wolken)
+    const PW=Math.min(Q.world||40000,150000);CU.uP.value=PW;const sc=(PW/40000)**2*0.6;const n=Math.round(({clear:6,cloudy:75,rain:95,fog:10,foehn:5,snow:90,storm:70}[weather]??32)*sc);
     const base=weather==='cloudy'?1700:weather==='rain'||weather==='snow'?1300:weather==='storm'?1250:weather==='fog'?1500:2300,tall=weather==='storm'?2600:0;
-    for(let k=0;k<n;k++){const cx=(r()-0.5)*(Q.world||40000)*0.95,cz=(r()-0.5)*(Q.world||40000)*0.95,cy=base+r()*900;const m=8+Math.floor(r()*10);const scl=0.7+r()*0.9;
+    for(let k=0;k<n;k++){const cx=(r()-0.5)*PW,cz=(r()-0.5)*PW,cy=base+r()*900;const m=8+Math.floor(r()*10);const scl=0.7+r()*0.9;
       for(let i=0;i<m;i++){const ti=(k+i)%3+(i<m*0.35?3:0);let sz=(380+r()*520)*scl;
         const lo=i<m*0.35;const px=cx+(r()-0.5)*1500*scl,py=cy+(lo?-r()*80:r()*(260*scl+tall)),pz=cz+(r()-0.5)*1000*scl;if(tall&&!lo)sz*=1.5;L.push([px,py,pz,sz*1.5,sz,ti%3,1-Math.floor(ti/3),lo?1:0]);}}
     const N=L.length;CL.n=N;CL.src=L;if(!N)return;
@@ -83,7 +84,7 @@ export function createEnv(renderer,scene,Q){
     g.setAttribute('aOff',CL.off);g.setAttribute('aScl',CL.scl);g.setAttribute('aTile',CL.tile);g.setAttribute('aLo',CL.lo);g.instanceCount=N;
     const mesh=new THREE.Mesh(g,cmat);mesh.frustumCulled=false;mesh.renderOrder=1;cloudGroup.add(mesh);CL.mesh=mesh;CL.last.set(1e9,0,0);CL.ord=new Uint32Array(N).map((_,i)=>i);CL.d=new Float32Array(N);sortClouds(new THREE.Vector3());
   }
-  function sortClouds(cp){const L=CL.src,n=CL.n,d=CL.d,o=CL.ord;for(let i=0;i<n;i++){const c=L[i];const dx=c[0]-cp.x,dy=c[1]-cp.y,dz=c[2]-cp.z;d[i]=dx*dx+dy*dy+dz*dz;}
+  function sortClouds(cp){const L=CL.src,n=CL.n,d=CL.d,o=CL.ord,P=CU.uP.value,wr=v=>v-Math.floor(v/P+0.5)*P;CU.uCam.value.copy(cp);for(let i=0;i<n;i++){const c=L[i];const dx=wr(c[0]-cp.x),dy=c[1]-cp.y,dz=wr(c[2]-cp.z);d[i]=dx*dx+dy*dy+dz*dz;}
     o.sort((a,b)=>d[b]-d[a]);const A=CL.off.array,B=CL.scl.array,T=CL.tile.array,Lo=CL.lo.array;
     for(let k=0;k<n;k++){const c=L[o[k]];A[k*3]=c[0];A[k*3+1]=c[1];A[k*3+2]=c[2];B[k*2]=c[3];B[k*2+1]=c[4];T[k*2]=c[5];T[k*2+1]=c[6];Lo[k]=c[7];}
     for(const a of [CL.off,CL.scl,CL.tile,CL.lo])a.needsUpdate=true;CL.last.copy(cp);}

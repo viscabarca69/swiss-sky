@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import {buildGrid,makeSampler,AIRPORTS,APM,ICAOS,TOWNS,PEAKS,LAKES,HALF,WORLD,toLocal,fromLocal,toXZ,AREA_ID,AREA_NAME,MAIN_AP,GEO,oldXZ} from './worldgen.js';
 const ZS=true;// eine grosse Karte (früher: zs oder bo)
-const EWZ=24;const ewIds=()=>[...(save.edelweiss||[]),...(save.edelweissBO||[]).map(i=>i+EWZ)];
+const EWZ=24,EWC=48;const ewIds=()=>[...(save.edelweiss||[]),...(save.edelweissBO||[]).map(i=>i+EWZ),...(save.edelweissCH||[]).map(i=>i+EWC)];
 document.querySelectorAll('.lsub').forEach(e=>e.textContent='Flugsimulator · '+AREA_NAME);
 import {buildWorld} from './world3d.js';
 import {createEnv,glowU,makeGlow} from './env.js';
@@ -40,7 +40,7 @@ const AP=APM;
 // ---------- Speicher ----------
 let save={stars:{},grades:{},settings:{units:'metric',assist:true,vol:0.7,quality:'high',invert:false,level:'weak',atc:true,voice:true,traffic:true,padSensS:'1',callouts:true,vib:'1',touch:'auto',keys:{}},free:{plane:'alpina',ap:'ZRH16',rev:false,air:false,hour:12.5,weather:'fair'}};
 save.lessons={};
-try{const s=JSON.parse(localStorage.getItem('alpenflug-ch1'));if(s){save.lessons=s.lessons||{};save.stars=s.stars||{};save.grades=s.grades||{};Object.assign(save.settings,s.settings||{});Object.assign(save.free,s.free||{});save.edelweiss=s.edelweiss||[];save.edelweissBO=s.edelweissBO||[];if(s.career)save.career=s.career;}}catch(e){}
+try{const s=JSON.parse(localStorage.getItem('alpenflug-ch1'));if(s){save.lessons=s.lessons||{};save.stars=s.stars||{};save.grades=s.grades||{};Object.assign(save.settings,s.settings||{});Object.assign(save.free,s.free||{});save.edelweiss=s.edelweiss||[];save.edelweissBO=s.edelweissBO||[];save.edelweissCH=s.edelweissCH||[];if(s.career)save.career=s.career;}}catch(e){}
 const persist=()=>{try{localStorage.setItem('alpenflug-ch1',JSON.stringify(save));}catch(e){}};
 const career=createCareer(save,persist);
 const myLivery=id=>career.owns(id)?career.C.liv[id]||null:null;
@@ -452,7 +452,7 @@ function step(dt){
   }
   F.events.length=0;
   if(F.crashed)return;
-  if(attr&&!G.lesson){const c=attr.collect(F.pos);if(c){save.edelweiss=c.ids.filter(i=>i<EWZ);save.edelweissBO=c.ids.filter(i=>i>=EWZ).map(i=>i-EWZ);persist();audio.chime();pad.rumble(0.2,0.6,200);toast(`Goldenes Edelweiss «${c.name}» gefunden! ${c.count} / ${c.total}`,3500);if(c.count>=10)award('sammler');if(c.count>=c.total)award('edel');}
+  if(attr&&!G.lesson){const c=attr.collect(F.pos);if(c){save.edelweiss=c.ids.filter(i=>i<EWZ);save.edelweissBO=c.ids.filter(i=>i>=EWZ&&i<EWC).map(i=>i-EWZ);save.edelweissCH=c.ids.filter(i=>i>=EWC).map(i=>i-EWC);persist();audio.chime();pad.rumble(0.2,0.6,200);toast(`Goldenes Edelweiss «${c.name}» gefunden! ${c.count} / ${c.total}`,3500);if(c.count>=10)award('sammler');if(c.count>=c.total)award('edel');}
     const ha=attr.hit(F.pos);if(ha){F.crashed=true;audio.crash();pad.rumble(1,1,900);boom(F.pos);G.model.visible=false;const g=G;setTimeout(()=>{if(G===g&&!g.done)finish(false,'Zusammenstoss mit '+ha+'!');},2600);return;}}
   {const hitAI=traffic&&traffic.hit(F);if(hitAI){F.crashed=true;audio.crash();pad.rumble(1,1,900);boom(F.pos);G.model.visible=false;{const g=G;setTimeout(()=>{if(G===g&&!g.done)finish(false,'Zusammenstoss mit '+hitAI.cs+'!');},2600);}return;}}
   atc.update(dt,atcCtx());
@@ -575,7 +575,7 @@ function updateHUD(dt){
   const o=G.obj[G.oi];let title,txt,dist='';
   if(G.appr&&G.apprG&&!G.lesson&&(!G.mission||!o||o.type==='land')){const g=G.apprG;title=`ANFLUG PISTE ${G.appr.rwy} · ${G.appr.name.toUpperCase()}`;txt=(g.lines.slice(0,2).join(' · ')||'Folge der violetten Bahn')+(G.ap?' · Autopilot fliegt den Anflug':'');dist=fmtD(g.toGo);}
   else if(!G.mission&&G.wp&&!G.lesson){const dd=Math.hypot(F.pos.x-G.wp.x,F.pos.z-G.wp.z),eta=dd/Math.max(20,Math.hypot(F.vel.x,F.vel.z));title='EIGENES ZIEL · '+(G.wp.name||'Kartenpunkt').toUpperCase();txt=`Kurs ${String(Math.round(wpBrg(F))).padStart(3,'0')}° · ca. ${Math.max(1,Math.round(eta/60))} min · Folge der türkisen Linie${G.ap?' · Autopilot fliegt hin':' · Autopilot (U) fliegt hin'}`;dist=fmtD(dd);}
-  else if(!G.mission){title='FREIER FLUG';txt=`Erkunde die Schweiz von Zürich bis ins Wallis · Goldene Edelweiss: ${ewIds().length} / ${attr?attr.edelweissTotal:48} · Karte (M): Ziel antippen`;}
+  else if(!G.mission){title='FREIER FLUG';txt=`Erkunde die ganze Schweiz – von Genf bis ins Engadin · Goldene Edelweiss: ${ewIds().length} / ${attr?attr.edelweissTotal:72} · Karte (M): Ziel antippen`;}
   else if(!o){title='GESCHAFFT';txt='';}
   else{const same=G.obj.filter(x=>x.type===o.type),k=same.indexOf(o)+1;
     if(o.type==='ring'){title=o.final?`ENDANFLUG ${k}/${same.length}`:`RING ${k} / ${same.length}`;txt=o.final?'Blaue Ringe markieren den Gleitpfad zur Piste.':o.name?`Sehenswürdigkeit: ${o.name} – flieg durch den Ring.`:'Fliege durch den gelben Ring.';}
@@ -787,7 +787,7 @@ function renderFree(){
   f.wind=f.wind||'light';$('fWind').innerHTML=[['calm','Windstill'],['light','Leicht'],['mid','Mässig'],['strong','Stark, böig'],['foehn','Föhnsturm']].map(([k,n])=>`<button class="chip ${f.wind===k?'sel':''}" data-k="${k}">${n}</button>`).join('');
   $('fWind').querySelectorAll('.chip').forEach(el=>el.onclick=()=>{f.wind=el.dataset.k;persist();renderFree();});
 }
-function ewInfo(){const n=ewIds().length;$('ewInfo').innerHTML=`<b>Goldene Edelweiss: ${n} / 48</b> – versteckt bei Wahrzeichen, auf Gipfeln und tief über Seen: von Zürich und Luzern bis zu Eiger, Mönch und Jungfrau. Flieg im freien Flug hindurch und sammle alle! Dazu: Kunstflugstaffel, Zeppelin über Zürich, Heissluftballone, Gleitschirme, Seilbahnen und nachts Feuerwerk.`;}
+function ewInfo(){const n=ewIds().length;$('ewInfo').innerHTML=`<b>Goldene Edelweiss: ${n} / ${attr?attr.edelweissTotal:72}</b> – versteckt bei Wahrzeichen, auf Gipfeln und tief über Seen: von Genf und dem Matterhorn über Zürich, Luzern und die Jungfrau bis nach St. Moritz und Lugano. Flieg im freien Flug hindurch und sammle alle! Dazu: Kunstflugstaffel, Zeppelin über Zürich, Heissluftballone, Gleitschirme, Seilbahnen und nachts Feuerwerk.`;}
 $('fGo').onclick=()=>{audio.init();startFlight({...save.free});};
 function renderSettings(){const st=save.settings;
   const opt=(id,vals,key)=>{$(id).innerHTML=vals.map(([v,n])=>`<button class="chip ${st[key]===v?'sel':''}" data-v="${v}">${n}</button>`).join('');$(id).querySelectorAll('.chip').forEach(el=>el.onclick=()=>{let v=el.dataset.v;if(v==='true')v=true;if(v==='false')v=false;st[key]=v;persist();renderSettings();if(key==='quality')$('qHint').style.display='';});};
@@ -1341,7 +1341,7 @@ function loop(now){
 }
 const P_shadow=P=>P.shadow;
 boot().then(()=>requestAnimationFrame(loop)).catch(e=>{console.error(e);$('lstep').textContent='Fehler: '+e.message;});
-window.__af={buildObjectives,AIRPORTS,fromLocal,get airports(){return airports;},apprTest:(icao,i)=>{setAppr(approachOptions(icao)[i]);return G.appr;},apprMenu,mapXf,get groundT(){return groundT;},MSH,THUMB,TH,thumbTick,setWp,clearWp,MV,mapZoom,mapCenter,__jm:jobMission,career,showMenu,setSub,renderCareer,openCareer,getDaily,showBrief,finish,award,toXZ,get S(){return S;},MISSIONS,get traffic(){return traffic;},atc,keyAction,startReplay,get env(){return env;},renderer,get world(){return world;},get composer(){return composer;},set noComp(v){window.__noComp=v;},buildModel,PLANES,THREE,get G(){return G;},startFlight,K,get state(){return state;},MISSIONS,cam,scene,simAP:(sec)=>{for(let t=0;t<sec;t+=1/30){const F=G.F;K.clear();const A=G.obj.find(o=>o.type==='land')?.ap||(G.lesson&&AP[G.lesson.ap]);if(!A)break;const l=toLocal(A,F.pos.x,F.pos.z);const sgn0=(F.vel.x*A.sin-F.vel.z*A.cos)>=0?1:-1;const d=(-sgn0*A.len/2-l.along)*sgn0;const ideal=A.elev+F.P.gearH+Math.max(0,d+150)*0.0524;const agl=F.pos.y-F.P.gearH-S.heightAt(F.pos.x,F.pos.z);
+window.__af={get attr(){return attr;},buildObjectives,AIRPORTS,fromLocal,get airports(){return airports;},apprTest:(icao,i)=>{setAppr(approachOptions(icao)[i]);return G.appr;},apprMenu,mapXf,get groundT(){return groundT;},MSH,THUMB,TH,thumbTick,setWp,clearWp,MV,mapZoom,mapCenter,__jm:jobMission,career,showMenu,setSub,renderCareer,openCareer,getDaily,showBrief,finish,award,toXZ,get S(){return S;},MISSIONS,get traffic(){return traffic;},atc,keyAction,startReplay,get env(){return env;},renderer,get world(){return world;},get composer(){return composer;},set noComp(v){window.__noComp=v;},buildModel,PLANES,THREE,get G(){return G;},startFlight,K,get state(){return state;},MISSIONS,cam,scene,simAP:(sec)=>{for(let t=0;t<sec;t+=1/30){const F=G.F;K.clear();const A=G.obj.find(o=>o.type==='land')?.ap||(G.lesson&&AP[G.lesson.ap]);if(!A)break;const l=toLocal(A,F.pos.x,F.pos.z);const sgn0=(F.vel.x*A.sin-F.vel.z*A.cos)>=0?1:-1;const d=(-sgn0*A.len/2-l.along)*sgn0;const ideal=A.elev+F.P.gearH+Math.max(0,d+150)*0.0524;const agl=F.pos.y-F.P.gearH-S.heightAt(F.pos.x,F.pos.z);
   const wantVs=F.onGround?0:agl>6?clamp((ideal-F.pos.y)*0.15-0.0524*F.vel.length(),-6,2):-0.5;const vs=F.vel.y;if(!F.onGround){if(vs<wantVs-0.3)K.add('ArrowDown');else if(vs>wantVs+0.3)K.add('ArrowUp');}
   {const sgn=(F.vel.x*A.sin-F.vel.z*A.cos)>=0?1:-1;const ac=l.across*sgn;const vlat=(F.vel.x*A.cos+F.vel.z*A.sin)*sgn;const want=clamp(-ac*0.05,-25,25);const err=want-vlat;const bk=(F.bank||0)/DEG;const wb=clamp(-err*3,-20,20);if(F.onGround){if(ac>2)K.add('KeyA');else if(ac<-2)K.add('KeyD');}else if(bk<wb-3)K.add('KeyA');else if(bk>wb+3)K.add('KeyD');}const V=F.vel.length();if(!F.onGround){if(V<F.P.Vref*1.05)K.add('KeyW');else if(V>F.P.Vref*1.15)K.add('KeyS');}else{K.add('KeyS');K.add('KeyB');}
   step(1/30);if(G.done||F.crashed)break;}K.clear();const F=G.F;return{v:F.vel.length(),y:F.pos.y,gnd:F.onGround,done:G.done,crashed:F.crashed,lt:G.lastTouch&&G.lastTouch.letter,oi:G.oi,n:G.obj.length};},

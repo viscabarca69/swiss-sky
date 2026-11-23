@@ -166,7 +166,7 @@ export function buildAirports(scene,S,addParked){
     }else if(zrh){/* Nebenpisten in Zürich: Gebäude stehen beim Hauptterminal */
     }else if(!A.small){
       // Regionalflughafen: Vorfeld mit Standplätzen, Terminal mit Glasfront und Namen, Tower, Hangars, Tanklager, Parkplatz, Fahrzeuge
-      const G0=grpOf(A),aC=-A.len*0.12,acA=s*(A.w/2+tx+95),big=['LSZB','LSGS','LSME','LSZG'].includes(A.icao);
+      const G0=grpOf(A),aC=-A.len*0.12,acA=s*(A.w/2+tx+95),big=['LSZB','LSGS','LSME','LSZG','LSGG','LFSB','LSMP','LSZA'].includes(A.icao);
       flat(A,aC,acA,150,440,regApron(A),0.05);flat(A,aC,s*(A.w/2+tx/2+8),tx-10,36,asph2,0.045);
       // Terminal
       {const tb=new THREE.Group(),TL=big?150:90,TH=big?12:9,TW=24,f1=facadeMat(TL/8,TH/4),f2=facadeMat(TW/8,TH/4);nightMats.push(f1.mat,f2.mat);

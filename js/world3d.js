@@ -3,7 +3,7 @@ import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {buildExtras,windowShader} from './gfx.js';
 import {makeSimplex,fbm,hash2,clamp,sstep,mulberry} from './noise.js';
-import {WORLD,HALF,G,N1,CELL,AIRPORTS,FLATS,TOWNS,ROADS,RIVERS,LAKES,toLocal} from './worldgen.js';
+import {WORLD,HALF,G,N1,CELL,AIRPORTS,FLATS,TOWNS,ROADS,RIVERS,LAKES,BORDER,toLocal} from './worldgen.js';
 
 const tick=()=>new Promise(r=>setTimeout(r,0));
 const SF=makeSimplex(71),SV=makeSimplex(97);
@@ -86,7 +86,7 @@ export async function buildWorld(scene,H,LK,S,Q,progress){
     cls[o]=(!wat&&!town&&!fo&&sl<0.16&&h<1150&&!airportNear(x,z,-40))?255:0;cls[o+1]=fo?255:0;cls[o+2]=town?Math.min(255,40+TW[k]*200):0;cls[o+3]=255;}
   const clsTex=new THREE.DataTexture(cls,N1,N1,THREE.RGBAFormat);clsTex.magFilter=THREE.LinearFilter;clsTex.minFilter=THREE.LinearFilter;clsTex.needsUpdate=true;
   // Kartenbild
-  const MW=T>=2048?2048:1024,ls=MW/1024;const mc=document.createElement('canvas');mc.width=mc.height=MW;{const m=mc.getContext('2d');m.imageSmoothingQuality='high';m.drawImage(cv,0,0,MW,MW);
+  const MW=T>=4096?4096:T>=2048?2048:1024,ls=MW/1024;const mc=document.createElement('canvas');mc.width=mc.height=MW;{const m=mc.getContext('2d');m.imageSmoothingQuality='high';m.drawImage(cv,0,0,MW,MW);
     // Reliefschattierung (Licht aus Nordwesten) für eine plastische Karte
     {const hc=document.createElement('canvas');hc.width=hc.height=N1;const hx=hc.getContext('2d'),id=hx.createImageData(N1,N1),L=[-0.55,0.68,-0.48],ll=Math.hypot(...L),fl=L[1]/ll;
       for(let j=0;j<N1;j++)for(let i=0;i<N1;i++){const hl=H[j*N1+Math.max(0,i-1)],hr=H[j*N1+Math.min(N1-1,i+1)],hu=H[Math.max(0,j-1)*N1+i],hd=H[Math.min(N1-1,j+1)*N1+i];
@@ -95,7 +95,12 @@ export async function buildWorld(scene,H,LK,S,Q,progress){
       hx.putImageData(id,0,0);m.save();m.globalCompositeOperation='soft-light';m.globalAlpha=0.85;m.drawImage(hc,0,0,MW,MW);m.restore();}const k=MW/WORLD,P=v=>(v+HALF)*k;m.lineCap=m.lineJoin='round';
     const st=(pts)=>{m.beginPath();pts.forEach((p,i)=>i?m.lineTo(P(p[0]),P(p[1])):m.moveTo(P(p[0]),P(p[1])));m.stroke();};
     for(const R of RIVERS){m.strokeStyle='rgb(70,120,150)';m.lineWidth=1.8*ls;st(R.pts);}
-    for(const R of ROADS){m.strokeStyle='rgba(240,228,205,0.8)';m.lineWidth=(R.w>2?1.8:1.1)*ls;st(R.pts);}}
+    for(const R of ROADS){m.strokeStyle='rgba(240,228,205,0.8)';m.lineWidth=(R.w>2?1.8:1.1)*ls;st(R.pts);}
+    // Landesgrenze: Ausland abgedunkelt und entsättigt, Grenze als rote Linie mit weissem Saum
+    if(BORDER.length){const ring=(r)=>{for(let i=0;i<r.length;i+=2)i?m.lineTo(P(r[i]),P(r[i+1])):m.moveTo(P(r[i]),P(r[i+1]));m.closePath();};
+      m.save();m.beginPath();m.rect(0,0,MW,MW);BORDER.forEach(ring);m.clip('evenodd');m.globalCompositeOperation='saturation';m.fillStyle='hsl(0,0%,50%)';m.globalAlpha=0.55;m.fillRect(0,0,MW,MW);
+      m.globalCompositeOperation='source-over';m.globalAlpha=1;m.fillStyle='rgba(18,26,40,0.32)';m.fillRect(0,0,MW,MW);m.restore();
+      m.beginPath();BORDER.forEach(ring);m.strokeStyle='rgba(255,255,255,0.8)';m.lineWidth=1.7*ls;m.stroke();m.strokeStyle='#d8232a';m.lineWidth=0.85*ls;m.stroke();}}
   W.mapCanvas=mc;
 
   // ---------- Gelände-Mesh ----------
@@ -154,7 +159,7 @@ float dCam=length(vWP-cameraPosition);float near=1.0-smoothstep(500.0,7000.0,dCa
  base=mix(base,rcol,rock*0.85);
  {float scree=smoothstep(0.1,0.16,slope)*(1.0-smoothstep(0.24,0.32,slope))*smoothstep(1500.0,1900.0,vWP.y)*smoothstep(0.45,0.6,vn(vWP.xz*0.003));
   vec3 sc=pow(vec3(0.58,0.56,0.52),vec3(2.2))*(0.75+0.5*h21(floor(vWP.xz*0.7)))*(0.9+0.2*n);base=mix(base,sc,scree*0.7*(1.0-0.5*smoothstep(3.0,12.0,mpp)));}
- float sl0=mix(2250.0,330.0,uWin);float snow=smoothstep(sl0,sl0+(uWin>0.5?120.0:300.0),vWP.y+(n-0.5)*260.0)*(1.0-smoothstep(0.29+0.26*uWin,0.47+0.38*uWin,slope+(n2-0.5)*0.08));
+ float sl0=mix(2250.0,330.0,uWin);float snow=smoothstep(sl0,sl0+(uWin>0.5?120.0:300.0),vWP.y+(n-0.5)*260.0)*(1.0-smoothstep(0.22+0.3*uWin,0.37+0.42*uWin,slope+(n2-0.5)*0.08));
  snow*=1.0-(1.0-uWin)*0.55*smoothstep(0.62,0.8,n)*smoothstep(0.16,0.3,slope);
  snow*=1.0-0.45*uWin*cl.b;
  if(uWin>0.5)snow*=mix(0.62+0.3*n,1.0,smoothstep(700.0,1100.0,vWP.y))*(1.0-0.35*cl.g);

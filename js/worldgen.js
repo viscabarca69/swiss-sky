@@ -1,13 +1,13 @@
 // Welt: Zürich – Mittelland – Bern – Oberland – Wallis aus echten Höhendaten
-import {GEO,LAKES,AIRPORTS_RAW,TOWNS,PEAKS,ROADS,RIVERS,TERRAIN,AREA_ID,AREA_NAME} from './swissdata.js';
+import {GEO,LAKES,AIRPORTS_RAW,TOWNS,PEAKS,ROADS,RIVERS,TERRAIN,AREA_ID,AREA_NAME,BORDER} from './swissdata.js';
 import {sstep,clamp} from './noise.js';
-export {TOWNS,PEAKS,ROADS,RIVERS,LAKES,AREA_ID,AREA_NAME,GEO};
+export {TOWNS,PEAKS,ROADS,RIVERS,LAKES,AREA_ID,AREA_NAME,GEO,BORDER};
 export const HALF=GEO.half,WORLD=2*HALF,G=GEO.g,N1=G+1,CELL=WORLD/G;
 export const toXZ=(lat,lon)=>({x:(lon-GEO.lon0)*GEO.kx,z:-(lat-GEO.lat0)*GEO.kz});
 
 const EXT={SIO:[200,0],GRE:[250,0],BRN:[250,0],INT:[150,0],MEI:[150,0],REI:[260,0],RAR:[260,0],ZRH16:[300,0],ZRH14:[300,0],ZRH10:[300,0],EMM:[700,0],BUO:[500,-250],ALP:[500,0],BIR:[560,0],HAU:[520,0],WAN:[700,0]};
 // Version 8: alle Pisten mindestens ~2.6 km und 45 m breit (L-320/L-330 tauglich); [Verlängerung am A-Ende, am B-Ende] in Metern, je nach Gelände
-const EXT8={BUO:[223,0],ALP:[450,150],BIR:[675,675],HAU:[700,676],BRN:[312,312],INT:[377,376],MEI:[228,228],REI:[766,765],RAR:[755,754],SIO:[212,211],GRE:[684,683]};
+const EXT8={BUO:[223,0],ALP:[450,150],BIR:[675,675],HAU:[700,676],BRN:[312,312],INT:[377,376],MEI:[228,228],REI:[766,765],RAR:[755,754],SIO:[212,211],GRE:[684,683],LUG:[0,452],ACH:[332,332]};
 export const AIRPORTS=AIRPORTS_RAW.filter(A=>A.id!=='WAN').map(A0=>{
   const e=EXT[A0.id]||[0,0],x8=EXT8[A0.id]||[0,0],A={...A0,len:A0.len+e[0]+x8[0]+x8[1],w:Math.max(A0.w,45),lenOld:A0.len+e[0],eA:x8[0],eB:x8[1],wasSmall:!!A0.small,small:false};
   const sh=e[1]+(x8[1]-x8[0])/2;if(sh){A.x+=Math.sin(A0.a)*sh;A.z-=Math.cos(A0.a)*sh;}A.sh8=(x8[1]-x8[0])/2;

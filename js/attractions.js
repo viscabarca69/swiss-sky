@@ -22,8 +22,14 @@ export const EDELWEISS_BO=[
   [46.697,7.851,80,'Harder Kulm'],[46.686,7.858,45,'Höhematte Interlaken'],[46.787,8.0469,100,'Brienzer Rothorn'],[46.624,8.041,110,'Grindelwald'],[46.659,8.054,90,'First'],[46.613,7.94,90,'Männlichen'],
   [46.719,8.207,45,'Aareschlucht'],[46.45,8.05,220,'Aletschgletscher'],[46.5372,8.1261,140,'Finsteraarhorn'],[46.9466,7.4441,80,'Bundeshaus Bern'],[46.495,7.675,90,'Kandersteg'],[46.4936,7.7731,140,'Blüemlisalp']];
 
+export const EDELWEISS_CH=[
+  [46.2074,6.1557,170,'Jet d’Eau'],[46.4142,6.9275,40,'Château de Chillon'],[46.49,6.74,70,'Lavaux'],[46.5236,6.6352,90,'Kathedrale Lausanne'],[46.932,6.725,120,'Creux du Van'],
+  [45.9763,7.6586,160,'Matterhorn'],[45.955,7.80,120,'Gornergletscher'],[46.108,7.93,100,'Saas-Fee'],[46.161,6.923,140,'Dents du Midi'],[47.5565,7.5925,90,'Basler Münster'],
+  [47.6779,8.6153,40,'Rheinfall'],[47.66,9.25,20,'Bodensee'],[47.2494,9.3433,90,'Säntis'],[47.4235,9.3769,70,'Stiftsbibliothek St. Gallen'],[47.1395,9.5245,70,'Schloss Vaduz'],
+  [46.6806,9.6755,40,'Landwasserviadukt'],[46.4983,9.8390,25,'St. Moritzersee'],[46.42,9.935,130,'Morteratschgletscher'],[46.3825,9.9081,170,'Piz Bernina'],[46.1935,9.0217,70,'Castelgrande'],
+  [45.985,8.955,25,'Lago di Lugano'],[45.977,8.946,90,'Monte San Salvatore'],[46.556,8.567,90,'Gotthardpass'],[46.165,8.80,25,'Lago Maggiore']];
 export function createAttractions(scene,S,opts){
-  const A={};const r=mulberry(42);const BO=opts.area==='bo',ZSon=opts.area!=='bo',BOon=opts.area!=='zs';const EW=ZSon&&BOon?[...EDELWEISS,...EDELWEISS_BO]:BO?EDELWEISS_BO:EDELWEISS;
+  const A={};const r=mulberry(42);const BO=opts.area==='bo',ZSon=opts.area!=='bo',BOon=opts.area!=='zs';const CHon=opts.area==='ch';const EW=ZSon&&BOon?[...EDELWEISS,...EDELWEISS_BO,...(CHon?EDELWEISS_CH:[])]:BO?EDELWEISS_BO:EDELWEISS;
   const P=(lat,lon,agl)=>{const p=toXZ(lat,lon);return new THREE.Vector3(p.x,S.groundAt(p.x,p.z)+(agl||0),p.z);};
   const PH=(lat,lon,agl)=>{const p=toXZ(lat,lon);return new THREE.Vector3(p.x,S.heightAt(p.x,p.z)+(agl||0),p.z);};
   const grp=new THREE.Group();scene.add(grp);
@@ -31,6 +37,45 @@ export function createAttractions(scene,S,opts){
   const winTex=(col,wcol,fx,fy)=>ctex(128,128,(x,w,h)=>{x.fillStyle=col;x.fillRect(0,0,w,h);x.fillStyle=wcol;for(let i=0;i<4;i++)for(let j=0;j<4;j++)x.fillRect(i*32+3,j*32+4,26,22);});
   const nightM=[];
   // ---------- Wahrzeichen ----------
+  if(CHon)buildCH();
+  function buildCH(){
+    const stone=std(0xd9d2c3),roofR=std(0x8c3b2a),white=std(0xf2f0ea),grey=std(0xa9a49a);
+    const pyr=(w,h)=>new THREE.ConeGeometry(w*0.72,h,4,1).rotateY(Math.PI/4);
+    {// Jet d'Eau Genf: 140 m Wassersäule mit Gischt
+      const p=toXZ(46.2074,6.1557),g=new THREE.Group();g.position.set(p.x,372,p.z);grp.add(g);
+      const wm=new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.88,depthWrite:false,fog:true});
+      const col=new THREE.Mesh(new THREE.CylinderGeometry(2.2,4.5,140,14,1,true),wm);col.position.y=70;g.add(col);
+      const top=new THREE.Mesh(new THREE.SphereGeometry(13,14,10),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.45,depthWrite:false,fog:true}));top.scale.set(1,0.7,1);top.position.set(4,138,0);g.add(top);
+      const veil=new THREE.Mesh(new THREE.ConeGeometry(16,120,16,1,true),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.3,depthWrite:false,fog:true,side:THREE.DoubleSide}));veil.position.set(8,62,0);veil.rotation.z=0.06;g.add(veil);
+      // Mole mit Leuchtturm
+      add(new THREE.BoxGeometry(6,2,140),stone,new THREE.Vector3(-30,0.5,60),0.5,g);add(new THREE.CylinderGeometry(1.6,2,10,10),white,new THREE.Vector3(-55,5,120),0,g);}
+    {// Schloss Chillon auf dem Felsen im See
+      const p=toXZ(46.4142,6.9275),g=new THREE.Group();g.position.set(p.x,372,p.z);g.rotation.y=0.6;grp.add(g);
+      add(new THREE.BoxGeometry(70,6,28),grey,new THREE.Vector3(0,2,0),0,g);
+      for(const [x,z,w,d,h] of [[-20,0,22,20,16],[6,-6,26,14,14],[24,4,16,18,18],[0,9,30,8,12]]){add(new THREE.BoxGeometry(w,h,d),stone,new THREE.Vector3(x,5+h/2,z),0,g);add(new THREE.ConeGeometry(Math.hypot(w,d)*0.5,8,4).rotateY(Math.PI/4).scale(w/Math.hypot(w,d)*1.4,1,d/Math.hypot(w,d)*1.4),roofR,new THREE.Vector3(x,5+h+4,z),0,g);}
+      add(new THREE.BoxGeometry(11,30,11),stone,new THREE.Vector3(-4,20,-2),0,g);add(pyr(11,12),roofR,new THREE.Vector3(-4,41,-2),0,g);
+      for(const [x,z] of [[-34,-8],[34,-10],[-34,10],[32,12]]){add(new THREE.CylinderGeometry(3.5,3.5,20,12),stone,new THREE.Vector3(x,14,z),0,g);add(new THREE.ConeGeometry(4.4,8,12),roofR,new THREE.Vector3(x,28,z),0,g);}}
+    {// Landwasserviadukt bei Filisur: sechs Bögen, 65 m hoch
+      const c=toXZ(46.6806,9.6755),a=0.55,deck=S.heightAt(c.x,c.z)+62,g=new THREE.Group();grp.add(g);const st=std(0x9d9488);
+      for(let i=-3;i<=3;i++){const x=c.x+Math.sin(a)*i*22,z=c.z-Math.cos(a)*i*22,gy=S.heightAt(x,z),h=Math.max(8,deck-gy);
+        const m=add(new THREE.BoxGeometry(7,h,9),st,new THREE.Vector3(x,gy+h/2-2,z),a,g);}
+      const dk=add(new THREE.BoxGeometry(6,8,150),st,new THREE.Vector3(c.x,deck+2,c.z),a,g);
+      const rail=add(new THREE.BoxGeometry(7.5,0.6,150),std(0x5b5650),new THREE.Vector3(c.x,deck+6.3,c.z),a,g);}
+    {// Basler Münster: rotes Sandsteinschiff mit zwei Türmen
+      const p=PH(47.5565,7.5925,-1),g=new THREE.Group();g.position.copy(p);g.rotation.y=-0.2;grp.add(g);const rs=std(0xa5503f),tile=std(0x6c7d5a);
+      add(new THREE.BoxGeometry(24,24,62),rs,new THREE.Vector3(0,12,0),0,g);add(new THREE.ConeGeometry(18,14,4).rotateY(Math.PI/4).scale(0.95,1,2.5),tile,new THREE.Vector3(0,31,0),0,g);
+      for(const x of [-8,8]){add(new THREE.BoxGeometry(9,52,9),rs,new THREE.Vector3(x,26,-34),0,g);add(pyr(9,16),rs,new THREE.Vector3(x,60,-34),0,g);}}
+    {// Castelgrande Bellinzona: Torre Bianca, Torre Nera, Mauer
+      const p=PH(46.1935,9.0217,-1),g=new THREE.Group();g.position.copy(p);grp.add(g);const w=std(0xcfc7b6);
+      add(new THREE.BoxGeometry(150,10,60),w,new THREE.Vector3(0,4,0),0.2,g);add(new THREE.BoxGeometry(10,30,10),std(0xe7e2d6),new THREE.Vector3(-30,22,0),0,g);add(new THREE.BoxGeometry(10,32,10),std(0x6d665e),new THREE.Vector3(20,23,6),0,g);
+      for(let i=0;i<18;i++)add(new THREE.BoxGeometry(2,2.5,2),w,new THREE.Vector3(-70+i*8,10.5,-28),0.2,g);}
+    {// Rheinfall: Gischt über dem Felsen, Schloss Laufen
+      const p=toXZ(47.6779,8.6153),gy=S.heightAt(p.x,p.z),g=new THREE.Group();g.position.set(p.x,gy,p.z);g.rotation.y=0.3;grp.add(g);
+      const foam=new THREE.MeshBasicMaterial({color:0xf4fbff,transparent:true,opacity:0.8,depthWrite:false,fog:true});
+      const f=new THREE.Mesh(new THREE.BoxGeometry(150,23,12),foam);f.position.set(0,6,0);f.rotation.x=-0.35;g.add(f);
+      const mist=new THREE.Mesh(new THREE.SphereGeometry(40,16,10),new THREE.MeshBasicMaterial({color:0xffffff,transparent:true,opacity:0.25,depthWrite:false,fog:true}));mist.scale.set(2,0.5,1);mist.position.set(0,6,18);g.add(mist);
+      add(new THREE.BoxGeometry(30,16,14),stone,new THREE.Vector3(-30,30,-70),0,g);add(new THREE.ConeGeometry(16,10,4).rotateY(Math.PI/4),roofR,new THREE.Vector3(-30,43,-70),0,g);add(new THREE.BoxGeometry(8,28,8),stone,new THREE.Vector3(-14,36,-72),0,g);}
+  }
   if(BOon)buildBO();if(ZSon){
   {// Prime Tower Zürich (126 m, grünes Glas)
     const p=PH(47.3863,8.5168,-1);const t=winTex('#3f6d66','#86b9ad');t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(10,30);
@@ -186,7 +231,7 @@ export function createAttractions(scene,S,opts){
   // feste Wahrzeichen weit weg nicht zeichnen (grosse Karte: viele Objekte)
   const mov=new Set([...balloons.map(b=>b.g),...gliders.map(g=>g.g),...team.map(t=>t.m),zep]);const CULL=[];const bx=new THREE.Box3(),cv=new THREE.Vector3();
   grp.updateMatrixWorld(true);for(const c of grp.children){if(mov.has(c)||c.isPoints||!(c.isMesh||c.isGroup||c.isLine))continue;bx.setFromObject(c);if(bx.isEmpty())continue;CULL.push({c,p:bx.getCenter(new THREE.Vector3()),r:bx.getSize(cv).length()/2});}
-  let cullT=0;
+  let cullT=0;A._cull=CULL;
   A.update=(dt,t,cam,night,glowS,wind)=>{
     cullT-=dt;if(cullT<=0||dt===0){cullT=0.5;const cp=cam.position,far=32000+Math.max(0,cp.y-1500)*4;for(const o of CULL)o.c.visible=o.p.distanceTo(cp)-o.r<far;}
     for(const m of nightM)m.emissiveIntensity=night*0.9;nightM.forEach(m=>m.emissive.setScalar(night>0.3?0.8:0));

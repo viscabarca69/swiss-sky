@@ -1,4 +1,5 @@
 // Strassenverkehr und SBB-Züge
+import {RAILS_EXT} from './rails_ext.js';
 import * as THREE from 'three';
 import {ROADS,toXZ,AREA_ID} from './worldgen.js';
 import {makeGlow} from './env.js';
@@ -66,7 +67,7 @@ export function createGround(scene,S,Q){
   const lp=new Float32Array(NC*6),lc=[],ls=[];for(let i=0;i<NC;i++){lc.push(1,0.92,0.75,1,0.08,0.04);ls.push(2.4,1.6);}
   const lights=makeGlow(Array.from(lp),lc,ls);lights.visible=false;scene.add(lights);
   // ---------- Züge ----------
-  const RP=(AREA_ID==='ch'?[...RAILS,...RAILS_BO,...RAILS_CH]:AREA_ID==='bo'?RAILS_BO:RAILS).map(r=>{const raw=shoreFix(S,railSmooth(r.map(([la,lo])=>{const p=toXZ(la,lo);return[p.x,p.z];})));const P=polyPath(raw);
+  const RP=(AREA_ID==='ch'?[...RAILS,...RAILS_BO,...RAILS_CH,...RAILS_EXT]:AREA_ID==='bo'?RAILS_BO:RAILS).map(r=>{const raw=shoreFix(S,railSmooth(r.map(([la,lo])=>{const p=toXZ(la,lo);return[p.x,p.z];})));const P=polyPath(raw);
     // auf 20 m abtasten, Höhe geglättet (Tunnel und Brücken ergeben sich von selbst)
     const n=Math.max(2,Math.ceil(P.len/20)),pts=[],hs=[];for(let k=0;k<=n;k++){at(P,P.len*k/n,0,tmp);pts.push([tmp.x,tmp.z]);hs.push(S.groundAt(tmp.x,tmp.z));}
     const hm=hs.map((_,k)=>{let a=0,c=0;for(let j=-12;j<=12;j++){const h=hs[Math.min(n,Math.max(0,k+j))];a+=h;c++;}return Math.min(a/c,hs[k]+14);});

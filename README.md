@@ -1,10 +1,10 @@
 # Swiss Sky
 
-Browser-Flugsimulator über der Schweiz – von Zürich über Bern und das Berner Oberland bis nach Sion im Wallis.
+Browser-Flugsimulator über der ganzen Schweiz – von Genf bis ins Engadin, von Basel bis ins Tessin.
 
 **Spielen:** https://viscabarca69.github.io/swiss-sky/
 
-- Echte Höhendaten, 16 Seen, rund 150 Orte und 15 Flugplätze auf einer durchgehenden Karte
+- Echte Höhendaten, 27 Seen, rund 300 Orte und 21 Flugplätze auf einer durchgehenden Karte (370 × 370 km) mit Landesgrenze
 - 12 Luftfahrzeuge: vom Hochdecker Alpina über Segler und Löschflugzeug bis zur LUIS-Flotte (L-320 bis L-380) und dem Rega-Helikopter
 - Flugschule, Karriere mit Missionen und Aufträgen, freier Flug mit Anflugplaner
 - Wetter, Tageszeiten, Funk, Fotomodus
