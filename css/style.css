@@ -380,3 +380,6 @@ details.fliv summary{cursor:pointer;font-weight:700}
 #jobsL .job{display:flex;gap:12px;align-items:center;padding:10px 12px;margin:6px 0;border-radius:10px;background:rgba(255,255,255,.06);cursor:pointer;border:1px solid rgba(255,255,255,.08)}
 #jobsL .job:hover,#jobsL .job.focus{background:rgba(127,209,255,.16);border-color:rgba(127,209,255,.5)}
 #jobsL .job b{display:block}#jobsL .job small{opacity:.7}#jobsL .job .pay{margin-left:auto;font-weight:800;color:#ffd23f;white-space:nowrap}
+
+/* Cockpitansicht der Jets: die Instrumente sind im 3D-Cockpit – grosse PFD- und Systemanzeige ausblenden */
+#hud.ck #pfd,#hud.ck #sys{opacity:0;pointer-events:none}

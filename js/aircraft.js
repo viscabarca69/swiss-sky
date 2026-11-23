@@ -431,6 +431,30 @@ function cockpitGlass(L,PR,R,C,key){const H=R*(C.sy||1),lay=paneLayout(C,PR,L,R,
       // Rahmen in Rumpffarbe (durchsichtig -> Lack darunter), nur eine schmale dunkle Dichtung um jede Scheibe
       if(C.mask&&d<0.11*k0)return[20,22,26];if(d<Math.min(fr*0.45,0.028))return[30,32,36];return null;})[0];}
   const m=new THREE.Mesh(g,cockpitGlassMat(GC[key]));m.castShadow=false;return m;}
+// Innenverkleidung des Cockpits (nur von innen sichtbar): Wand mit Ausschnitten genau dort, wo aussen die Scheiben sitzen
+function cockpitShell(L,PR,R,C,key){const H=R*(C.sy||1),lay=paneLayout(C,PR,L,R,H),ta=lay.ta,PA=150*Math.PI/180,k0=1+(R/1.98-1)*0.3;
+  const te=(C.eye[2]+L/2)/L,tb=Math.min(0.4,te+2.6/L);
+  const g=patchGeo(L,PR,ta,tb,-PA,PA,40,90,-0.05);
+  if(!GC[key]){const FP=lay.F.map(p=>roundPane(p,lay.rc)),SP=lay.S.map(p=>roundPane(p,lay.rc)),TW=2048,TH=1024;
+    const rows=[],st=(t)=>({r:lerpProf(PR,t,'r'),sx:lerpProf(PR,t,'sx'),sy:lerpProf(PR,t,'sy'),syT:lerpProf(PR,t,'syT'),sxT:lerpProf(PR,t,'sxT'),yo:yOff(PR,t),z:t*L});
+    const pos=(q,ph)=>{const c=Math.cos(ph);return[q.r*q.sx*Math.sin(ph)*(c>0?sxF(q.sxT,c):1),q.r*(c>0?q.syT:q.sy)*c+q.yo,q.z];};
+    const boe=!!C.hump,wall=boe?[138,136,130]:[132,140,150],frm=boe?[70,70,68]:[62,68,76];
+    GC[key]=softTex(TW,TH,(u,v)=>{const t=ta+(tb-ta)*v,row=rows[Math.round(v*TH)]||(rows[Math.round(v*TH)]=[st(t),st(t+(tb-ta)/TH)]),ph=-PA+2*PA*u;
+      const P=pos(row[0],ph),Pp=pos(row[0],ph+0.002),Pt=pos(row[1],ph);
+      const a1=[Pp[0]-P[0],Pp[1]-P[1],Pp[2]-P[2]],a2=[Pt[0]-P[0],Pt[1]-P[1],Pt[2]-P[2]];let nx=a1[1]*a2[2]-a1[2]*a2[1],nz2=a1[0]*a2[1]-a1[1]*a2[0];const nl=Math.hypot(nx,a1[2]*a2[0]-a1[0]*a2[2],nz2)||1;nx/=nl;nz2/=nl;
+      if(nx*P[0]<0){nx=-nx;nz2=-nz2;}
+      const ax=Math.abs(P[0]),uu=P[2];let d=1e9;
+      if(nz2<-0.12)for(const f of FP)d=Math.min(d,f(ax,P[1]));
+      if(Math.abs(nx)>0.3)for(const f of SP)d=Math.min(d,f(uu,P[1]));
+      // weiche Kanten: Deckkraft steigt über 1 cm am Scheibenrand, Rahmen geht weich in die Verkleidung über
+      const al=Math.min(1,Math.max(0,(d+0.004)/0.01));if(al<=0)return null;
+      const fw=0.045*k0,q=Math.min(1,Math.max(0,(d-fw+0.012)/0.024));
+      return[frm[0]+(wall[0]-frm[0])*q,frm[1]+(wall[1]-frm[1])*q,frm[2]+(wall[2]-frm[2])*q,al*255];});}
+  const m=new THREE.Mesh(g,new THREE.MeshStandardMaterial({map:GC[key],transparent:true,alphaTest:0.02,side:THREE.BackSide,roughness:0.85,metalness:0.0}));m.castShadow=false;m.receiveShadow=false;m.name='cockpitShell';return m;}
+// Textur mit weichem Alpha (v = [r,g,b,a] oder null)
+function softTex(W,H,fn){const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d'),im=x.createImageData(W,H),D=im.data;
+  for(let py=0;py<H;py++)for(let px=0;px<W;px++){const v=fn(px/W,py/H),o=(py*W+px)*4;if(!v){D[o+3]=0;continue;}D[o]=v[0];D[o+1]=v[1];D[o+2]=v[2];D[o+3]=v[3]??255;}
+  x.putImageData(im,0,0);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=8;return t;}
 let CGM=new Map();function cockpitGlassMat(tex){if(CGM.has(tex))return CGM.get(tex);const m=new THREE.MeshStandardMaterial({map:tex,transparent:true,alphaTest:0.5,roughness:0.06,metalness:0.55,envMapIntensity:1.5,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});CGM.set(tex,m);return m;}
 // Kabinenfenster einer Reihe (beide Seiten), echtes Glas mit Rahmen, nachts beleuchtet
 function cabinGlass(L,PR,row,key,parts){
@@ -546,6 +570,7 @@ function buildAirliner(C,body,parts,root,P){
   fus.castShadow=true;body.add(fus);
   {const PR=PRF;parts.body=body;
    body.add(cockpitGlass(L,PR,R,C,'cg'+C.L+(C.ws||'')+(C.hump?'h':'')));
+   if(C.eye)body.add(cockpitShell(L,PR,R,C,'cs'+C.L+(C.ws||'')+(C.hump?'h':'')));
    win.forEach((w,i)=>cabinGlass(L,PR,w,'cw'+C.L+'_'+i,parts));}
   const wm=wingMat(0xd8dce0,{walk:1});
   // Spannweite wie beim Vorbild inkl. Winglets: Flügel um die seitliche Ausladung der Flügelspitze kürzen
@@ -611,7 +636,9 @@ function buildAirliner(C,body,parts,root,P){
   {const tP=C.nose*0.3,zP=tP*L-L/2,rP=lerpProf(PRF,tP,'r'),yP=yOff(PRF,tP);for(const sg of [1,-1]){const pt=new THREE.Mesh(new THREE.CylinderGeometry(0.025,0.04,0.45,6),M.metal);pt.rotation.z=sg*Math.PI/2;pt.rotation.y=0.3*sg;pt.position.set(sg*(rP+0.15),yP-0.1*R,zP);body.add(pt);}
    for(const z of [-L*0.15,L*0.05,L*0.25]){const a=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.35,0.5),M.dark);a.position.set(0,-R*sy-0.12,z);body.add(a);}
    }
-  parts.eye=new THREE.Vector3(...C.eye);
+  // Augenpunkt: auf Höhe der Frontscheibe (gut 40 % der Scheibenhöhe), etwa 0,9 m hinter der Scheiben-Unterkante
+  {const lay=paneLayout(C,PRF,L,R,H),yb=lay.F[0][0][1],yt=lay.F[0][1][1],uB=uAtWidth(PRF,L,lay.F[0][3][0],lay.F[0][3][1],0.003,0.3);
+   parts.eye=new THREE.Vector3(C.eye[0],yb+0.42*(yt-yb),Math.max(C.eye[2],uB-L/2+0.9));}
   parts.lights=navLights(body,[{p:[-tipx,tipy,tipz+1.3],c:[1,0.05,0.05],s:1.4},{p:[tipx,tipy,tipz+1.3],c:[0.05,1,0.2],s:1.4},{p:[0,R*0.6*C.up,L/2+0.3],c:[1,1,1],s:1.1},
     {p:[0,R*sy+0.1,L*0.05],c:[1,0.1,0.05],beacon:1,s:1.3},{p:[0,-R*sy-0.1,0],c:[1,0.1,0.05],beacon:1,s:1.3},{p:[-tipx,tipy,tipz+1.7],c:[0,0,0],strobe:1,s:2.2},{p:[tipx,tipy,tipz+1.7],c:[0,0,0],strobe:1,s:2.2},{p:[0,R*0.6*C.up,L/2+0.4],c:[0,0,0],strobe:1,s:1.8}]);
   parts.landing=new THREE.Vector3(-W.x0-2,W.y0,W.z0+1);
