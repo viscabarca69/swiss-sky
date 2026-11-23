@@ -363,3 +363,12 @@ body.touchui #keys{display:none}
 #tdb span{display:inline-block;margin-top:6px;padding:5px 14px;border-radius:999px;background:rgba(10,16,24,.72);font:700 14px Inter,sans-serif;color:#dfeaf5}
 #tdb.g1 b{color:#7dffb0;text-shadow:0 0 22px rgba(61,245,138,.6),0 3px 16px rgba(0,0,0,.6)}
 #tdb.g2 b{color:#bff7ff}#tdb.g3 b{color:#ffd23f}#tdb.g4 b{color:#ff6a4a}
+
+#apAsk{position:absolute;top:34%;left:50%;transform:translate(-50%,-50%);z-index:40;min-width:320px;padding:14px 16px 12px;border-radius:14px;background:rgba(14,18,26,.93);border:1px solid rgba(255,255,255,.14);box-shadow:0 12px 40px rgba(0,0,0,.45);color:#eef2f7;display:flex;flex-direction:column;gap:8px;font-size:14px}
+#apAsk.hidden{display:none}
+#apAsk>b{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#7fd1ff}
+#apAsk button{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:rgba(255,255,255,.06);color:inherit;font:inherit;font-weight:700;cursor:pointer;text-align:left}
+#apAsk button:hover{background:rgba(127,209,255,.18);border-color:rgba(127,209,255,.5)}
+#apAsk button small{margin-left:auto;font-weight:500;opacity:.75}
+#apAsk kbd{display:inline-block;min-width:20px;padding:1px 6px;border-radius:5px;background:rgba(255,255,255,.14);font:700 12px Inter,sans-serif;text-align:center}
+#apAsk span{font-size:11px;opacity:.6}

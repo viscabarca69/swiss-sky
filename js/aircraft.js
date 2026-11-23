@@ -278,7 +278,7 @@ const NAVY='#0b2545',RED='#d7263d';
 // Rumpfprofil: Nase mit Ober-/Unterkante (halbe Rumpfhöhen) und eigener Breite (R) – nach Airbus-Seiten- und Draufsicht
 // [s, oben, unten, halbe Breite]; s = Anteil der Nasenlänge
 const NOSE={std:[[0,-0.35,-0.35,0],[0.004,-0.29,-0.41,0.055],[0.012,-0.25,-0.45,0.1],[0.03,-0.17,-0.5,0.17],[0.056,-0.09,-0.55,0.245],[0.11,0.04,-0.64,0.37],[0.22,0.2,-0.775,0.55],[0.33,0.3,-0.87,0.69],[0.44,0.39,-0.925,0.8],[0.54,0.6,-0.96,0.87],[0.64,0.79,-0.98,0.92],[0.8,0.935,-0.995,0.97],[0.9,0.985,-1,0.99],[1,1,-1,1]],
-  a380:[[0,-0.44,-0.44,0],[0.006,-0.33,-0.53,0.09],[0.018,-0.2,-0.6,0.18],[0.05,0.05,-0.66,0.31],[0.1,0.3,-0.73,0.46],[0.2,0.55,-0.83,0.65],[0.3,0.72,-0.9,0.78],[0.4,0.83,-0.945,0.875],[0.55,0.925,-0.98,0.945],[0.7,0.972,-0.994,0.98],[0.85,0.994,-1,0.996],[1,1,-1,1]],
+  a380:[[0,-0.17,-0.17,0],[0.004,-0.08,-0.26,0.065],[0.012,0.0,-0.33,0.12],[0.025,0.09,-0.4,0.18],[0.05,0.21,-0.49,0.27],[0.1,0.35,-0.6,0.4],[0.2,0.52,-0.73,0.59],[0.3,0.65,-0.83,0.72],[0.45,0.79,-0.915,0.85],[0.6,0.885,-0.962,0.93],[0.8,0.955,-0.99,0.98],[1,1,-1,1]],
   a350:[[0,-0.3,-0.3,0],[0.005,-0.22,-0.4,0.08],[0.015,-0.15,-0.46,0.15],[0.035,-0.05,-0.53,0.25],[0.06,0.05,-0.6,0.34],[0.11,0.2,-0.69,0.47],[0.2,0.37,-0.8,0.63],[0.3,0.5,-0.87,0.75],[0.42,0.63,-0.925,0.85],[0.55,0.76,-0.96,0.92],[0.7,0.88,-0.985,0.97],[0.85,0.96,-0.997,0.993],[1,1,-1,1]]};
 // monotone kubische Interpolation (kein Überschwingen)
 function mono(xs,ys){const n=xs.length,d=[],m=new Array(n);for(let i=0;i<n-1;i++)d.push((ys[i+1]-ys[i])/(xs[i+1]-xs[i]));
@@ -314,6 +314,55 @@ function windshield(L,PR,R,o,key){
       if(edge)return[46,48,54];const k=(y-yl)/(yh-yl);return[30+46*k,46+60*k,62+74*k];})[0];}
   const m=new THREE.Mesh(g,glassMat(GC[key]));m.castShadow=false;return m;
 }
+// ---------- Cockpitscheiben als echte Einzelscheiben ----------
+// Frontscheiben werden in der Vorderansicht (x,y), Seitenscheiben in der Seitenansicht (u = Abstand zur Nasenspitze, y)
+// als Vielecke mit runden Ecken beschrieben und pro Pixel auf die Rumpfoberfläche projiziert. Rahmen dunkel, Pfosten schmal.
+function polyInset(P,d){const n=P.length;let A=0;for(let i=0;i<n;i++){const a=P[i],b=P[(i+1)%n];A+=a[0]*b[1]-b[0]*a[1];}const sg=A>0?1:-1,L=[];
+  for(let i=0;i<n;i++){const a=P[i],b=P[(i+1)%n],ex=b[0]-a[0],ey=b[1]-a[1],l=Math.hypot(ex,ey)||1,nx=-ey/l*sg,ny=ex/l*sg;L.push([a[0]+nx*d,a[1]+ny*d,ex,ey]);}
+  const out=[];for(let i=0;i<n;i++){const p=L[(i+n-1)%n],q=L[i],den=p[2]*q[3]-p[3]*q[2];if(Math.abs(den)<1e-9){out.push([q[0],q[1]]);continue;}const t=((q[0]-p[0])*q[3]-(q[1]-p[1])*q[2])/den;out.push([p[0]+p[2]*t,p[1]+p[3]*t]);}
+  return out;}
+function polySD(P,x,y){const n=P.length;let d=1e9,s=0,A=0;for(let i=0;i<n;i++){const a=P[i],b=P[(i+1)%n];A+=a[0]*b[1]-b[0]*a[1];}
+  let inside=true;for(let i=0;i<n;i++){const a=P[i],b=P[(i+1)%n],ex=b[0]-a[0],ey=b[1]-a[1],wx=x-a[0],wy=y-a[1],t=Math.max(0,Math.min(1,(wx*ex+wy*ey)/(ex*ex+ey*ey||1)));
+    d=Math.min(d,Math.hypot(wx-ex*t,wy-ey*t));if((ex*wy-ey*wx)*A<0)inside=false;}
+  return inside?-d:d;}
+function roundPane(P,rc){const Q=polyInset(P,rc);return (x,y)=>polySD(Q,x,y)-rc;}
+// Querschnitt: Halbbreite in Höhe y an der Stelle t
+function halfW(PR,t,y){const r=lerpProf(PR,t,'r'),sx=lerpProf(PR,t,'sx'),yo=yOff(PR,t),hh=r*(y>yo?lerpProf(PR,t,'syT'):lerpProf(PR,t,'sy'));const c=(y-yo)/hh;if(Math.abs(c)>=1)return 0;const w=r*sx*Math.sqrt(1-c*c);return y>yo?w*sxW(PR,t,c):w;}
+function uAtWidth(PR,L,x,y,t0,t1){let a=t0,b=t1;if(halfW(PR,b,y)<x)return b*L;for(let k=0;k<40;k++){const m=(a+b)/2;if(halfW(PR,m,y)<x)a=m;else b=m;}return (a+b)/2*L;}
+// Scheiben-Layout: Airbus (Unterkante waagrecht, hintere Seitenscheibe mit stark abfallender Oberkante) oder Boeing 747 (auf dem Oberdeck)
+function paneLayout(C,PR,L,R,H){const k=1+(R/1.98-1)*0.3,nz=C.nose,F=[],S=[];
+  if(C.hump){const yb=R*1.0,yt=R*1.32,xo=0.74,xt=0.62,pst=0.05*k;
+    F.push([[pst,yb],[pst,yt],[xt,yt-0.03*k],[xo,yb+0.02*k]]);
+    const uB=uAtWidth(PR,L,xo,yb+0.02*k,0.02,0.2),uT=uAtWidth(PR,L,xt,yt-0.03*k,0.02,0.2),g=0.1*k;
+    S.push([[uB+g,yb+0.02*k],[uT+g,yt-0.03*k],[uT+g+0.66*k,yt-0.05*k],[uB+g+0.66*k,yb+0.06*k]]);
+    S.push([[uB+2*g+0.66*k,yb+0.06*k],[uT+2*g+0.66*k,yt-0.05*k],[uT+2*g+1.05*k,yt-0.1*k],[uB+2*g+1.12*k,yb+0.12*k]]);
+    return{F,S,fr:0.055*k,rc:0.07*k,ta:0.02,tb:Math.min(0.3,(uB+2*g+1.3*k)/L)};}
+  const a=C.deck2?{yb:0.2,yt:0.44,xo:0.92,xt:0.78,w2:0.62,w3:0.5,drop:0.6}:C.ws==='a350'?{yb:0.31,yt:0.52,xo:0.95,xt:0.82,w2:0.66,w3:0.5,drop:0.62}:{yb:0.27,yt:0.65,xo:1.0,xt:0.85,w2:0.66,w3:0.52,drop:0.62};
+  const yb=a.yb*H,yt=a.yt*H,hgt=yt-yb,pst=0.045*k,g=0.1*k;
+  F.push([[pst,yb],[pst,yt],[a.xt*k,yt-0.06*hgt],[a.xo*k,yb+0.04*hgt]]);
+  const uB=uAtWidth(PR,L,a.xo*k,yb+0.04*hgt,0.003,nz*1.6),uT=uAtWidth(PR,L,a.xt*k,yt-0.06*hgt,0.003,nz*1.6);
+  const w2=a.w2*k,w3=a.w3*k;
+  S.push([[uB+g,yb+0.04*hgt],[uT+g,yt-0.06*hgt],[uT+g+w2,yt-0.16*hgt],[uB+g+w2+0.02*k,yb+0.02*hgt]]);
+  const x0b=uB+2*g+w2+0.02*k,x0t=uT+2*g+w2;
+  S.push([[x0b,yb+0.02*hgt],[x0t,yt-0.18*hgt],[x0b+w3,yt-a.drop*hgt],[x0b+w3,yb+0.02*hgt]]);
+  return{F,S,fr:0.05*k,rc:0.06*k,ta:0.003,tb:Math.min(nz*2.2,(x0b+w3+0.4*k)/L)};}
+function cockpitGlass(L,PR,R,C,key){const H=R*(C.sy||1),lay=paneLayout(C,PR,L,R,H),ta=lay.ta,tb=lay.tb,PA=104*Math.PI/180;
+  const g=patchGeo(L,PR,ta,tb,-PA,PA,48,96);
+  if(!GC[key]){const FP=lay.F.map(p=>roundPane(p,lay.rc)),SP=lay.S.map(p=>roundPane(p,lay.rc)),fr=lay.fr,TW=2048,TH=1024;
+    const rows=[],st=(t)=>({r:lerpProf(PR,t,'r'),sx:lerpProf(PR,t,'sx'),sy:lerpProf(PR,t,'sy'),syT:lerpProf(PR,t,'syT'),sxT:lerpProf(PR,t,'sxT'),yo:yOff(PR,t),z:t*L});
+    const pos=(q,ph)=>{const c=Math.cos(ph);return[q.r*q.sx*Math.sin(ph)*(c>0?1-(1-q.sxT)*c*c:1),q.r*(c>0?q.syT:q.sy)*c+q.yo,q.z];};
+    const yC=[0.1,0.12,0.15],yR=[0.33,0.4,0.47];
+    GC[key]=maskTex(TW,TH,(u,v)=>{const t=ta+(tb-ta)*v,row=rows[Math.round(v*TH)]||(rows[Math.round(v*TH)]=[st(t),st(t+(tb-ta)/TH)]),ph=-PA+2*PA*u;
+      const P=pos(row[0],ph),Pp=pos(row[0],ph+0.002),Pt=pos(row[1],ph);
+      const a1=[Pp[0]-P[0],Pp[1]-P[1],Pp[2]-P[2]],a2=[Pt[0]-P[0],Pt[1]-P[1],Pt[2]-P[2]];let nx=a1[1]*a2[2]-a1[2]*a2[1],ny=a1[2]*a2[0]-a1[0]*a2[2],nz2=a1[0]*a2[1]-a1[1]*a2[0];const nl=Math.hypot(nx,ny,nz2)||1;nx/=nl;nz2/=nl;
+      if(nx*P[0]<0){nx=-nx;nz2=-nz2;}
+      const ax=Math.abs(P[0]),uu=P[2];let d=1e9;
+      if(nz2<-0.12)for(const f of FP)d=Math.min(d,f(ax,P[1]));
+      if(Math.abs(nx)>0.3)for(const f of SP)d=Math.min(d,f(uu,P[1]));
+      if(d<0){const kk=Math.min(1,Math.max(0,(P[1]-lay.F[0][0][1])/(lay.F[0][1][1]-lay.F[0][0][1]+1e-6)));return[yC[0]*255+kk*(yR[0]-yC[0])*255,yC[1]*255+kk*(yR[1]-yC[1])*255,yC[2]*255+kk*(yR[2]-yC[2])*255];}
+      if(d<fr)return[22,24,28];return null;})[0];}
+  const m=new THREE.Mesh(g,cockpitGlassMat(GC[key]));m.castShadow=false;return m;}
+let CGM=new Map();function cockpitGlassMat(tex){if(CGM.has(tex))return CGM.get(tex);const m=new THREE.MeshStandardMaterial({map:tex,transparent:true,alphaTest:0.5,roughness:0.06,metalness:0.55,envMapIntensity:1.5,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});CGM.set(tex,m);return m;}
 // Kabinenfenster einer Reihe (beide Seiten), echtes Glas mit Rahmen, nachts beleuchtet
 function cabinGlass(L,PR,row,key,parts){
   const dph=row.dph||0.2,ta=Math.max(0.01,row.x0-0.8/L),tb=Math.min(0.99,row.x1+0.8/L);
@@ -381,12 +430,12 @@ export const AIRLINER={
   l747:{L:70.6,R:3.25,sy:1.08,nose:0.095,tail:0.74,up:1,reg:'HB-LGA',
     wing:{x0:3.0,span:29.2,root:14.5,tip:4.0,sweep:22.5,dih:7,y0:-2.1,z0:-9.2,tr:0.13,tt:0.09},winglet:'canted',
     eng:[{x:11.8,len:6.0,r:1.42},{x:21.0,len:5.8,r:1.38}],fin:{z:22.0,root:12.5,tip:4.6,h:11.2,sweep:10,y:2.9},stab:{x0:1.3,span:10.4,root:7.6,tip:2.6,sweep:8.4,dih:7,y:1.1,z:26.0},
-    main:[{x:5.9,z:1.6,ax:2},{x:1.95,z:4.6,ax:2}],ng:-26.6,eye:[-0.55,4.06,-30.0],cg:3.6,winX:[0.1,0.9],doors:[0.105,0.25,0.43,0.62,0.84],skip:[[0.095,0.118],[0.24,0.262],[0.42,0.442],[0.61,0.632],[0.83,0.852]],
+    main:[{x:5.9,z:1.6,ax:2},{x:1.95,z:4.6,ax:2}],ng:-26.6,eye:[-0.55,3.75,-29.4],cg:3.6,winX:[0.1,0.9],doors:[0.105,0.25,0.43,0.62,0.84],skip:[[0.095,0.118],[0.24,0.262],[0.42,0.442],[0.61,0.632],[0.83,0.852]],
     hump:{top:0.6,tb:0.135,tc:0.31,td:0.43}},
-  l380:{L:72.7,R:3.57,sy:1.2,nose:0.135,tail:0.72,up:0.8,reg:'HB-LEA',deck2:1,
+  l380:{L:72.7,R:3.57,sy:1.2,nose:0.17,tail:0.72,up:0.8,reg:'HB-LEA',deck2:1,
     wing:{x0:3.4,span:36.4,root:17.5,tip:4.0,sweep:24.5,dih:5.6,y0:-2.6,z0:-9.8,tr:0.14,tt:0.1},winglet:'fence',
     eng:[{x:14.7,len:7.0,r:1.6},{x:25.6,len:6.6,r:1.5}],fin:{z:21.5,root:14,tip:5.5,h:13.5,sweep:10.5,y:3.6},stab:{x0:1.8,span:13.2,root:9,tip:3,sweep:8.5,dih:5,y:1.3,z:25.2},
-    main:[{x:6.0,z:1.8,ax:2},{x:2.4,z:4.6,ax:3}],ng:-26.8,eye:[-0.6,0.5,-31.9],cg:4.4,winX:[0.1,0.88],doors:[0.1,0.3,0.55,0.8],skip:[[0.09,0.115],[0.29,0.315],[0.54,0.565],[0.79,0.815]]}
+    main:[{x:6.0,z:1.8,ax:2},{x:2.4,z:4.6,ax:3}],ng:-26.8,eye:[-0.6,1.35,-33.3],cg:4.4,winX:[0.1,0.88],doors:[0.1,0.3,0.55,0.8],skip:[[0.09,0.115],[0.29,0.315],[0.54,0.565],[0.79,0.815]]}
 };
 // Bauchverkleidung: Rumpf unten im Flügelbereich weich ausbauchen statt einer aufgesetzten Kugel
 function keelBulge(g,PRF,L,R,sy,zA,zB){
@@ -424,7 +473,7 @@ function buildAirliner(C,body,parts,root,P){
   const fus=new THREE.Mesh(fg,paintMat({map:liv,roughness:0.3,metalness:0.12}));
   fus.castShadow=true;body.add(fus);
   {const PR=PRF;parts.body=body;
-   body.add(windshield(L,PR,R,WS,'ws'+C.L+(C.ws||'')));
+   body.add(cockpitGlass(L,PR,R,C,'cg'+C.L+(C.ws||'')+(C.hump?'h':'')));
    win.forEach((w,i)=>cabinGlass(L,PR,w,'cw'+C.L+'_'+i,parts));}
   const wm=wingMat(0xd8dce0,{walk:1});
   const W=C.wing,D=W.dih*Math.PI/180;

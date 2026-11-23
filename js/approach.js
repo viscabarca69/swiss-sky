@@ -51,18 +51,27 @@ export function planApproach(F,P,opt,S){
     const e=wrap(des-h),mx=ds/R;h+=clamp(e,-mx,mx);x+=Math.sin(h)*ds;z+=Math.cos(h)*ds;sum+=ds;pts.push({x,z,s:sum});}
   if(iIF<0)iIF=Math.max(0,pts.length-Math.ceil((Dif)/ds));if(iFAF<0)iFAF=Math.max(0,pts.length-Math.ceil(Dfaf/ds));
   const L=sum,sIF=pts[iIF].s,sFAF=pts[iFAF].s;
-  // Höhenprofil: Endanflug auf dem Gleitpfad, davor eben, davor gleichmässiger Sinkflug (3°), nie unter Geländereserve
-  const gd=0.0524,marg=jet?300:220,y0=F.pos.y;
-  for(const p of pts){const toTH=L-p.s;let y;
-    if(p.s>=sFAF)y=yTH+toTH*gs;else if(p.s>=sIF)y=yF;else y=Math.min(Math.max(y0,yF),yF+(sIF-p.s)*gd);
-    if(p.s<sFAF)y=Math.max(y,S.groundAt(p.x,p.z)+(p.s<sIF?marg:marg*0.6));p.y=y;}
-  let iTOD=-1;for(let i=0;i<iFAF;i++){if(pts[i].y<y0-25){iTOD=Math.max(0,i-1);break;}}
+  // Höhenprofil wie ein Flugmanagement-System: gleichmässig steigen auf eine Reiseflughöhe, diese halten,
+  // rechtzeitig mit 3° sinken bis zum Eindrehpunkt, Endanflug auf dem Gleitpfad. Gelände nur als untere Grenze –
+  // im Steigflug nie wieder runter, im Sinkflug nie wieder rauf (kein Auf und Ab).
+  const gd=0.0524,gc=jet?0.065:P.mass>8000?0.055:0.05,marg=jet?300:220,y0=F.pos.y,nI=Math.max(1,iIF);
+  const ys=pts.map(p=>p.s<sFAF?S.groundAt(p.x,p.z)+(p.s<sIF?marg:marg*0.6):-1e9);
+  let terr=-1e9;for(let i=0;i<nI;i++)terr=Math.max(terr,ys[i]);
+  const dist=sIF;let cr=jet?Math.min(9000,1800+0.026*dist):Math.min(P.mass>8000?6000:4200,900+0.014*dist);
+  const fit=(0.7*dist+y0/gc+yF/gd)/(1/gc+1/gd);cr=Math.min(cr,fit);
+  cr=Math.max(cr,terr,yF+150,Math.min(y0,jet?11000:6000));cr=Math.ceil(cr/150)*150;
+  for(const p of pts){const toTH=L-p.s;
+    if(p.s>=sFAF)p.y=yTH+toTH*gs;else if(p.s>=sIF)p.y=yF;else p.y=Math.min(y0+p.s*gc,cr,yF+(sIF-p.s)*gd);}
+  let iTop=0;for(let i=0;i<nI;i++)if(pts[i].y>pts[iTop].y+0.01)iTop=i;
+  {let m=-1e9;for(let i=0;i<=iTop;i++){m=Math.max(m,ys[i]);if(pts[i].y<m)pts[i].y=m;}}
+  {let m=-1e9;for(let i=Math.min(iFAF,pts.length-1);i>iTop;i--){m=Math.max(m,ys[i]);if(pts[i].y<m)pts[i].y=m;}}
+  let iTOD=-1;for(let i=iTop;i<iFAF;i++){if(pts[i].y<pts[iTop].y-5){iTOD=Math.max(0,i-1);break;}}
   let climb=false;for(let i=0;i<iIF;i++)if(pts[i].y>y0+60){climb=true;break;}
   // Kurven für die Anzeige (Richtung, Beginn)
   const turns=[];{let acc=0,st=-1;for(let i=2;i<pts.length;i++){const h1=Math.atan2(pts[i-1].x-pts[i-2].x,pts[i-1].z-pts[i-2].z),h2=Math.atan2(pts[i].x-pts[i-1].x,pts[i].z-pts[i-1].z),d=wrap(h2-h1);
     if(Math.abs(d)>0.004){if(st<0){st=i-1;acc=0;}acc+=d;}else if(st>=0){if(Math.abs(acc)>12*DEG)turns.push({i:st,j:i-1,deg:acc/DEG});st=-1;}}if(st>=0&&Math.abs(acc)>12*DEG)turns.push({i:st,j:pts.length-1,deg:acc/DEG});}
   const name=A.name,rwy=opt.rwy;
-  return{pts,L,iIF,iFAF,iTOD,sIF,sFAF,yF,yTH,gs,R,v,A,rev:opt.rev,rwy,name,turns,climb,TH,hdgFinal:((Math.atan2(cx,-cz)/DEG)+360)%360,last:0,made:performance.now()};}
+  return{pts,L,iIF,iFAF,iTOD,iTop,cr:pts[iTop].y,sIF,sFAF,yF,yTH,gs,R,v,A,rev:opt.rev,rwy,name,turns,climb,TH,hdgFinal:((Math.atan2(cx,-cz)/DEG)+360)%360,last:0,made:performance.now()};}
 
 // Führung für den aktuellen Moment
 export function approachGuide(pl,F,P){
@@ -76,9 +85,9 @@ export function approachGuide(pl,F,P){
   if(bi>=pl.iFAF)phase='final';else if(bi>=pl.iIF)phase='if';else phase='route';
   // Höhe / Sinkflug
   const vsRec=V*(phase==='final'?pl.gs:0.0524);
-  if(phase!=='final'&&pl.iTOD>bi){const d=pts[pl.iTOD].s-p.s;lines.push(d>400?`Sinkflug beginnen in ${(d/1000).toFixed(1)} km`:'Jetzt Sinkflug beginnen');}
+  if(phase==='route'&&bi<pl.iTop)lines.push(`Steigen auf Reiseflughöhe ${Math.round(pl.cr)} m`);
+  else if(phase!=='final'&&pl.iTOD>bi){const d=pts[pl.iTOD].s-p.s;lines.push(d>400?`Reiseflughöhe ${Math.round(pl.cr)} m halten · Sinkflug in ${(d/1000).toFixed(d>20000?0:1)} km`:'Jetzt Sinkflug beginnen');}
   else if(phase==='route'&&pts[Math.min(n-1,bi+25)].y<p.y-5)lines.push(`Sinken ca. ${vsRec.toFixed(1)} m/s · Ziel ${Math.round(pl.yF)} m am Eindrehpunkt`);
-  if(pts[Math.min(n-1,bi+25)].y>p.y+5)lines.push(`Steigen auf ${Math.round(Math.max(...pts.slice(bi,bi+120).map(o=>o.y)))} m (Gelände)`);
   if(phase==='final')lines.push(Math.abs(dy)<25?'Auf dem Gleitpfad':dy>0?`${Math.round(dy)} m zu hoch – etwas mehr sinken`:`${Math.round(-dy)} m zu tief – flacher sinken`);
   else if(Math.abs(dy)>80)lines.push(dy>0?`${Math.round(dy)} m über der Bahn`:`${Math.round(-dy)} m unter der Bahn`);
   // Kurven

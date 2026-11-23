@@ -128,6 +128,7 @@ function keyAction(code){
   if(code==='KeyK'&&G&&(state==='fly'||state==='pause')){togglePhoto();return;}
   if(state!=='fly'||!G)return;const F=G.F;
   if(G.atGate&&(code==='KeyJ'||code==='KeyU')){startPushback();return;}
+  if(G.apAsk){if(code==='KeyU'||code==='Digit1'||code==='Numpad1'||code==='Enter'){apEngage(false);return;}if(code==='KeyH'||code==='Digit2'||code==='Numpad2'){apEngage(true);return;}if(code==='Escape'||code==='Backspace'){apAskClose();return;}}
   switch(code){
     case'KeyG':if(G.gearStuck){G.pump=(G.pump||0)+1;audio.click();pad.rumble(0.15,0.3,90);if(G.pump>=6){G.gearStuck=false;F.gear=true;audio.gear();toast('Fahrwerk ausgefahren und verriegelt ✓',2600);hideEmerg();}else toast(`Handpumpe: ${G.pump} / 6`,900);break;}
       if(F.P.fixedGear)toast('Festes Fahrwerk – immer ausgefahren');else if(F.onGround)toast('Am Boden bleibt das Fahrwerk unten');else{F.gear=!F.gear;audio.gear();toast(F.gear?'Fahrwerk wird ausgefahren':'Fahrwerk wird eingefahren');}break;
@@ -139,7 +140,7 @@ function keyAction(code){
     case'Space':dropCrate();break;
     case'KeyH':F.assist=!F.assist;F.gammaT=Math.asin(clamp(F.vel.y/Math.max(F.vel.length(),1),-1,1));toast(F.assist?'Flughilfe EIN (hält die Flugbahn)':'Flughilfe AUS (manuell)');break;
     case'KeyN':toast(audio.toggleMute()?'Ton aus':'Ton an');break;
-    case'KeyU':if(F.P.heli){toast('Der Helikopter hält mit der Flughilfe die Höhe von selbst');break;}if(G.ap){G.ap=null;toast('Autopilot AUS');}else if(F.onGround)toast('Autopilot erst in der Luft');else{const e=new THREE.Euler().setFromQuaternion(F.q,'YXZ');G.ap={hdg:((-e.y/DEG)%360+360)%360,alt:Math.max(F.pos.y,S.groundAt(F.pos.x,F.pos.z)+150),spd:F.vel.length(),nav:!!G.wp};if(G.wp)G.ap.alt=Math.max(G.ap.alt,routeSafeAlt(F.pos,G.wp));F.assist=true;toast(G.appr?`Autopilot EIN – fliegt den Anflug auf Piste ${G.appr.rwy} (Landung von Hand)`:G.wp?`Autopilot EIN – fliegt zum Ziel ${G.wp.name||''} (${Math.round(G.ap.alt)} m)`:'Autopilot EIN – hält Kurs, Höhe und Tempo');}break;
+    case'KeyU':if(F.P.heli){toast('Der Helikopter hält mit der Flughilfe die Höhe von selbst');break;}if(G.ap){G.ap=null;toast('Autopilot AUS');}else if(F.onGround)toast('Autopilot erst in der Luft');else apAskOpen();break;
     case'KeyR':startFlight(G.cfg);break;
     case'KeyT':atc.press(atcCtx());break;
   }
@@ -418,12 +419,15 @@ function step(dt){
       if(thrUp)A.spd+=dt*6*thrUp;if(thrDn)A.spd=Math.max(stallSpeed(F)*1.3,A.spd-dt*6*thrDn);
       if(K.has('KeyQ')||gpYawL){A.hdg=(A.hdg-dt*15+360)%360;A.nav=false;}if(K.has('KeyE')||gpYawR){A.hdg=(A.hdg+dt*15)%360;A.nav=false;}
       if(A.nav&&G.wp)A.hdg=wpBrg(F);
-      if(G.appr&&G.apprG){const g=G.apprG,pts=G.appr.pts,la=pts[Math.min(pts.length-1,g.bi+Math.ceil(Math.max(600,G.appr.R*0.7)/40))];A.hdg=((Math.atan2(la.x-F.pos.x,-(la.z-F.pos.z))/DEG)+360)%360;A.alt=la.y;
-        if(g.phase!=='route')A.spd=Math.min(A.spd,P.Vref*(g.phase==='final'?1.3:1.45));
+      if(A.max)A.spd=apMaxSpd(F,F.P);A.ff=0;
+      if(G.appr&&G.apprG){const g=G.apprG,pts=G.appr.pts,la=pts[Math.min(pts.length-1,g.bi+Math.ceil(Math.max(600,G.appr.R*0.7)/40))];A.hdg=((Math.atan2(la.x-F.pos.x,-(la.z-F.pos.z))/DEG)+360)%360;
+        const pa=pts[Math.min(pts.length-1,g.bi+8)],pb=pts[g.bi];A.alt=g.p.y;A.ff=Math.atan2(pa.y-pb.y,Math.max(1,pa.s-pb.s));
+        if(g.phase!=='route')A.spd=Math.min(A.spd,F.P.Vref*(g.phase==='final'?1.3:1.45));
+        else if(G.appr.iTOD>=0&&g.bi>=G.appr.iTOD)A.spd=Math.min(A.spd,Math.max(F.P.Vref*1.6,apMaxSpd(F,F.P)*0.82));
         if(g.phase==='final'&&F.pos.y-S.groundAt(F.pos.x,F.pos.z)<110){G.ap=null;toast('Autopilot AUS – jetzt von Hand landen',3500);}}
       const err=((A.hdg-hdg+540)%360)-180,mb=Math.min(25,F.P.maxBank||30)*DEG,want=clamp(-err*DEG*1.4,-mb,mb);
       ctl.roll=clamp((want-(F.bank||0))/(8*DEG),-1,1)*0.7;ctl.yaw=0;
-      F.gammaT=clamp((A.alt-F.pos.y)*0.0012,-4*DEG,4*DEG);
+      F.gammaT=clamp((A.ff||0)+clamp((A.alt-F.pos.y)*0.0016,-2.5*DEG,2.5*DEG),-5*DEG,5*DEG);
       F.thr=clamp(F.thr+clamp((A.spd-F.vel.length())*0.03,-1,1)*dt*0.5,0,1);}
   }
   if(!G.ap&&thrUp)F.thr=Math.min(1,F.thr+dt*0.6*thrUp);
@@ -568,7 +572,8 @@ function updateHUD(dt){
   setTxt('flapVal',P.flapNames[F.flaps]);setSty('flapBar','width',(F.flapPos*100)+'%');
   const gl=$('gearLights');const gp=F.gearPos;gl.className='gear '+(P.fixedGear?'fixed':gp>0.98?'down':gp<0.02?'up':'transit');
   setTxt('gearTxt',P.fixedGear?'FEST':gp>0.98?'AUSGEFAHREN':gp<0.02?'EINGEFAHREN':'IN BEWEGUNG');
-  $('brkInd').classList.toggle('on',F.brake);$('splInd').classList.toggle('on',!!F.spoiler);$('astInd').classList.toggle('on',F.assist);$('apInd').classList.toggle('on',!!G.ap);setTxt('apInd',G.ap?`AP ${G.ap.nav&&G.wp?'▸ZIEL ':''}${String(Math.round(G.ap.hdg)).padStart(3,'0')}° · ${Math.round(units.metric?G.ap.alt:G.ap.alt*3.281)} · ${Math.round(units.metric?G.ap.spd*3.6:G.ap.spd*1.944)}`:'AUTOPILOT');
+  if(!G.apAsk&&!$('apAsk').classList.contains('hidden'))$('apAsk').classList.add('hidden');
+  $('brkInd').classList.toggle('on',F.brake);$('splInd').classList.toggle('on',!!F.spoiler);$('astInd').classList.toggle('on',F.assist);$('apInd').classList.toggle('on',!!G.ap);setTxt('apInd',G.ap?`AP ${G.ap.nav&&G.wp?'▸ZIEL ':''}${String(Math.round(G.ap.hdg)).padStart(3,'0')}° · ${Math.round(units.metric?G.ap.alt:G.ap.alt*3.281)} · ${Math.round(units.metric?G.ap.spd*3.6:G.ap.spd*1.944)}${G.ap.max?' MAX':''}`:'AUTOPILOT');
   setTxt('crateInd',G.crates>0?`KISTEN ${G.crates}`:'');setSty('crateInd','display',G.crates>0?'':'none');
   const s=Math.floor(G.t);setTxt('timer',`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`);
   // Ziel
@@ -890,6 +895,16 @@ function speedWarn(F,P,V){if(F.onGround||!G||G.lesson&&G.lesson.noWarn)return nu
   else if(z&&V>z.limit)w={k:'zone',lbl:'LIMIT '+f(z.limit).replace(' km/h','').replace(' kt',''),msg:''};
   if(w&&w.msg){G.spdMsg=G.spdMsg||{};const t=G.t;if(!(G.spdMsg[w.k]>t-25)){G.spdMsg[w.k]=t;toast(w.msg,6000);}}
   return w;}
+// Autopilot einschalten: erst wählen, ob das Tempo gehalten oder auf Höchstgeschwindigkeit beschleunigt wird
+function apAskOpen(){const F=G.F,u=save.settings.units==='metric',f=v=>u?`${Math.round(v*3.6/10)*10} km/h`:`${Math.round(v*1.944/5)*5} kt`;G.apAsk=true;
+  $('apAsk').innerHTML=`<b>Autopilot</b><button data-m="0"><kbd>1</kbd> Tempo halten <small>${f(F.vel.length())}</small></button><button data-m="1"><kbd>2</kbd> Höchstgeschwindigkeit <small>${f(apMaxSpd(F,G.P))}</small></button><span>Esc: abbrechen · Controller: ◀ Tempo halten, ▶ Höchstgeschwindigkeit</span>`;
+  $('apAsk').classList.remove('hidden');$('apAsk').querySelectorAll('button').forEach(b=>b.onclick=()=>apEngage(b.dataset.m==='1'));audio.click();}
+function apAskClose(){G.apAsk=false;$('apAsk').classList.add('hidden');}
+function apMaxSpd(F,P){const vmo=VMO[P.id]||P.Vr*3,z=atc.zone;let v=vmo*0.92;if(z&&z.limit)v=Math.min(v,z.limit*0.97);return Math.max(v,P.Vref*1.4);}
+function apEngage(max){apAskClose();const F=G.F;if(G.ap||F.onGround)return;const e=new THREE.Euler().setFromQuaternion(F.q,'YXZ');
+  G.ap={hdg:((-e.y/DEG)%360+360)%360,alt:Math.max(F.pos.y,S.groundAt(F.pos.x,F.pos.z)+150),spd:max?apMaxSpd(F,G.P):F.vel.length(),max,nav:!!G.wp};if(G.wp)G.ap.alt=Math.max(G.ap.alt,routeSafeAlt(F.pos,G.wp));F.assist=true;
+  const sp=max?' · beschleunigt auf Höchstgeschwindigkeit':' · hält das Tempo';
+  toast(G.appr?`Autopilot EIN – fliegt den Anflug auf Piste ${G.appr.rwy}${sp} (Landung von Hand)`:G.wp?`Autopilot EIN – fliegt zum Ziel ${G.wp.name||''} (${Math.round(G.ap.alt)} m)${sp}`:`Autopilot EIN – hält Kurs und Höhe${sp}`,3200);}
 function wpBrg(F){return((Math.atan2(G.wp.x-F.pos.x,-(G.wp.z-F.pos.z))/DEG)+360)%360;}
 // höchstes Gelände entlang der Strecke + Reserve (für den Autopiloten)
 function routeSafeAlt(p,w){let m=0;for(let i=0;i<=40;i++){const u=i/40,x=p.x+(w.x-p.x)*u,z=p.z+(w.z-p.z)*u;for(const o of [-500,0,500])m=Math.max(m,S.groundAt(x+o,z),S.groundAt(x,z+o));}return Math.min(m+350,5200);}
