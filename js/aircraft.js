@@ -398,10 +398,10 @@ function uAtWidth(PR,L,x,y,t0,t1){let a=t0,b=t1;if(halfW(PR,b,y)<x)return b*L;fo
 function paneLayout(C,PR,L,R,H){const k=1+(R/1.98-1)*0.3,nz=C.nose,F=[],S=[];
   // Frontscheiben in der Frontansicht (x = halbe Breite, y = Höhe), Seitenscheiben auf der Rumpfseite (u = Abstand ab Nase, y)
   // Seitenscheiben: vordere Kante folgt dem A-Pfosten, hintere Kanten nur leicht geneigt – keine verdrehten Vierecke
-  const a=C.hump?{yb:R*1.04,yt:R*1.27,xo:0.82,xt:0.7,w2:0.7,w3:0.5,drop:0.5,g:0.09,r0:0.02,r1:0.2}
+  const a=C.hump?{yb:R*0.99,yt:R*1.25,xo:0.82,xt:0.7,w2:0.7,w3:0.5,drop:0.5,g:0.09,r0:0.02,r1:0.2}
     :C.deck2?{yb:0.155*H,yt:0.285*H,xo:0.8*k,xt:0.74*k,w2:0.62,w3:0.46,drop:0.55,g:0.08,r0:0.003,r1:nz*1.6}
     :C.ws==='a350'?{yb:0.3*H,yt:0.53*H,xo:0.95*k,xt:0.84*k,w2:0.68,w3:0.5,drop:0.5,g:0.07,r0:0.003,r1:nz*1.6}
-    :{yb:0.36*H,yt:0.64*H,xo:0.95*k,xt:0.8*k,w2:0.66,w3:0.5,drop:0.55,g:0.09,r0:0.003,r1:nz*1.6};
+    :{yb:0.33*H,yt:0.575*H,xo:0.97*k,xt:0.82*k,w2:0.66,w3:0.5,drop:0.55,g:0.09,r0:0.003,r1:nz*1.6};
   const yb=a.yb,yt=a.yt,hgt=yt-yb,pst=0.045*k,g=a.g*k;
   F.push([[pst,yb],[pst,yt],[a.xt,yt-0.05*hgt],[a.xo,yb+0.04*hgt]]);
   const uB=uAtWidth(PR,L,a.xo,yb+0.04*hgt,a.r0,a.r1);let uT=uAtWidth(PR,L,a.xt,yt-0.05*hgt,a.r0,a.r1);
@@ -429,7 +429,7 @@ function cockpitGlass(L,PR,R,C,key){const H=R*(C.sy||1),lay=paneLayout(C,PR,L,R,
       if(Math.abs(nx)>0.3)for(const f of SP)d=Math.min(d,f(uu,P[1]));
       if(d<0){const kk=Math.min(1,Math.max(0,(P[1]-lay.F[0][0][1])/(lay.F[0][1][1]-lay.F[0][0][1]+1e-6)));return[yC[0]*255+kk*(yR[0]-yC[0])*255,yC[1]*255+kk*(yR[1]-yC[1])*255,yC[2]*255+kk*(yR[2]-yC[2])*255];}
       // Rahmen in Rumpffarbe (durchsichtig -> Lack darunter), nur eine schmale dunkle Dichtung um jede Scheibe
-      if(C.mask&&d<0.11*k0)return[20,22,26];if(d<Math.min(fr*0.45,0.028))return[30,32,36];return null;})[0];}
+      if(d<(C.mask?0.11:0.055)*k0)return[20,22,26];if(d<Math.min(fr*0.45,0.028))return[30,32,36];return null;})[0];}
   const m=new THREE.Mesh(g,cockpitGlassMat(GC[key]));m.castShadow=false;return m;}
 // Innenverkleidung des Cockpits (nur von innen sichtbar): Wand mit Ausschnitten genau dort, wo aussen die Scheiben sitzen
 function cockpitShell(L,PR,R,C,key){const H=R*(C.sy||1),lay=paneLayout(C,PR,L,R,H),ta=lay.ta,PA=150*Math.PI/180,k0=1+(R/1.98-1)*0.3;

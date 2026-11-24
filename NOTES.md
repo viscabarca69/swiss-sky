@@ -181,3 +181,4 @@ Morgen-Zusammenfassung an Luis gesendet. Offene Grenzen: Flugschule nur ZS; L-32
 - 11c: L-380 Standardlackierung 'bauch' (Navy-Bauch mit scharfer, geschwungener Vorderkante, B.sw), LUIS-Weiss kühler (#f3f5f8).
 - 11d Cockpit: aircraft.js cockpitShell (Innenverkleidung BackSide, Ausschnitte exakt wie die Scheiben, weiches Alpha softTex), Augenpunkt auf Scheibenhöhe; main.js buildCockpit neu: Airbus-Layout (6 Anzeigen PFD/ND/E-WD/SD, FCU mit SPD/HDG/ALT/VS im Blendschutz, Mittelkonsole mit 2 MCDU, Schubhebel, Sidesticks, Overhead), 747 Boeing-Grau + Steuerhörner; GA: 2 grosse Bildschirme; HUD-PFD/System im Jet-Cockpit ausgeblendet (#hud.ck).
 - 11e: Triebwerke L-340 (Trent 500, r 1.4) und L-380 (Trent 900, r 1.72/1.7) auf Originalgrösse.
+- 11f (Fotos von Luis): schwarzer Scheibenrand bei allen Jets (0.055k, A350 0.11k), Scheiben A320/330/340 0.33–0.575H, 747 0.99–1.25R.
