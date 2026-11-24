@@ -44,7 +44,11 @@ export const PLANES={
     mass:185000,S:361.6,CL0:0.22,CLa:5.6,alphaStall:14,flapCL:[0,0.42,0.78,1.12],flapCD:0.06,flapNames:['0','1','2','FULL'],CD0:0.02,K:0.04,gearCD:0.02,
     Tmax:620000,prop:false,spool:0.4,Vr:78,Vref:72,gearH:4.7,bellyH:2.8,steer:0.24,rotRate:0.042,tailStrike:10,rollRate:0.3,yawAuth:0.42,kAlpha:3.8,dampP:2.5,qRef:9500,
     brakeMu:0.6,reverse:0.3,maxBank:30,wingStrike:9,camDist:88,camH:17,shadow:110,ldgSink:2.7,engines:2,crates:0,wingTip:30.2},
-  l340:{id:'l340',name:'LUIS L-340',type:'Langstrecke · 4 Triebwerke · 380 Plätze',cls:'jet',desc:'Elegant und sehr lang (75 m) – vier Triebwerke für die ganz weiten Strecken.',
+  l340:{id:'l340',name:'LUIS L-340',type:'Langstrecke · 4 Triebwerke · 280 Plätze',cls:'jet',desc:'Der klassische Vierstrahler wie bei Swiss: 64 m lang, vier schlanke Triebwerke.',
+    mass:220000,S:361.6,CL0:0.22,CLa:5.6,alphaStall:14,flapCL:[0,0.42,0.78,1.12],flapCD:0.06,flapNames:['0','1','2','FULL'],CD0:0.02,K:0.04,gearCD:0.02,
+    Tmax:600000,prop:false,spool:0.38,Vr:82,Vref:76,gearH:4.7,bellyH:2.8,steer:0.22,rotRate:0.038,tailStrike:9,rollRate:0.27,yawAuth:0.4,kAlpha:3.6,dampP:2.4,qRef:9500,
+    brakeMu:0.6,reverse:0.3,maxBank:30,wingStrike:8,camDist:88,camH:17,shadow:120,ldgSink:2.6,engines:4,crates:0,wingTip:30.2},
+  l346:{id:'l346',name:'LUIS L-340 Stretch',type:'Ultralangstrecke · 4 Triebwerke · 380 Plätze',cls:'jet',desc:'Die gestreckte L-340: 75 m lang, grosse Triebwerke – elegant und für die ganz weiten Strecken.',
     mass:250000,S:439,CL0:0.22,CLa:5.6,alphaStall:14,flapCL:[0,0.42,0.78,1.12],flapCD:0.06,flapNames:['0','1','2','FULL'],CD0:0.02,K:0.04,gearCD:0.02,
     Tmax:1000000,prop:false,spool:0.38,Vr:82,Vref:76,gearH:4.7,bellyH:2.8,steer:0.22,rotRate:0.038,tailStrike:9,rollRate:0.27,yawAuth:0.4,kAlpha:3.6,dampP:2.4,qRef:9500,
     brakeMu:0.6,reverse:0.3,maxBank:30,wingStrike:8,camDist:98,camH:18,shadow:120,ldgSink:2.6,engines:4,crates:0,wingTip:31.8},
@@ -211,12 +215,19 @@ function livery(L,R,cfg){
     // leichte Schattierung: Oberseite hell, Bauch etwas dunkler (Verschmutzung)
     {const g=x.createLinearGradient(0,0,0,h);g.addColorStop(0,'rgba(255,255,255,0.05)');g.addColorStop(0.3,'rgba(0,0,0,0)');g.addColorStop(0.44,'rgba(40,40,30,0.035)');g.addColorStop(0.5,'rgba(40,40,30,0.06)');g.addColorStop(0.56,'rgba(40,40,30,0.035)');g.addColorStop(0.7,'rgba(0,0,0,0)');g.addColorStop(1,'rgba(255,255,255,0.05)');x.fillStyle=g;x.fillRect(0,0,w,h);}
     // Frachttüren (rechte Seite, unten)
-    for(const d of cfg.cargo||[]){x.strokeStyle='rgba(60,60,70,0.55)';x.lineWidth=2;rr(x,d*L*pa-0.85*pa,h*(1-0.38)-0.85*pr,1.7*pa,1.7*pr,6);x.stroke();}
+    for(const d0 of cfg.cargo||[]){const d=typeof d0==='number'?{x:d0,w:1.7,h:1.7}:d0;x.strokeStyle='rgba(60,60,70,0.55)';x.lineWidth=2;rr(x,d.x*L*pa-d.w/2*pa,h*(1-0.385)-d.h/2*pr,d.w*pa,d.h*pr,6);x.stroke();
+      x.fillStyle='rgba(60,60,70,0.45)';x.fillRect(d.x*L*pa-0.12*pa,h*(1-0.385)+d.h/2*pr-0.16*pr,0.24*pa,0.06*pr);}
     if(cfg.seam){x.strokeStyle='rgba(40,46,56,0.16)';x.lineWidth=2;x.beginPath();x.moveTo(cfg.seam*w,0);x.lineTo(cfg.seam*w,h);x.stroke();}
     for(const wn of (cfg.wins||(cfg.win?[cfg.win]:[]))){const {x0,x1,pitch,ww,wh,a}=wn;x.fillStyle='#1b2533';
       for(let xm=x0*L;xm<x1*L;xm+=pitch){if(wn.skip&&wn.skip.some(([s0,s1])=>xm>s0*L&&xm<s1*L))continue;for(const s of [1,-1]){const yc=s>0?h*a:h*(1-a);rr(x,xm*pa-ww*pa/2,yc-wh*pr/2,ww*pa,wh*pr,Math.min(ww*pa,wh*pr)*0.45);x.fill();}}}
-    if(cfg.doors)for(const d of cfg.doors){x.strokeStyle='rgba(60,60,70,0.7)';x.lineWidth=2;for(const s of [1,-1]){const yc=s>0?h*0.235:h*0.765;rr(x,d*L*pa-0.45*pa,yc-1.0*pr,0.9*pa,1.9*pr,10);x.stroke();
-      if(L>12){x.fillStyle='#1b2533';rr(x,d*L*pa-0.13*pa,yc-s*0.42*pr-0.16*pr,0.26*pa,0.32*pr,4);x.fill();x.fillStyle='rgba(60,60,70,0.6)';x.fillRect(d*L*pa+0.25*pa,yc+s*0.15*pr,0.12*pa,0.05*pr);}}}
+    if(cfg.doors)for(const d0 of cfg.doors){const D=typeof d0==='number'?{x:d0,t:'S',a:0.235}:d0,[dw,dh]=D.t==='S'?[0.9,1.9]:DOORT[D.t],dx=D.x*L*pa;
+      x.strokeStyle='rgba(60,60,70,0.7)';x.lineWidth=2;
+      for(const s of [1,-1]){const yc=s>0?h*D.a:h*(1-D.a);
+        if(D.t==='III'){rr(x,dx-dw/2*pa,yc-dh/2*pr,dw*pa,dh*pr,dw*pa*0.3);x.stroke();x.fillStyle='rgba(215,38,61,0.75)';x.fillRect(dx-0.06*pa,yc+s*(dh/2-0.1)*pr-0.025*pr,0.12*pa,0.05*pr);continue;}
+        // Tür mit runden Ecken, Fenster oben in der Tür, Griffmulde
+        rr(x,dx-dw/2*pa,yc-dh/2*pr,dw*pa,dh*pr,Math.min(dw*pa,dh*pr)*0.16);x.stroke();
+        if(L>12){const wy=yc-s*0.42*pr;x.fillStyle='#1b2533';rr(x,dx-0.115*pa,wy-0.155*pr,0.23*pa,0.31*pr,Math.min(0.23*pa,0.31*pr)*0.45);x.fill();
+          x.fillStyle='rgba(60,60,70,0.6)';x.fillRect(dx+(dw/2-0.2)*pa,yc+s*0.15*pr,0.12*pa,0.05*pr);}}}
     // Schriftzug: Hauptwort gross, Rest klein – auf beiden Seiten in Leserichtung
     if(cfg.title){const T=cfg.title;const fnt=(sz,wt)=>`${wt} ${sz*pa}px Arial`;let k=1;
       const meas=()=>{x.font=fnt(T.size*k,'900');const wm=x.measureText(T.main).width;let ws=0;if(T.sub){x.font=fnt(T.size*0.37*k,'bold');ws=x.measureText(T.sub).width;}return[wm,ws,T.sub?T.size*0.25*k*pa:0];};
@@ -241,7 +252,7 @@ const LUISL={tpl:'clean',c1:'#0b2545',c2:'#d7263d',base:'#f3f5f8',name:'LUIS AIR
 export const LIV_DEF={alpina:{tpl:'klassisch',c1:'#1d3a7a',c2:'#c8202f',base:'#f8f8f7',name:''},saentis:{...LUISL,name:''},titlis:{...LUISL},foehn:{tpl:'klassisch',c1:'#0f4d36',c2:'#1f8a5b',base:'#f8f8f7',name:'FÖHN AIR'},
   feuer:{tpl:'bauch',c1:'#e8b330',c2:'#d7263d',base:'#f8f8f7',name:'LUIS FEUERWEHR'},segler:{tpl:'klassisch',c1:'#d7263d',c2:'#0b2545',base:'#f8f8f7',name:''},
   rega:{tpl:'bauch',c1:'#e30613',c2:'#e30613',base:'#f8f8f7',name:'REGA'},
-  l320:{...LUISL},l32n:{...LUISL},l330:{...LUISL},l340:{...LUISL},l350:{...LUISL},l747:{...LUISL},l380:{...LUISL,tpl:'bauch',base:'#f3f5f8'}};
+  l320:{...LUISL},l32n:{...LUISL},l330:{...LUISL},l340:{...LUISL},l346:{...LUISL},l350:{...LUISL},l747:{...LUISL},l380:{...LUISL,tpl:'bauch',base:'#f3f5f8'}};
 export const livSpec=(id,c)=>({...(LIV_DEF[id]||LUISL),...(c||{})});
 function lum(c){const n=parseInt(c.slice(1),16),f=v=>{v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4);};return 0.2126*f(n>>16&255)+0.7152*f(n>>8&255)+0.0722*f(n&255);}
 const cRatio=(a,b)=>{const A=lum(a),B=lum(b);return(Math.max(A,B)+0.05)/(Math.min(A,B)+0.05);};
@@ -460,11 +471,12 @@ let CGM=new Map();function cockpitGlassMat(tex){if(CGM.has(tex))return CGM.get(t
 function cabinGlass(L,PR,row,key,parts){
   const dph=row.dph||0.2,ta=Math.max(0.01,row.x0-0.8/L),tb=Math.min(0.99,row.x1+0.8/L);
   const PC=row.y!=null?(t=>{const r=lerpProf(PR,t,'r'),c=(row.y-yOff(PR,t))/(r*lerpProf(PR,t,'syT'));return Math.acos(Math.max(-1,Math.min(1,c)));}):(()=>row.a*2*Math.PI);
-  if(!GC[key]){const W=Math.min(4096,Math.ceil((tb-ta)*L*30)),H=96;
+  if(!GC[key]){const W=Math.min(4096,Math.ceil((tb-ta)*L*60)),H=128;
     GC[key]=maskTex(W,H,(u,v)=>{const tt=ta+(tb-ta)*u,phc=PC(tt),ph=phc-dph+2*dph*v;
       const r=lerpProf(PR,tt,'r'),sx=lerpProf(PR,tt,'sx'),sy=syAt(PR,tt,ph);
-      const zl=tt*L,k=Math.round((zl-row.x0*L)/row.pitch),xc=row.x0*L+k*row.pitch;if(xc<row.x0*L-0.01||xc>row.x1*L+0.01)return null;
-      if(row.skip&&row.skip.some(([s0,s1])=>xc>s0*L&&xc<s1*L))return null;
+      const zl=tt*L,k=Math.round((zl-row.x0*L)/row.pitch);let xc=row.x0*L+k*row.pitch;
+      const ex=row.extra&&row.extra.find(z=>Math.abs(zl-z)<row.pitch*0.5);
+      if(ex!=null)xc=ex;else{if(xc<row.x0*L-0.01||xc>row.x1*L+0.01)return null;if(row.skip&&row.skip.some(([s0,s1])=>xc>s0*L&&xc<s1*L))return null;}
       const arc=(ph-phc)*r*(sx+sy)/2,dx=(zl-xc)/(row.ww/2),dy=arc/(row.wh/2),pw=row.pw||4,d=Math.pow(Math.pow(Math.abs(dx),pw)+Math.pow(Math.abs(dy),pw),1/pw);
       if(d<1){const k2=(1-dy)/2;return[26+40*k2,40+52*k2,56+64*k2,1];}if(d<(row.fr||1.28))return[176,182,190,0];return null;},true);}
   const [tex,em]=GC[key];
@@ -512,7 +524,11 @@ export const AIRLINER={
     wing:{x0:2.7,span:27.4,root:10.6,tip:2.2,sweep:16.5,dih:5.5,y0:-1.75,z0:-6.2,tr:0.13,tt:0.1,kink:0.36},winglet:'tall',
     eng:[{x:9.4,len:6.6,r:1.55}],fin:{z:22.0,root:10,tip:4,h:9.4,sweep:8,y:2.4},stab:{x0:1.1,span:8.5,root:5.6,tip:2.1,sweep:5.8,dih:6,y:1.2,z:25.6},
     main:[{x:5.4,z:2.2,ax:2}],ng:-26.4,eye:[-0.55,0.9,-29.0],cg:3.0,winX:[0.1,0.87],doors:[0.1,0.3,0.6,0.85],skip:[[0.09,0.115],[0.29,0.315],[0.59,0.615],[0.84,0.865]]},
-  l340:{L:75.4,R:2.82,sy:1.04,nose:0.09,tail:0.75,up:1,reg:'HB-LCA',
+  l340:{L:63.7,R:2.82,sy:1.04,nose:0.1,tail:0.72,up:1,reg:'HB-LCA',
+    wing:{x0:2.7,span:27.4,root:10.6,tip:2.2,sweep:16.5,dih:5.5,y0:-1.75,z0:-6.2,tr:0.13,tt:0.1,kink:0.36},winglet:'tall',
+    eng:[{x:10.0,len:5.0,r:1.0,k:1.0,fwd:0.62,cfm:1},{x:18.6,len:5.0,r:1.0,k:1.0,fwd:0.6,cfm:1}],fin:{z:22.0,root:10,tip:4,h:9.4,sweep:8,y:2.4},stab:{x0:1.1,span:8.5,root:5.6,tip:2.1,sweep:5.8,dih:6,y:1.2,z:25.6},
+    main:[{x:5.4,z:2.2,ax:2},{x:0,z:2.9,ax:1,center:1}],ng:-26.4,eye:[-0.55,0.9,-29.0],cg:3.0,winX:[0.1,0.87],doors:[0.1,0.3,0.6,0.85],skip:[[0.09,0.115],[0.29,0.315],[0.59,0.615],[0.84,0.865]]},
+  l346:{L:75.4,R:2.82,sy:1.04,nose:0.09,tail:0.75,up:1,reg:'HB-LFA',
     wing:{x0:2.7,span:29.1,root:11.4,tip:2.3,sweep:17.8,dih:5.5,y0:-1.75,z0:-7.0,tr:0.13,tt:0.1,kink:0.36},winglet:'tall',
     eng:[{x:10.7,len:6.2,r:1.4},{x:19.9,len:6.2,r:1.4}],fin:{z:27.6,root:10.6,tip:4.2,h:9.8,sweep:8.3,y:2.4},stab:{x0:1.1,span:9.4,root:6,tip:2.2,sweep:6.2,dih:6,y:1.2,z:31.6},
     main:[{x:5.4,z:3.0,ax:2},{x:0,z:3.4,ax:2,center:1}],ng:-31.8,eye:[-0.55,0.9,-34.8],cg:3.4,winX:[0.09,0.89],doors:[0.09,0.27,0.53,0.75,0.88],skip:[[0.08,0.1],[0.26,0.28],[0.52,0.54],[0.74,0.76],[0.87,0.89]]},
@@ -530,6 +546,28 @@ export const AIRLINER={
     eng:[{x:14.8,len:7.3,r:1.72},{x:25.7,len:7.1,r:1.7}],fin:{z:21.5,root:14,tip:5.5,h:13.5,sweep:10.5,y:3.6},stab:{x0:1.8,span:13.2,root:9,tip:3,sweep:8.5,dih:5,y:1.3,z:25.2},
     main:[{x:6.0,z:1.8,ax:2},{x:2.4,z:4.6,ax:3}],ng:-26.8,eye:[-0.6,1.35,-33.3],cg:4.4,winX:[0.1,0.88],doors:[0.1,0.3,0.55,0.8],skip:[[0.09,0.115],[0.29,0.315],[0.54,0.565],[0.79,0.815]]}
 };
+// Türen, Fenster und Frachttore nach den Planungsunterlagen der Hersteller (Abstand ab Nasenspitze in Metern).
+// Quellen: Airbus «Aircraft Characteristics – Airport and Maintenance Planning» (A330/A340-300, A340-600, A350-900);
+// A320, 747-400 und A380 nach Massskizzen/Fotos geschätzt. Fenster: A320/A330/A340 22,9 × 31,2 cm Glas, Spantabstand 533 mm;
+// A350 24,2 × 34,3 cm, Spantabstand 635 mm; 747 25,4 × 35,6 cm, 508 mm; A380 ~25 × 36 cm, 635 mm.
+// Türtypen: A = Typ A (1,07 × 1,93 m), I = Typ I (0,81 × 1,85 m), III = Notausstieg über dem Flügel (0,51 × 0,92 m, mit eigenem Fenster)
+const DOORT={A:[1.07,1.93],I:[0.81,1.85],III:[0.51,0.92]};
+const AIRBUS_W={pitch:0.533,ww:0.229,wh:0.312},A350_W={pitch:0.635,ww:0.242,wh:0.343},B747_W={pitch:0.508,ww:0.254,wh:0.356},A380_W={pitch:0.635,ww:0.25,wh:0.36};
+const LAYOUT={
+  l320:{doors:[[4.95,'A'],[16.0,'III'],[16.95,'III'],[31.45,'A']],cargo:[[8.4,1.82,1.24],[26.6,1.82,1.24],[29.6,0.95,0.77]],win:{...AIRBUS_W,z0:6.05,z1:30.6}},
+  l330:{doors:[[5.85,'A'],[17.741,'A'],[35.793,'I'],[50.956,'A']],cargo:[[9.53,2.7,1.69],[44.36,2.7,1.69],[47.342,0.95,0.63]],win:{...AIRBUS_W,z0:7.0,z1:49.85}},
+  l346:{doors:[[5.85,'A'],[23.91,'A'],[34.087,'A'],[47.46,'I'],[61.576,'A']],cargo:[[9.53,2.7,1.69],[54.98,2.7,1.69],[57.962,0.95,0.63]],win:{...AIRBUS_W,z0:7.0,z1:60.5}},
+  // A350-1000: A350-900-Werte (6,85 / 18,85 / 37,93 / 52,55 m) plus 6 Spanten vor und 5 Spanten hinter dem Flügel
+  l350:{doors:[[6.85,'A'],[22.66,'A'],[41.74,'A'],[59.53,'A']],cargo:[[11.69,2.7,1.69],[54.28,2.7,1.69],[56.97,0.95,0.63]],win:{...A350_W,z0:8.1,z1:58.3}},
+  l747:{doors:[[7.4,'A'],[17.65,'A'],[30.4,'A'],[43.8,'A'],[59.3,'A']],cargo:[[12.2,2.64,1.68],[48.5,2.64,1.68],[54.6,1.12,1.19]],win:{...B747_W,z0:8.5,z1:58.4},
+    upper:{...B747_W,z0:9.5,z1:21.3,doors:[[15.2,'I']]}},
+  l380:{doors:[[7.2,'A'],[17.3,'A'],[25.0,'A'],[47.0,'A'],[58.4,'A']],cargo:[[12.0,2.7,1.7],[49.6,2.7,1.7],[53.0,1.43,1.45]],win:{...A380_W,z0:8.4,z1:62.6},
+    upper:{...A380_W,z0:10.6,z1:59.5,doors:[[19.0,'A'],[42.5,'A'],[52.8,'A']]}}};
+LAYOUT.l32n=LAYOUT.l320;LAYOUT.l340=LAYOUT.l330;
+// Fenster dort weglassen, wo Türen sitzen (Typ A/I: ganze Tür + Rahmen; Typ III hat ein eigenes Fenster)
+function winSkip(doors,L){return doors.map(([z,t])=>{const w=DOORT[t][0]/2+(t==='III'?0.2:0.32);return[(z-w)/L,(z+w)/L];});}
+for(const [id,Lo] of Object.entries(LAYOUT)){const C=AIRLINER[id];if(!C)continue;const L=C.L;
+  C.lay=Lo;C.doors=Lo.doors.filter(d=>d[1]!=='III').map(d=>d[0]/L);C.winX=[Lo.win.z0/L,Lo.win.z1/L];C.skip=winSkip(Lo.doors,L);}
 // Bauchverkleidung: Rumpf unten im Flügelbereich weich ausbauchen statt einer aufgesetzten Kugel
 function keelBulge(g,PRF,L,R,sy,zA,zB){
   const p=g.attributes.position,rA=R*2.2,rB=R*4.5,cl=(a,b,x)=>Math.min(1,Math.max(0,(x-a)/(b-a))),sm=x=>x*x*(3-2*x);
@@ -539,9 +577,11 @@ function keelBulge(g,PRF,L,R,sy,zA,zB){
   g.computeVertexNormals();}
 function buildAirliner(C,body,parts,root,P){
   const {L,R}=C;const sy=C.sy;
-  const winA=C.deck2?0.235:0.205,win=[{x0:C.winX[0],x1:C.winX[1],pitch:0.53,ww:0.25,wh:0.36,a:winA,skip:C.skip,pw:2.6,fr:1.2}];
-  if(C.deck2)win.push({x0:0.12,x1:0.84,pitch:0.6,ww:0.27,wh:0.36,a:0.14,skip:[[0.165,0.345],[0.54,0.57]],pw:2.6,fr:1.2});
-  if(C.hump){win[0].y=R*0.2;win.push({x0:0.135,x1:0.3,pitch:0.53,ww:0.25,wh:0.36,y:R*1.15,skip:[[0.205,0.225]],pw:2.6,fr:1.2});}
+  // Fenster: Glas wie beim Vorbild, darum ein heller Dichtungsrahmen (fr)
+  const LW=C.lay.win,winA=C.deck2?0.235:0.205,win=[{x0:C.winX[0],x1:C.winX[1],pitch:LW.pitch,ww:LW.ww,wh:LW.wh,a:winA,skip:C.skip,pw:2.4,fr:1.32,extra:C.lay.doors.filter(d=>d[1]==='III').map(d=>d[0])}];
+  const UP=C.lay.upper;
+  if(C.deck2)win.push({x0:UP.z0/L,x1:UP.z1/L,pitch:UP.pitch,ww:UP.ww,wh:UP.wh,a:0.14,skip:winSkip(UP.doors,L),pw:2.4,fr:1.32});
+  if(C.hump){win[0].y=R*0.2;win.push({x0:UP.z0/L,x1:UP.z1/L,pitch:UP.pitch,ww:UP.ww,wh:UP.wh,y:R*1.15,skip:winSkip(UP.doors,L),pw:2.4,fr:1.32});}
   const nz=C.nose,PRF=prof(R,C.nose,C.tail,C.up,sy,C.noseK||(C.deck2?'a380':'std')),H=R*sy,cl=(a,b,x)=>Math.min(1,Math.max(0,(x-a)/(b-a)));
   // L-747: Oberdeck-Buckel – die obere Rumpfhälfte wird vorne höher (Stirn mit Cockpit, flacher Rücken, weicher Auslauf)
   if(C.hump){const Hm=C.hump,H1=R*sy+Hm.top*R,hTip=-0.15*R,sm=x=>x*x*(3-2*x);
@@ -563,8 +603,8 @@ function buildAirliner(C,body,parts,root,P){
     const y=lerpProf(PRF,t,'r')*syAt(PRF,t,ph)*Math.cos(ph)+yOff(PRF,t),yl=WS.yl(t,pd)-m,yh=WS.yh(t,pd)+m*0.6;if(y<yl||y>yh)return false;
     const mid=(yl+yh)/2,hw=(yh-yl)/2;return t<WS.back(Math.min(pd,WS.maxPd))+nz*(0.012+0.03*Math.pow(Math.max(0,1-Math.abs(y-mid)/hw),1.5));},{tMax:nz*1.3});}
   const PT=paint({R:R*(1+sy)/2,a0:winA,st:{a:winA+0.05,t1:R*0.11,t2:R*0.05,da:0.018,x0:nz*0.9,x1:0.93},tip:R*1.1,wb:R*0.38,
-    nm:{a:C.deck2?0.135:C.hump?0.16:0.125,x:C.nmX||(C.deck2?0.255:C.hump?0.52:0.27),size:R*(C.deck2?0.78:1.15),max:C.deck2?0.2:0.34},reg:{str:C.reg,a:0.2,x:0.89,size:R*0.22},belly:{col:'#e1e4e8',w:0.1,x0:nz*0.5},doors:C.doors,wins:[],seam:nz*0.36,swT:0.38,mask:C.mask?'m'+C.L:null},LV);
-  FS=PT.fin;PT.cfg.cargo=C.deck2?[0.27,0.66]:[0.25,0.64];const liv=livery(L,R*(1+sy)/2,PT.cfg);
+    nm:{a:C.deck2?0.09:C.hump?0.15:0.125,x:C.nmX||(C.deck2?0.3:C.hump?0.43:0.27),size:R*(C.deck2?0.74:1.15),max:C.deck2?0.28:0.34},reg:{str:C.reg,a:0.2,x:0.89,size:R*0.22},belly:{col:'#e1e4e8',w:0.1,x0:nz*0.5},doors:[...C.lay.doors.map(([z,t])=>({x:z/L,t,a:t==='III'?winA:0.235})),...(C.lay.upper?C.lay.upper.doors.map(([z,t])=>({x:z/L,t,a:C.deck2?0.152:0.135})):[])],wins:[],seam:nz*0.36,swT:0.38,mask:C.mask?'m'+C.L:null},LV);
+  FS=PT.fin;PT.cfg.cargo=C.lay.cargo.map(([z,w,h])=>({x:z/L,w,h}));const liv=livery(L,R*(1+sy)/2,PT.cfg);
   const fg=fuselageGeo(L,PRF,72);keelBulge(fg,PRF,L,R,sy,C.wing.z0-C.wing.root*0.12,C.wing.z0+C.wing.root*1.1);
   const fus=new THREE.Mesh(fg,paintMat({map:liv,roughness:0.3,metalness:0.12}));
   fus.castShadow=true;body.add(fus);
@@ -574,7 +614,7 @@ function buildAirliner(C,body,parts,root,P){
    win.forEach((w,i)=>cabinGlass(L,PR,w,'cw'+C.L+'_'+i,parts));}
   const wm=wingMat(0xd8dce0,{walk:1});
   // Spannweite wie beim Vorbild inkl. Winglets: Flügel um die seitliche Ausladung der Flügelspitze kürzen
-  const SPAN_REAL={l320:34.1,l32n:35.8,l330:60.3,l340:63.45,l350:64.75,l747:64.44,l380:79.75},WEXT={fence:0.15,sharklet:1.25,tall:1.55,curved:2.9,canted:1.25};
+  const SPAN_REAL={l320:34.1,l32n:35.8,l330:60.3,l340:60.3,l346:63.45,l350:64.75,l747:64.44,l380:79.75},WEXT={fence:0.15,sharklet:1.25,tall:1.55,curved:2.9,canted:1.25};
   const W={...C.wing},D=W.dih*Math.PI/180;if(SPAN_REAL[P.id])W.span=SPAN_REAL[P.id]/2-(WEXT[C.winglet]||0)-W.x0;
   const kS=W.kink||0.34,WG=wing({...W,dih:D,surfaces:[[0.0,kS,'flap'],[kS,0.74,'flap'],[0.76,0.94,'ail']]},wm,wm,body,parts);
   const yW=x=>W.y0+(x-W.x0)*Math.tan(D),zLE=x=>W.z0+(x-W.x0)/W.span*W.sweep,cW=x=>WG.chord(Math.max(0,Math.min(1,(x-W.x0)/W.span)));
@@ -605,7 +645,7 @@ function buildAirliner(C,body,parts,root,P){
   const S=ST;wing({x0:S.x0,span:S.span,root:S.root,tip:S.tip,sweep:S.sweep,dih:S.dih*Math.PI/180,y0:S.y,z0:S.z,tr:0.1,tt:0.1,split:0.68,surfaces:[[0,1,'elev']]},wm,wm,body,parts);
   const apu=new THREE.Mesh(new THREE.CylinderGeometry(R*0.08,R*0.1,0.6,12),M.dark);apu.rotation.x=Math.PI/2;apu.position.set(0,R*0.6*C.up,L/2+0.1);body.add(apu);
   for(const E of C.eng)for(const sg of [1,-1]){const x=sg*E.x,yw=yW(E.x),zl=zLE(E.x);const cy=yw-E.r*(E.k||1.15)-0.35,z1=zl-E.len*(E.fwd||0.55),zc=z1+E.len/2;
-    const NP=E.neo?[{t:0,r:E.r*0.92},{t:0.04,r:E.r*0.99},{t:0.3,r:E.r*1.04},{t:0.62,r:E.r*0.98},{t:0.86,r:E.r*0.8},{t:1,r:E.r*0.62}]:[{t:0,r:E.r*0.93},{t:0.05,r:E.r},{t:0.4,r:E.r*1.03},{t:0.82,r:E.r*0.84},{t:1,r:E.r*0.56}];
+    const NP=E.cfm?[{t:0,r:E.r*0.9},{t:0.04,r:E.r*0.98},{t:0.3,r:E.r*1.02},{t:0.66,r:E.r*0.98},{t:0.9,r:E.r*0.8},{t:1,r:E.r*0.66}]:E.neo?[{t:0,r:E.r*0.92},{t:0.04,r:E.r*0.99},{t:0.3,r:E.r*1.04},{t:0.62,r:E.r*0.98},{t:0.86,r:E.r*0.8},{t:1,r:E.r*0.62}]:[{t:0,r:E.r*0.93},{t:0.05,r:E.r},{t:0.4,r:E.r*1.03},{t:0.82,r:E.r*0.84},{t:1,r:E.r*0.56}];
     const nac=new THREE.Mesh(fuselageGeo(E.len,NP,48),nacMat(FS[2]));nac.position.set(x,cy,zc);nac.castShadow=true;body.add(nac);
     const lip=new THREE.Mesh(new THREE.TorusGeometry(E.r*0.93,E.r*0.07,12,40),M.metal);lip.position.set(x,cy,z1);body.add(lip);
     // Einlauf mit Tiefe, Fan, Spinner mit Spirale
@@ -614,8 +654,8 @@ function buildAirliner(C,body,parts,root,P){
     const spn=new THREE.Mesh(new THREE.ConeGeometry(E.r*0.3,E.r*0.62,28).rotateX(-Math.PI/2),M.spin);spn.position.set(x,cy,z1+E.r*0.12);body.add(spn);parts.fans.push(spn);
     // Schubdüse: Ring, Kernstrom-Düse, Abgaskegel
     const noz=new THREE.Mesh(new THREE.CylinderGeometry(E.r*0.57,E.r*0.6,E.len*0.05,36,1,true).rotateX(Math.PI/2),M.metal);noz.position.set(x,cy,z1+E.len*1.0);body.add(noz);
-    const core=new THREE.Mesh(new THREE.CylinderGeometry(E.r*0.42,E.r*0.52,E.len*0.2,32,1,true).rotateX(-Math.PI/2),M.hot);core.position.set(x,cy,z1+E.len*1.1);body.add(core);
-    const ex=new THREE.Mesh(new THREE.ConeGeometry(E.r*0.3,E.len*0.24,24),M.hot);ex.rotation.x=Math.PI/2;ex.position.set(x,cy,z1+E.len*1.3);body.add(ex);
+    const core=new THREE.Mesh(new THREE.CylinderGeometry(E.r*0.42,E.r*0.52,E.len*0.2,32,1,true).rotateX(-Math.PI/2),M.hot);core.position.set(x,cy,z1+E.len*1.1);if(!E.cfm)body.add(core);
+    const ex=new THREE.Mesh(new THREE.ConeGeometry(E.r*(E.cfm?0.36:0.3),E.len*(E.cfm?0.16:0.24),24),M.hot);ex.rotation.x=Math.PI/2;ex.position.set(x,cy,z1+E.len*(E.cfm?1.07:1.3));body.add(ex);
     const ph=Math.max(0.6,yw-(cy+E.r)+0.5);const pyG=new THREE.BoxGeometry(E.r*0.3,ph,E.len*0.95,1,1,4);{const q=pyG.attributes.position;for(let i=0;i<q.count;i++){const zz=q.getZ(i)/(E.len*0.95)+0.5;q.setX(i,q.getX(i)*(0.55+0.45*Math.sin(Math.PI*Math.min(1,zz*1.3))));if(q.getY(i)<0&&zz>0.75)q.setY(i,q.getY(i)+(zz-0.75)*ph*1.2);}pyG.computeVertexNormals();}
     const py=new THREE.Mesh(pyG,surfMat(wm));py.position.set(x,cy+E.r+ph/2-0.3,zc+E.len*0.18);body.add(py);}
   const gearTop=-R*sy*0.72;

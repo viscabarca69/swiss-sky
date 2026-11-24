@@ -194,7 +194,7 @@ export function buildAirports(scene,S,addParked){
       cars.count=ci;ph.add(cars);ph.children.forEach(m=>{m.castShadow=true;m.receiveShadow=true;});place(A,ph,1050,s*(FACE+TW+70));
       // Fluggastbrücken + Flugzeuge
       const gw=new THREE.MeshStandardMaterial({color:0xc9ccd0,roughness:0.5,metalness:0.4});
-      const stands=[[960,'l380'],[1090,'l350'],[1210,'l340'],[1330,'l330'],[1440,'l320'],[1520,'l320']];
+      const stands=[[960,'l380'],[1090,'l350'],[1210,'l346'],[1330,'l330'],[1440,'l320'],[1520,'l320']];
       for(const [al,id] of stands){let nf=null;
         if(addParked){const inf=addParked(id,A,al,0,parkRot(s),s*NOSE);nf=inf&&inf.nf;}
         const C=AIRLINER[id],R=C.R*(C.sy||1);const doorAc=NOSE-C.doors[0]*C.L-(nf?0:0);const dy=A.elev+PLANES[id].gearH-R*0.15;

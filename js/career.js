@@ -2,15 +2,15 @@
 import {APM,fromLocal,toXZ,AREA_ID,HALF} from './worldgen.js';
 const BO=AREA_ID==='bo',CH=AREA_ID==='ch';
 
-export const PRICE={alpina:0,saentis:25000,segler:40000,titlis:60000,foehn:120000,feuer:180000,rega:450000,l320:300000,l330:500000,l340:650000,l350:700000,l380:1000000,l32n:380000,l747:850000};
-const BASEPAY={alpina:1500,saentis:2500,titlis:4000,foehn:8000,feuer:7000,l320:18000,l330:28000,l340:32000,l350:38000,l380:55000,l32n:19500,l747:46000};
+export const PRICE={alpina:0,saentis:25000,segler:40000,titlis:60000,foehn:120000,feuer:180000,rega:450000,l320:300000,l330:500000,l340:600000,l346:680000,l350:700000,l380:1000000,l32n:380000,l747:850000};
+const BASEPAY={alpina:1500,saentis:2500,titlis:4000,foehn:8000,feuer:7000,l320:18000,l330:28000,l340:30000,l346:34000,l350:38000,l380:55000,l32n:19500,l747:46000};
 const MINRWY={alpina:0,saentis:0,titlis:650,foehn:1100,feuer:900,l320:BO||CH?1700:2000,l32n:BO||CH?1700:2000,l330:2400};
 // Linienflugzeuge nur auf echten Linienflughäfen
 const ONLY={};
 export const NOJOB=['segler','rega'];
-export const WIDE=['l340','l350','l747','l380'];
+export const WIDE=['l340','l346','l350','l747','l380'];
 export const fmtCHF=n=>(n<0?'– ':'')+'CHF '+Math.round(Math.abs(n)).toString().replace(/\B(?=(\d{3})+(?!\d))/g,"'");
-export const ORDER=['alpina','saentis','segler','titlis','foehn','feuer','rega','l320','l32n','l330','l340','l350','l747','l380'];
+export const ORDER=['alpina','saentis','segler','titlis','foehn','feuer','rega','l320','l32n','l330','l340','l346','l350','l747','l380'];
 
 // Flugplätze: Anflug [Piste, rev, Distanzen, Gleitpfad] und Abflug [Piste, rev]
 const APT_ZS={

@@ -249,7 +249,7 @@ function buildCockpit(model,P){
   const scrM=tex=>new THREE.MeshBasicMaterial({map:tex,toneMapped:false});
   const lev=(x,y,z,len,col)=>{const piv=new THREE.Group();piv.position.set(x,y,z);g.add(piv);const r=new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.012,len,8),metal);r.position.y=len/2;piv.add(r);
     const k=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.035,0.04),new THREE.MeshStandardMaterial({color:col,roughness:0.5}));k.position.y=len;piv.add(k);return piv;};
-  const ne=jet&&['l340','l380','l747'].includes(P.id)?4:jet||P.id==='foehn'?2:1;const thr=[];let flapL,gearL=null;const sticks=[];
+  const ne=jet&&['l340','l346','l380','l747'].includes(P.id)?4:jet||P.id==='foehn'?2:1;const thr=[];let flapL,gearL=null;const sticks=[];
   if(jet&&AL){
     // ---- Airliner-Cockpit nach Airbus-Vorbild (6 Bildschirme, FCU im Blendschutz, Mittelkonsole mit MCDU, Sidesticks, Overhead) – 747: Boeing-Grau und Steuerhörner
     const panC=boe?0x5d6165:0x4d5b69,panM=new THREE.MeshStandardMaterial({color:panC,roughness:0.75}),bez=new THREE.MeshStandardMaterial({color:0x0d0e10,roughness:0.5});
@@ -956,7 +956,7 @@ function apprTick(F){if(!G.appr)return;G.apprG=approachGuide(G.appr,F,G.P);const
   if(g.phase!=='final'&&Math.hypot(g.p.x-F.pos.x,g.p.z-F.pos.z)>1800&&G.t-G.apprT>12){G.appr=planApproach(F,G.P,G.apprOpt,S);G.apprT=G.t;buildApprRibbon();toast('Anflug neu berechnet',2000);G.apprG=approachGuide(G.appr,F,G.P);}
   if(F.onGround&&g.phase==='final'){clearAppr();toast('Gelandet – Anflug beendet',2200);}}
 // Geschwindigkeitsgrenzen: Höchstgeschwindigkeit, Klappen, Tempolimit im Flugplatz-Nahbereich – mit Erklärung beim ersten Überschreiten
-const VMO={alpina:94,saentis:136,segler:69,titlis:158,foehn:167,feuer:125,rega:89,l320:247,l330:239,l340:267,l350:247,l380:233,l32n:247,l747:260};
+const VMO={alpina:94,saentis:136,segler:69,titlis:158,foehn:167,feuer:125,rega:89,l320:247,l330:239,l340:240,l346:267,l350:247,l380:233,l32n:247,l747:260};
 // ---------- Autopilot ----------
 // Folgt der Route wie ein Flugmanagement-System: Ringbahn der Mission/des Auftrags, Anflugplan oder eigenes Ziel.
 // Querführung: «Pure Pursuit» auf einen Punkt voraus (ergibt von selbst Kurvenvorhalt), Querlage gedämpft geregelt.
@@ -1067,7 +1067,7 @@ let JOBS=[];
 function jobsOpen(){if(!G||!G.jobIcao)return;const A=AIRPORTS.find(a=>a.icao===G.jobIcao),name=AP_NAME(G.jobIcao);JOBS=freeJobs(G.P.id,G.jobIcao,S,Math.floor(Date.now()/900000));
   $('jobsT').textContent='Aufträge ab '+name;
   $('jobsL').innerHTML=JOBS.length?JOBS.map((j,i)=>`<button class="job" data-i="${i}"><kbd>${i+1}</kbd><div><b>${esc(j.title)}</b><small>${j.km} km · ${j.pax?'Passagiere':'Fracht'} · ${esc(j.brief.slice(0,90))}…</small></div><span class="pay">${fmtCHF(j.pay)}</span></button>`).join('')
-    :`<p class="hint">Mit der ${G.P.name} gibt es hier gerade keine passenden Flüge${['l340','l350','l747','l380'].includes(G.P.id)?' – Grossraumflugzeuge fliegen nur ab Zürich':''}.</p>`;
+    :`<p class="hint">Mit der ${G.P.name} gibt es hier gerade keine passenden Flüge${['l340','l346','l350','l747','l380'].includes(G.P.id)?' – Grossraumflugzeuge fliegen nur ab Zürich':''}.</p>`;
   $('jobsL').querySelectorAll('.job').forEach(el=>el.onclick=()=>jobsTake(+el.dataset.i));
   state='jobs';$('jobsOv').classList.remove('hidden');nav.clear();audio.click();}
 function jobsClose(){$('jobsOv').classList.add('hidden');if(state==='jobs')state='fly';nav.clear();}

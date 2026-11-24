@@ -182,3 +182,11 @@ Morgen-Zusammenfassung an Luis gesendet. Offene Grenzen: Flugschule nur ZS; L-32
 - 11d Cockpit: aircraft.js cockpitShell (Innenverkleidung BackSide, Ausschnitte exakt wie die Scheiben, weiches Alpha softTex), Augenpunkt auf Scheibenhöhe; main.js buildCockpit neu: Airbus-Layout (6 Anzeigen PFD/ND/E-WD/SD, FCU mit SPD/HDG/ALT/VS im Blendschutz, Mittelkonsole mit 2 MCDU, Schubhebel, Sidesticks, Overhead), 747 Boeing-Grau + Steuerhörner; GA: 2 grosse Bildschirme; HUD-PFD/System im Jet-Cockpit ausgeblendet (#hud.ck).
 - 11e: Triebwerke L-340 (Trent 500, r 1.4) und L-380 (Trent 900, r 1.72/1.7) auf Originalgrösse.
 - 11f (Fotos von Luis): schwarzer Scheibenrand bei allen Jets (0.055k, A350 0.11k), Scheiben A320/330/340 0.33–0.575H, 747 0.99–1.25R.
+
+## 2026-11-24 – Version 11.1: L-340 = A340-300, L-340 Stretch, Türen/Fenster nach Plänen
+- l340 jetzt A340-300 (63,7 m, Rumpf/Flügel/Leitwerk wie l330, CFM56-5C mit langem Mantel `cfm:1`, Mittelfahrwerk), l346 «L-340 Stretch» = alte A340-600-Daten. Referenzen in career/main/atc/traffic/airports3d ergänzt.
+- aircraft.js LAYOUT: Türen [Meter ab Nase, Typ A/I/III], Frachttore [z,b,h], Fensterreihe (z0,z1,Spantabstand, Glasgrösse) je Typ; daraus C.doors (Bruchteile, für Fluggastbrücken), winX, skip (winSkip).
+  Quellen: Airbus AC A340-200/300 (Türen 5,85/17,741/35,793/50,956), A340-500/600 (5,85/23,91/34,087/47,46/61,576), A350-900 (6,85/18,85/37,93/52,55; -1000 mit +6/+5 Spanten). A320/747/A380 geschätzt.
+  Fenster: Airbus 22,9×31,2 cm / 533 mm, A350 24,2×34,3 cm / 635 mm, 747 25,4×35,6 cm / 508 mm. Typ-III-Notausstieg mit eigenem Fenster (row.extra).
+- Fenstermaske 60 px/m (schärfer). A380-Schriftzug über die Oberdeckfenster, 747-Schriftzug weiter vorn.
+- Test ohne Server: /home/claude/tools/shot.py (Seitenansichten, page.route), tools/game.py (Spiel laden + startFlight).
