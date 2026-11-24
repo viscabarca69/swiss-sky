@@ -514,7 +514,7 @@ export const AIRLINER={
     main:[{x:5.4,z:2.2,ax:2}],ng:-26.4,eye:[-0.55,0.9,-29.0],cg:3.0,winX:[0.1,0.87],doors:[0.1,0.3,0.6,0.85],skip:[[0.09,0.115],[0.29,0.315],[0.59,0.615],[0.84,0.865]]},
   l340:{L:75.4,R:2.82,sy:1.04,nose:0.09,tail:0.75,up:1,reg:'HB-LCA',
     wing:{x0:2.7,span:29.1,root:11.4,tip:2.3,sweep:17.8,dih:5.5,y0:-1.75,z0:-7.0,tr:0.13,tt:0.1,kink:0.36},winglet:'tall',
-    eng:[{x:10.6,len:5.4,r:1.25},{x:19.6,len:5.4,r:1.25}],fin:{z:27.6,root:10.6,tip:4.2,h:9.8,sweep:8.3,y:2.4},stab:{x0:1.1,span:9.4,root:6,tip:2.2,sweep:6.2,dih:6,y:1.2,z:31.6},
+    eng:[{x:10.7,len:6.2,r:1.4},{x:19.9,len:6.2,r:1.4}],fin:{z:27.6,root:10.6,tip:4.2,h:9.8,sweep:8.3,y:2.4},stab:{x0:1.1,span:9.4,root:6,tip:2.2,sweep:6.2,dih:6,y:1.2,z:31.6},
     main:[{x:5.4,z:3.0,ax:2},{x:0,z:3.4,ax:2,center:1}],ng:-31.8,eye:[-0.55,0.9,-34.8],cg:3.4,winX:[0.09,0.89],doors:[0.09,0.27,0.53,0.75,0.88],skip:[[0.08,0.1],[0.26,0.28],[0.52,0.54],[0.74,0.76],[0.87,0.89]]},
   l350:{L:73.8,R:2.98,sy:1.03,nose:0.1,tail:0.72,up:1,reg:'HB-LDA',noseK:'a350',ws:'a350',
     wing:{x0:2.8,span:29.6,root:12.5,tip:2.6,sweep:18.4,dih:6,y0:-1.9,z0:-6.5,tr:0.13,tt:0.1,kink:0.32},winglet:'curved',
@@ -527,7 +527,7 @@ export const AIRLINER={
     hump:{top:0.48,tb:0.17,tc:0.32,td:0.45,pts:[[0,0],[0.0035,0.08],[0.0085,0.15],[0.0142,0.23],[0.028,0.4],[0.0425,0.53],[0.061,0.66],[0.08,0.78],[0.099,0.88],[0.12,0.95],[0.142,0.98],[0.17,1]]}},
   l380:{L:72.7,R:3.57,sy:1.2,nose:0.2,tail:0.72,up:0.8,reg:'HB-LEA',deck2:1,
     wing:{x0:3.4,span:36.4,root:17.5,tip:4.0,sweep:24.5,dih:5.6,y0:-2.6,z0:-9.8,tr:0.14,tt:0.1,kink:0.31},winglet:'fence',
-    eng:[{x:14.7,len:7.0,r:1.6},{x:25.6,len:6.6,r:1.5}],fin:{z:21.5,root:14,tip:5.5,h:13.5,sweep:10.5,y:3.6},stab:{x0:1.8,span:13.2,root:9,tip:3,sweep:8.5,dih:5,y:1.3,z:25.2},
+    eng:[{x:14.8,len:7.3,r:1.72},{x:25.7,len:7.1,r:1.7}],fin:{z:21.5,root:14,tip:5.5,h:13.5,sweep:10.5,y:3.6},stab:{x0:1.8,span:13.2,root:9,tip:3,sweep:8.5,dih:5,y:1.3,z:25.2},
     main:[{x:6.0,z:1.8,ax:2},{x:2.4,z:4.6,ax:3}],ng:-26.8,eye:[-0.6,1.35,-33.3],cg:4.4,winX:[0.1,0.88],doors:[0.1,0.3,0.55,0.8],skip:[[0.09,0.115],[0.29,0.315],[0.54,0.565],[0.79,0.815]]}
 };
 // Bauchverkleidung: Rumpf unten im Flügelbereich weich ausbauchen statt einer aufgesetzten Kugel
