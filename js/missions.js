@@ -282,5 +282,9 @@ export const MISSIONS=[
   {id:'c7',name:'Basel bei Nacht',plane:'l320',air:{lat:47.556,lon:7.86,alt:950,hdg:268},hour:21.6,weather:'clear',wind:'calm',comfort:true,
    brief:'Nachtflug am Rheinknie: entlang des Rheins von Rheinfelden nach Basel, über die Lichter der Stadt und in den Anflug auf Piste 33 des EuroAirports Basel-Mulhouse – der Flughafen liegt in Frankreich.',
    tip:'Nachts täuschen Distanzen: die Ringe und die Flugbahn zeigen dir den Weg. Vor Basel Fahrwerk und Klappen setzen, nach dem letzten Ring weit nach rechts auf die Pistenachse eindrehen.',
-   obj:({R,F,L})=>[R(47.553,7.77,520),R(47.545,7.665,480),...F('BSL',true,[7000,4000,1800,700]),L('BSL')]}
+   obj:({R,F,L})=>[R(47.553,7.77,520),R(47.545,7.665,480),...F('BSL',true,[7000,4000,1800,700]),L('BSL')]},
+  {id:'c8',name:'Heimatrunde Zofingen',plane:'alpina',start:['ZOF',false],hour:17.8,weather:'fair',wind:'light',
+   brief:'Der neue Flugplatz Zofingen–Strengelbach liegt zwischen den beiden Orten direkt an der Autobahn A2. Start auf Piste 17, Runde über Strengelbach, die Zofinger Altstadt mit der Stadtkirche und den Heitern, dann Landung wieder auf Piste 17.',
+   tip:'Die Piste ist nur 620 m lang: im Endanflug Klappen 30° (F), langsam fliegen und gleich nach der Schwelle aufsetzen.',
+   obj:({R,RL,F,L})=>[RL('ZOF',1000,0,150),R(47.2770,7.9230,220),R(47.2860,7.9470,230),R(47.2925,7.9360,250),R(47.3050,7.9380,260),...F('ZOF',false,[1300,600],0.06),L('ZOF')]}
 ];

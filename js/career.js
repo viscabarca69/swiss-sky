@@ -28,6 +28,7 @@ const APT_BO={
   LSTA:{name:'Raron',app:[['RAR',false,[2500,1200,500],0.06],['RAR',true,[2500,1200,500],0.06]],dep:[['RAR',false],['RAR',true]]}};
 const APT_NEW={
   LSGS:{name:'Sion',app:[['SIO',true,[6000,3500,1500,600]],['SIO',false,[5000,3000,1300,600]]],dep:[['SIO',false],['SIO',true]]},
+  LSXZ:{name:'Zofingen-Strengelbach',app:[['ZOF',false,[1300,600],0.06],['ZOF',true,[1300,600],0.06]],dep:[['ZOF',false],['ZOF',true]]},
   LSZG:{name:'Grenchen',app:[['GRE',false,[2500,1200,500],0.06],['GRE',true,[2500,1200,500],0.06]],dep:[['GRE',false],['GRE',true]]},
   LSGG:{name:'Genf',app:[['GVA',false,[8000,5000,2500,1000]],['GVA',true,[8000,5000,2500,1000]]],dep:[['GVA',false],['GVA',true]]},
   LFSB:{name:'Basel-Mulhouse',app:[['BSL',false,[8000,5000,2500,1000]],['BSL',true,[8000,5000,2500,1000]]],dep:[['BSL',false],['BSL',true]]},
@@ -41,7 +42,7 @@ const SIGHTS_ZS=[['Rigi Kulm',47.0567,8.4853,260],['Pilatus',46.9792,8.2525,280]
   ['Hallwilersee',47.28,8.215,180],['Mythen',47.031,8.677,260],['Rütli',46.968,8.59,220],['Türlersee',47.272,8.5,180]];
 const SIGHTS_BO=[['Schloss Thun',46.759,7.630,200],['Schloss Spiez',46.686,7.683,180],['Schloss Oberhofen',46.731,7.669,180],['Harder Kulm',46.697,7.851,250],['Giessbachfälle',46.735,8.02,250],
   ['Staubbachfall',46.594,7.907,320],['Bundeshaus',46.9466,7.444,250],['Niesen',46.645,7.651,260],['Grindelwald',46.624,8.036,320],['Brienz',46.754,8.038,200],['Aareschlucht',46.718,8.215,280],['Stockhorn',46.693,7.540,260]];
-const SIGHTS=CH?[...SIGHTS_ZS,...SIGHTS_BO,['Schloss Burgdorf',47.0565,7.6155,200],['Altstadt Solothurn',47.2075,7.537,220],['Napf',47.004,7.94,260],['Weissenstein',47.255,7.508,260],['Titlis',46.772,8.437,300],['Schloss Tourbillon',46.2365,7.3655,250],
+const SIGHTS=CH?[...SIGHTS_ZS,...SIGHTS_BO,['Schloss Burgdorf',47.0565,7.6155,200],['Zofinger Altstadt',47.2885,7.9455,200],['Altstadt Solothurn',47.2075,7.537,220],['Napf',47.004,7.94,260],['Weissenstein',47.255,7.508,260],['Titlis',46.772,8.437,300],['Schloss Tourbillon',46.2365,7.3655,250],
   ['Jet d’Eau',46.2074,6.1557,220],['Château de Chillon',46.4142,6.9275,200],['Lavaux',46.49,6.74,260],['Creux du Van',46.932,6.725,260],['Matterhorn',45.9763,7.6586,320],['Zermatt',46.0207,7.7491,240],
   ['Rheinfall',47.6779,8.6153,220],['Basler Münster',47.5565,7.5925,200],['Säntis',47.2494,9.3433,280],['St. Moritz',46.4983,9.839,240],['Landwasserviadukt',46.6806,9.6755,220],
   ['Morteratschgletscher',46.42,9.935,300],['Castelgrande Bellinzona',46.1935,9.0217,200],['Monte San Salvatore',45.977,8.946,240],['Schloss Vaduz',47.1395,9.5245,200]]:BO?SIGHTS_BO:SIGHTS_ZS;

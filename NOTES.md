@@ -10,6 +10,13 @@ Artifact slug e3615a1f-7860-4277-b4c4-84ea1ba2abea · letzte veröffentlichte Ve
 Backup Etappe 1: /tmp/af_e1 (kann nach Neustart weg sein)
 Testen: /tmp/run.sh test/<x>.py (Playwright, SwiftShader) · node test/jobs.mjs (Routen) · node test/mis.mjs
 
+## Version 11.4/11.5 (25.11.2026)
+- Flotte: l320 = A321neo (L-321neo), l330 = A330-900neo, l747 = 747-8 (Chevrons, raked tips), l380 geteiltes Winglet, Rega = H145 D3, Titlis NGX
+- traffic.js neu: HUBS (7 Plätze, Geländeprüfung arrDist/depDist), GA-Platzrunden (circuitFor), Segler, Rega-Transit, Reiseflug + Kondensstreifen, Autos auf ROADS w>=3
+- realcity.js: LANDMARKS (Typ 2 Sandstein/Kupfer, Typ 6 roter Sandstein), flood = Anstrahlung nachts
+- Flugplatz ZOF (LSXZ, keepSmall, side 1) in area_ch.js; Mission c8
+- Tests im Repo: test/ (missions.py, traffic.py, fsim/ld/hsim.mjs); three via npm im Repo-Ordner
+
 ## Version 11.3 (25.11.2026)
 - Flugzeuge: paintMat Klarlack, Wurzel-AO, Bauchverkleidung, Cockpitglas-Maske, Pylon-Finnen, Klappen-Kanus, Räder exakt auf -gearH, Triebwerk-Bodenabstand ≥0.5 m
 - Anflugplaner (approach.js): Kandidatensuche IF nah/fern, Basisteil, Volte, schräger Intercept, judge mit Gleitpfad-Marge, unsafe-Warnung

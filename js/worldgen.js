@@ -9,12 +9,12 @@ const EXT={SIO:[200,0],GRE:[250,0],BRN:[250,0],INT:[150,0],MEI:[150,0],REI:[260,
 // Version 8: alle Pisten mindestens ~2.6 km und 45 m breit (L-320/L-330 tauglich); [Verlängerung am A-Ende, am B-Ende] in Metern, je nach Gelände
 const EXT8={BUO:[223,0],ALP:[450,150],BIR:[675,675],HAU:[700,676],BRN:[312,312],INT:[377,376],MEI:[228,228],REI:[766,765],RAR:[755,754],SIO:[212,211],GRE:[684,683],LUG:[0,452],ACH:[332,332]};
 export const AIRPORTS=AIRPORTS_RAW.filter(A=>A.id!=='WAN').map(A0=>{
-  const e=EXT[A0.id]||[0,0],x8=EXT8[A0.id]||[0,0],A={...A0,len:A0.len+e[0]+x8[0]+x8[1],w:Math.max(A0.w,45),lenOld:A0.len+e[0],eA:x8[0],eB:x8[1],wasSmall:!!A0.small,small:false};
+  const e=EXT[A0.id]||[0,0],x8=EXT8[A0.id]||[0,0],A={...A0,len:A0.len+e[0]+x8[0]+x8[1],w:A0.keepSmall?A0.w:Math.max(A0.w,45),lenOld:A0.len+e[0],eA:x8[0],eB:x8[1],wasSmall:!!A0.small,small:!!A0.keepSmall};
   const sh=e[1]+(x8[1]-x8[0])/2;if(sh){A.x+=Math.sin(A0.a)*sh;A.z-=Math.cos(A0.a)*sh;}A.sh8=(x8[1]-x8[0])/2;
-  const big=A.icao==='LSZH',small=false;
+  const big=A.icao==='LSZH',small=!!A0.keepSmall;
   return{...A,sin:Math.sin(A.a),cos:Math.cos(A.a),
     flatW:big?280:small?70:160,flatL:A.len/2+(big?320:small?90:180),blend:big?500:small?220:380,
-    side:A.id==='ZRH16'?-1:A.id==='EMM'?-1:A.id==='BUO'?1:A.id==='INT'?-1:A.id==='MEI'?1:1,hdg:((Math.round(A.a*180/Math.PI)%360)+360)%360};
+    side:A0.side?A0.side:A.id==='ZRH16'?-1:A.id==='EMM'?-1:A.id==='BUO'?1:A.id==='INT'?-1:A.id==='MEI'?1:1,hdg:((Math.round(A.a*180/Math.PI)%360)+360)%360};
 });
 // Missionspunkte wurden für die alten Pistenlängen gesetzt: Längsposition auf die verlängerte Piste umrechnen
 export const alongV8=(A,al)=>{if(!A.lenOld||(!A.eA&&!A.eB))return al;const h=A.lenOld/2;const a=al>h?al+A.eB:al<-h?al-A.eA:-h-A.eA+(al+h)*(A.lenOld+A.eA+A.eB)/A.lenOld;return a-A.sh8;};
@@ -24,7 +24,7 @@ export const APM=Object.fromEntries(AIRPORTS.map(a=>[a.id,a]));
 // zusätzliche flache Zone: Vorfeld Zürich
 const Z16=APM.ZRH16;
 // Regionalflughäfen: ebenes Vorfeld/Terminal-Gelände neben der Piste
-const REGF=AIRPORTS.filter(A=>!A.mil&&A.icao!=='LSZH').map(A=>{const p=fromLocal(A,-A.len*0.12,A.side*(A.w/2+85+150));return{...A,flatW:150,flatL:420,blend:260,x:p.x,z:p.z};});
+const REGF=AIRPORTS.filter(A=>!A.mil&&!A.small&&A.icao!=='LSZH').map(A=>{const p=fromLocal(A,-A.len*0.12,A.side*(A.w/2+85+150));return{...A,flatW:150,flatL:420,blend:260,x:p.x,z:p.z};});
 export const FLATS=Z16?[...AIRPORTS,...REGF,{...Z16,flatW:330,flatL:720,blend:300,x:fromLocal(Z16,1550,-640).x,z:fromLocal(Z16,1550,-640).z}]:[...AIRPORTS,...REGF];
 export const MAIN_AP=AIRPORTS.find(a=>a.main)||AIRPORTS[0];
 export const ICAOS=[...new Set(AIRPORTS.map(a=>a.icao))].map(icao=>({icao,name:AIRPORTS.find(a=>a.icao===icao).name,rwys:AIRPORTS.filter(a=>a.icao===icao)}));
