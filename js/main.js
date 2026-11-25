@@ -913,7 +913,9 @@ function apprAuto(x,z){if(!G||G.lesson)return false;const A=runwayAt(x,z,Math.ma
   for(const o of opts){const s=o.rev?-1:1,hx=s*o.A.sin,hz=-s*o.A.cos,d=Math.acos(clamp((F.vel.x*hx+F.vel.z*hz)/Math.max(1,Math.hypot(F.vel.x,F.vel.z)),-1,1));if(d<bd){bd=d;best=o;}}
   setAppr(best);return true;}
 function setAppr(o){if(!G)return;G.apprOpt=o;G.appr=planApproach(G.F,G.P,o,S);G.apprT=G.t;G.wp=null;buildApprRibbon();if(G.ap)G.ap.nav=true;audio.click();
-  const pl=G.appr,tod=pl.iTOD>=0?` · Sinkflug in ${(pl.pts[pl.iTOD].s/1000).toFixed(1)} km`:'';toast(`Anflug Piste ${pl.rwy} ${pl.name}: ${(pl.L/1000).toFixed(1)} km${tod} – folge der violetten Bahn`,4500);}
+  const pl=G.appr,tod=pl.iTOD>=0?` · Sinkflug in ${(pl.pts[pl.iTOD].s/1000).toFixed(1)} km`:'';
+  if(pl.unsafe){const alt=approachOptions(o.A.icao).find(q=>q!==o&&q.safe);toast(`Achtung: Aus dieser Richtung gibt es keinen sicheren Anflug auf Piste ${pl.rwy} – das Gelände ist im Weg.${alt?' Besser Piste '+alt.rwy+' wählen.':''}`,6500);audio.warn&&audio.warn();return;}
+  toast(`Anflug Piste ${pl.rwy} ${pl.name}: ${(pl.L/1000).toFixed(1)} km${tod}${pl.ang?' · Zwischenanflug schräg durchs Tal':''} – folge der violetten Bahn`,4500);}
 function clearAppr(){if(!G||!G.appr)return;G.appr=null;G.apprG=null;if(G.apprRib){scene.remove(G.apprRib);G.apprRib.geometry.dispose();G.apprRib=null;}}
 // goldenes Band mit Pfeilen entlang der Flugbahn durch die Ringe; bereits durchflogene Abschnitte verschwinden (uOi)
 const PATH_U={uOi:{value:0}};
@@ -1482,7 +1484,7 @@ function showLessonBrief(id){const L=LESSONS.find(x=>x.id===id),P=PLANES[L.plane
 
 // ---------- Automatische Grafikanpassung ----------
 const perf={acc:0,n:0,lvl:0,hold:3,told:false};
-function perfTick(raw){
+function perfTick(raw){if(window.__noPerf)return;// Bild-Tests: volle Grafik
   if(perf.hold>0){perf.hold-=Math.min(raw,0.5);perf.acc=0;perf.n=0;return;}
   perf.acc+=raw;perf.n++;if(perf.acc<2.5)return;
   const fps=perf.n/perf.acc;perf.acc=0;perf.n=0;
@@ -1556,6 +1558,7 @@ function loop(now){
   world.waterTex.offset.x=T*0.006;world.waterTex.offset.y=T*0.004;
   nightU.value=env.night;airports.setNight(env.night);world.water.material.envMapIntensity=1.15*(1-0.8*env.night);const X=world.extras;if(X){if(X.updateWater)X.updateWater(cam,T,env);X.updateBoats(dt,T);}
   if(window.__camHold){const h=window.__camHold;cam.position.set(h[0],h[1],h[2]);cam.up.set(0,1,0);cam.lookAt(h[3],h[4],h[5]);cam.fov=h[6]||50;cam.near=1;cam.updateProjectionMatrix();}
+  if(window.__dbgCam){const d=window.__dbgCam;cam.position.set(d[0],d[1],d[2]);cam.up.set(0,1,0);cam.lookAt(d[3],d[4],d[5]);cam.fov=d[6]||50;cam.near=0.5;cam.updateProjectionMatrix();}// Testkamera (nur für Bild-Tests)
   if(composer&&!window.__noComp){bloom.strength=0.22+0.5*env.night;composer.render();}else renderer.render(scene,cam);
 }
 const P_shadow=P=>P.shadow;

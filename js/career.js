@@ -22,7 +22,7 @@ const APT_ZS={
   LSZN:{name:'Hausen am Albis',app:[['HAU',false,[1300,600],0.06]],dep:[['HAU',false]]}};
 const APT_BO={
   LSZB:{name:'Bern',app:[['BRN',false,[4000,2200,900]],['BRN',true,[4000,2200,900]]],dep:[['BRN',false],['BRN',true]]},
-  LSMI:{name:'Interlaken',app:[['INT',false,[3000,1400,600],0.06],['INT',true,[3000,1400,600],0.06]],dep:[['INT',false],['INT',true]]},
+  LSMI:{name:'Interlaken',app:[['INT',true,[3000,1400,600],0.06]],dep:[['INT',false],['INT',true]]},
   LSMM:{name:'Meiringen',app:[['MEI',false,[3000,1400,600],0.06],['MEI',true,[2500,1200,500],0.06]],dep:[['MEI',false],['MEI',true]]},
   LSGR:{name:'Reichenbach',app:[['REI',false,[1800,800],0.075],['REI',true,[1800,800],0.075]],dep:[['REI',false],['REI',true]]},
   LSTA:{name:'Raron',app:[['RAR',false,[2500,1200,500],0.06],['RAR',true,[2500,1200,500],0.06]],dep:[['RAR',false],['RAR',true]]}};

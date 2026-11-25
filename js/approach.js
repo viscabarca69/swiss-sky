@@ -20,58 +20,89 @@ export function approachOptions(icao){const out=[],seen=new Set();const T=APT[ic
 
 // Bahn planen. F: Flugzustand, P: Flugzeugdaten, opt: Eintrag aus approachOptions
 export function planApproach(F,P,opt,S){
-  const A=opt.A,s=opt.rev?-1:1,jet=!P.prop,gs=opt.gs;
-  const v=Math.max(F.vel.length(),P.Vref*1.45),R=clamp(v*v/(G*Math.tan(25*DEG)),280,4200);
+  const A=opt.A,s=opt.rev?-1:1,jet=!P.prop;
   const cx=s*A.sin,cz=-s*A.cos;// Landerichtung
   const TH=fromLocal(A,-s*A.len/2,0),yTH=A.elev+15;
   const at=d=>{const p=fromLocal(A,-s*(A.len/2+d),0);return{x:p.x,z:p.z};};
-  // Endanflugpunkt (FAF) und Eindrehpunkt (IF) weiter draussen, solange das Gelände es erlaubt
-  const Dfaf=Math.max(opt.faf,jet?6000:P.mass>8000?3500:1800),yF=yTH+Dfaf*gs;let Dif=Dfaf;
-  const want=Dfaf+clamp(v*(jet?28:22),1200,4000);
-  for(let d=Dfaf+250;d<=want;d+=250){const p=at(d);let mx=0;for(const o of [-300,0,300])mx=Math.max(mx,S.groundAt(p.x+cz*o,p.z-cx*o));if(mx+(jet?260:180)>yF)break;Dif=d;}
-  const FAF={...at(Dfaf),y:yF},IF={...at(Dif),y:yF};
-  // Weg bis zum Eindrehpunkt: durch die Täler, falls direkt nicht sicher
   const P0={x:F.pos.x,z:F.pos.z,y:F.pos.y};
-  let mids=[];try{const w=wayPath({...P0,y:Math.max(P0.y,S.groundAt(P0.x,P0.z)+200)},{...IF,y:Math.max(IF.y,yF)},S,jet);if(w)mids=w;}catch(e){}
-  // von vorne oder von der Seite zu nah am Eindrehpunkt? → Einflugpunkt weiter draussen und seitlich (Basisteil)
-  const last=mids.length?mids[mids.length-1]:P0,ra=(last.x-IF.x)*cx+(last.z-IF.z)*cz,rb=(last.x-IF.x)*(-cz)+(last.z-IF.z)*cx;
-  if(ra>-2*R){const side=rb>=0?1:-1,J={x:IF.x-cx*2.6*R+(-cz)*side*2.2*R,z:IF.z-cz*2.6*R+cx*side*2.2*R};let ok=true;
-    for(let k=1;k<=20;k++){const u=k/20,x=IF.x+(J.x-IF.x)*u,z=IF.z+(J.z-IF.z)*u;if(S.groundAt(x,z)+(jet?250:170)>yF+Math.hypot(J.x-IF.x,J.z-IF.z)*u*0.05)ok=false;}
-    if(ok)mids.push({...J,y:yF});}
-  const W=[P0,...mids,IF,FAF,{x:TH.x,z:TH.z,y:yTH}];
+  // Endanflug: Gleitpfad darf nirgends ins Gelände; sonst kürzer und steiler (bis 5,7° wie in Lugano oder Samedan)
+  let Dfaf=Math.max(opt.faf,jet?6000:P.mass>8000?3500:1800),gs=opt.gs;
+  const finOK=(D,g)=>{for(let d=600;d<=D;d+=100){const p=at(d);if(S.groundAt(p.x,p.z)+(d>D-300?60:25)>yTH+d*g)return false;}return true;};
+  if(!finOK(Dfaf,gs)){let found=false;
+    const Dmin=jet?1500:800,gmax=jet?[gs,0.07,0.085,0.1]:[gs,0.07,0.085,0.1,0.12];
+    for(const g of gmax)for(let D=Dfaf;D>=Dmin&&!found;D-=100)if(finOK(D,g)){Dfaf=D;gs=g;found=true;}
+    if(!found){Dfaf=Dmin;gs=gmax[gmax.length-1];}}
+  const yF=yTH+Dfaf*gs;
+  const FAF={...at(Dfaf),y:yF};
+  const v0=Math.max(F.vel.length(),P.Vref*1.45),vSlow=P.Vref*1.3;
+  // Varianten wie ein Fluglehrer sie im Gebirge plant, der Reihe nach probiert – die erste sichere gewinnt:
+  // normale Kurven bei Reisetempo, dann enge Kurven bei Anfluggeschwindigkeit; Eindrehpunkt nah (auf Gleitpfadhöhe) oder weit draussen (höher);
+  // Basisteil links/rechts, Volte im Tal, schräger Zwischenanflug durch das Tal.
+  const marg=jet?150:120;let best=null,tries=0;
+  const judge=pl=>{let pre=1e9,fin=1e9;pl.pts.forEach((q,i)=>{const c=q.y-S.groundAt(q.x,q.z);if(i<pl.iFAF)pre=Math.min(pre,c);else if(pl.L-q.s>600)fin=Math.min(fin,c);});
+    pl.clear=Math.min(pre-marg,fin-20,(0.1-(pl.steep||0))*3000);pl.ok=pl.clear>=0;pl.score=pl.ok?1e7-pl.L:pl.clear*1000;return pl;};
+  const routes=new Map(),route=T=>{const k=Math.round(T.x)+','+Math.round(T.z);if(routes.has(k))return routes.get(k);let w=[];try{w=wayPath({...P0,y:Math.max(P0.y,S.groundAt(P0.x,P0.z)+200)},{...T},S,jet)||[];}catch(e){}routes.set(k,w);return w;};
+  const tryC=c=>{tries++;let pl;try{pl=fly(c);}catch(e){return false;}if(!pl)return false;pl.steep=c.steep;pl.ang=c.ang||0;judge(pl);if(!best||pl.score>best.score)best=pl;return pl.ok;};
+  const mkIF=(R,th,len,lat)=>{const c=Math.cos(th*DEG),sn=Math.sin(th*DEG),bx=-(cx*c-(-cz)*sn),bz=-(cz*c-cx*sn);// Richtung vom FAF nach aussen
+    let yI=yF+len*gs;for(let d=0;d<=len;d+=120){const x=FAF.x+bx*d,z=FAF.z+bz*d;let mx=0;for(const o of [-lat,0,lat])mx=Math.max(mx,S.groundAt(x+(-bz)*o,z+bx*o));yI=Math.max(yI,mx+(jet?260:170)+(len-d)*0.02-(d<300?60:0));}
+    return{x:FAF.x+bx*len,z:FAF.z+bz*len,y:yI,th,len};};
+  outer:for(const [v,bank] of [[v0,25],[vSlow,30]]){
+    const R=clamp(v*v/(G*Math.tan(bank*DEG)),220,4200);
+    // a) nah: so weit hinaus, wie das Gelände auf Gleitpfadhöhe erlaubt
+    let Da=Dfaf;const want=Dfaf+clamp(v*(jet?28:22),1200,4000);
+    for(let d=Dfaf+250;d<=want;d+=250){const p=at(d);let mx=0;for(const o of [-300,0,300])mx=Math.max(mx,S.groundAt(p.x+cz*o,p.z-cx*o));if(mx+(jet?260:180)>yF)break;Da=d;}
+    const IFa={...at(Da),y:yF};
+    // b) weit: genug Gerade vor dem FAF, dafür höher
+    const Lb=clamp(1.8*R,1500,5000),IFb=mkIF(R,0,Lb,250),stb=(IFb.y-yF)/Lb;
+    for(const [IF,Dif,steep] of [[IFa,Da,0],[{x:IFb.x,z:IFb.z,y:IFb.y},Dfaf+Lb,stb]]){if(steep>0.1)continue;const yIF=IF.y,mids=route(IF);
+      const base=(back,lat,side)=>({x:IF.x-cx*back*R+(-cz)*side*lat*R,z:IF.z-cz*back*R+cx*side*lat*R,y:yIF});
+      if(tryC({W:[P0,...mids,IF,FAF],R,v,Dif,IF,yIF,steep}))break outer;
+      for(const side of [1,-1])for(const [b,l] of [[2.6,2.2],[1.6,1.3],[4,1.4]])if(tryC({W:[P0,...mids,base(b,l,side),IF,FAF],R,v,Dif,IF,yIF,steep}))break outer;
+      // Volte im Tal: über die Piste, Gegenanflug parallel (Abstand 2R), dann 180°-Kurve auf den Endanflug
+      for(const side of [1,-1]){const off=2.05*R,ab=(d,o)=>({x:TH.x-cx*d+(-cz)*side*o,z:TH.z-cz*d+cx*side*o,y:yIF});
+        const D1=ab(-A.len,off),D2=ab(Dif+R*0.6,off);if(tryC({W:[P0,...route(D1),D1,D2,IF,FAF],R,v,Dif,IF,yIF,steep,volte:side}))break outer;}}
+    // c) schräger Zwischenanflug: Fächer ±120° und drei Längen, die zwei tiefsten fliegbaren
+    const fan=[];for(let th=-120;th<=120;th+=10)if(th)for(const f of [0.8,1.2,1.8]){const len=Math.max(R*f,700),I2=mkIF(R,th,len,150),st=(I2.y-yF)/len;if(st<=0.1&&Math.abs(th)*DEG*R*0.5<Dfaf+200)fan.push({I2,st,sc:I2.y+Math.abs(th)*0.4});}
+    fan.sort((a,b)=>a.sc-b.sc);
+    for(const f of fan.slice(0,2)){const I={x:f.I2.x,z:f.I2.z,y:f.I2.y};if(tryC({W:[P0,...route(I),I,FAF],R,v,Dif:Dfaf+f.I2.len,IF:I,yIF:I.y,steep:f.st,ang:f.I2.th}))break outer;}}
+  if(best){best.unsafe=!best.ok;best.tries=tries;}
+  return best;
+
+  function fly({W:W0,R,v,Dif,IF,yIF}){const W=[...W0,{x:TH.x,z:TH.z,y:yTH}];
   // Bahn abfliegen wie ein Flugmanagement-System: Kurven mit Radius R, Vorhalt beim Leg-Wechsel, Rückkehr auf die Linie
-  const ds=40,pts=[];let x=P0.x,z=P0.z,h=Math.atan2(F.vel.x,F.vel.z);if(F.vel.length()<5){h=Math.atan2(IF.x-x,IF.z-z);}
-  let cur=1,sum=0,iIF=-1,iFAF=-1;pts.push({x,z,s:0});
-  for(let n=0;n<8000;n++){const a=W[cur-1],b=W[cur],lx=b.x-a.x,lz=b.z-a.z,ll=Math.hypot(lx,lz)||1,ux=lx/ll,uz=lz/ll,crs=Math.atan2(ux,uz);
-    const dtg=(b.x-x)*ux+(b.z-z)*uz,xt=(x-a.x)*uz-(z-a.z)*ux;
-    if(cur<W.length-1){const c2=W[cur+1],c2c=Math.atan2(c2.x-b.x,c2.z-b.z),dl=Math.abs(wrap(c2c-crs)),lead=Math.min(R*Math.tan(Math.min(dl,2.6)/2),Math.hypot(c2.x-b.x,c2.z-b.z)*0.9);
-      if(dtg<=lead||Math.hypot(b.x-x,b.z-z)<ds){if(W[cur]===IF)iIF=pts.length-1;if(W[cur]===FAF)iFAF=pts.length-1;cur++;continue;}}
-    else if(dtg<=0)break;
-    let des;if(cur===1)des=Math.atan2(b.x-x,b.z-z);else des=crs-clamp(xt/(R*0.9),-0.8,0.8);
-    const e=wrap(des-h),mx=ds/R;h+=clamp(e,-mx,mx);x+=Math.sin(h)*ds;z+=Math.cos(h)*ds;sum+=ds;pts.push({x,z,s:sum});}
-  if(iIF<0)iIF=Math.max(0,pts.length-Math.ceil((Dif)/ds));if(iFAF<0)iFAF=Math.max(0,pts.length-Math.ceil(Dfaf/ds));
-  const L=sum,sIF=pts[iIF].s,sFAF=pts[iFAF].s;
-  // Höhenprofil wie ein Flugmanagement-System: gleichmässig steigen auf eine Reiseflughöhe, diese halten,
-  // rechtzeitig mit 3° sinken bis zum Eindrehpunkt, Endanflug auf dem Gleitpfad. Gelände nur als untere Grenze –
-  // im Steigflug nie wieder runter, im Sinkflug nie wieder rauf (kein Auf und Ab).
-  const gd=0.0524,gc=jet?0.065:P.mass>8000?0.055:0.05,marg=jet?300:220,y0=F.pos.y,nI=Math.max(1,iIF);
-  const ys=pts.map(p=>p.s<sFAF?S.groundAt(p.x,p.z)+(p.s<sIF?marg:marg*0.6):-1e9);
-  let terr=-1e9;for(let i=0;i<nI;i++)terr=Math.max(terr,ys[i]);
-  const dist=sIF;let cr=jet?Math.min(9000,1800+0.026*dist):Math.min(P.mass>8000?6000:4200,900+0.014*dist);
-  const fit=(0.7*dist+y0/gc+yF/gd)/(1/gc+1/gd);cr=Math.min(cr,fit);
-  cr=Math.max(cr,terr,yF+150,Math.min(y0,jet?11000:6000));cr=Math.ceil(cr/150)*150;
-  for(const p of pts){const toTH=L-p.s;
-    if(p.s>=sFAF)p.y=yTH+toTH*gs;else if(p.s>=sIF)p.y=yF;else p.y=Math.min(y0+p.s*gc,cr,yF+(sIF-p.s)*gd);}
-  let iTop=0;for(let i=0;i<nI;i++)if(pts[i].y>pts[iTop].y+0.01)iTop=i;
-  {let m=-1e9;for(let i=0;i<=iTop;i++){m=Math.max(m,ys[i]);if(pts[i].y<m)pts[i].y=m;}}
-  {let m=-1e9;for(let i=Math.min(iFAF,pts.length-1);i>iTop;i--){m=Math.max(m,ys[i]);if(pts[i].y<m)pts[i].y=m;}}
-  let iTOD=-1;for(let i=iTop;i<iFAF;i++){if(pts[i].y<pts[iTop].y-5){iTOD=Math.max(0,i-1);break;}}
-  let climb=false;for(let i=0;i<iIF;i++)if(pts[i].y>y0+60){climb=true;break;}
-  // Kurven für die Anzeige (Richtung, Beginn)
-  const turns=[];{let acc=0,st=-1;for(let i=2;i<pts.length;i++){const h1=Math.atan2(pts[i-1].x-pts[i-2].x,pts[i-1].z-pts[i-2].z),h2=Math.atan2(pts[i].x-pts[i-1].x,pts[i].z-pts[i-1].z),d=wrap(h2-h1);
-    if(Math.abs(d)>0.004){if(st<0){st=i-1;acc=0;}acc+=d;}else if(st>=0){if(Math.abs(acc)>12*DEG)turns.push({i:st,j:i-1,deg:acc/DEG});st=-1;}}if(st>=0&&Math.abs(acc)>12*DEG)turns.push({i:st,j:pts.length-1,deg:acc/DEG});}
-  const name=A.name,rwy=opt.rwy;
-  return{pts,L,iIF,iFAF,iTOD,iTop,cr:pts[iTop].y,sIF,sFAF,yF,yTH,gs,R,v,A,rev:opt.rev,rwy,name,turns,climb,TH,hdgFinal:((Math.atan2(cx,-cz)/DEG)+360)%360,last:0,made:performance.now()};}
+    const ds=40,pts=[];let x=P0.x,z=P0.z,h=Math.atan2(F.vel.x,F.vel.z);if(F.vel.length()<5){h=Math.atan2(IF.x-x,IF.z-z);}
+    let cur=1,sum=0,iIF=-1,iFAF=-1;pts.push({x,z,s:0});
+    for(let n=0;n<8000;n++){const a=W[cur-1],b=W[cur],lx=b.x-a.x,lz=b.z-a.z,ll=Math.hypot(lx,lz)||1,ux=lx/ll,uz=lz/ll,crs=Math.atan2(ux,uz);
+      const dtg=(b.x-x)*ux+(b.z-z)*uz,xt=(x-a.x)*uz-(z-a.z)*ux;
+      if(cur<W.length-1){const c2=W[cur+1],c2c=Math.atan2(c2.x-b.x,c2.z-b.z),dl=Math.abs(wrap(c2c-crs)),lead=Math.min(R*Math.tan(Math.min(dl,2.6)/2),Math.hypot(c2.x-b.x,c2.z-b.z)*0.9);
+        if(dtg<=lead||Math.hypot(b.x-x,b.z-z)<ds){if(W[cur]===IF)iIF=pts.length-1;if(W[cur]===FAF)iFAF=pts.length-1;cur++;continue;}}
+      else if(dtg<=0)break;
+      let des;if(cur===1)des=Math.atan2(b.x-x,b.z-z);else des=crs-clamp(xt/(R*0.9),-0.8,0.8);
+      const e=wrap(des-h),mx=ds/R;h+=clamp(e,-mx,mx);x+=Math.sin(h)*ds;z+=Math.cos(h)*ds;sum+=ds;pts.push({x,z,s:sum});}
+    if(iIF<0)iIF=Math.max(0,pts.length-Math.ceil((Dif)/ds));if(iFAF<0)iFAF=Math.max(0,pts.length-Math.ceil(Dfaf/ds));
+    const L=sum,sIF=pts[iIF].s,sFAF=pts[iFAF].s;
+    // Höhenprofil wie ein Flugmanagement-System: gleichmässig steigen auf eine Reiseflughöhe, diese halten,
+    // rechtzeitig mit 3° sinken bis zum Eindrehpunkt, Endanflug auf dem Gleitpfad. Gelände nur als untere Grenze –
+    // im Steigflug nie wieder runter, im Sinkflug nie wieder rauf (kein Auf und Ab).
+    const gd=0.0524,gc=jet?0.065:P.mass>8000?0.055:0.05,marg=jet?300:220,y0=F.pos.y,nI=Math.max(1,iIF);
+    const ys=pts.map(p=>p.s<sFAF?S.groundAt(p.x,p.z)+(p.s<sIF?marg:marg*0.6):-1e9);
+    let terr=-1e9;for(let i=0;i<nI;i++)terr=Math.max(terr,ys[i]);
+    const dist=sIF;let cr=jet?Math.min(9000,1800+0.026*dist):Math.min(P.mass>8000?6000:4200,900+0.014*dist);
+    const fit=(0.7*dist+y0/gc+yIF/gd)/(1/gc+1/gd);cr=Math.min(cr,fit);
+    cr=Math.max(cr,terr,yIF+150,Math.min(y0,jet?11000:6000));cr=Math.ceil(cr/150)*150;
+    for(const p of pts){const toTH=L-p.s;
+      if(p.s>=sFAF)p.y=yTH+toTH*gs;else if(p.s>=sIF)p.y=yIF+(yF-yIF)*(p.s-sIF)/Math.max(1,sFAF-sIF);else p.y=Math.min(y0+p.s*gc,cr,yIF+(sIF-p.s)*gd);}
+    let iTop=0;for(let i=0;i<nI;i++)if(pts[i].y>pts[iTop].y+0.01)iTop=i;
+    {let m=-1e9;for(let i=0;i<=iTop;i++){m=Math.max(m,ys[i]);if(pts[i].y<m)pts[i].y=m;}}
+    {let m=-1e9;for(let i=Math.min(iFAF,pts.length-1);i>iTop;i--){m=Math.max(m,ys[i]);if(pts[i].y<m)pts[i].y=m;}}
+    let iTOD=-1;for(let i=iTop;i<iFAF;i++){if(pts[i].y<pts[iTop].y-5){iTOD=Math.max(0,i-1);break;}}
+    let climb=false;for(let i=0;i<iIF;i++)if(pts[i].y>y0+60){climb=true;break;}
+    // Kurven für die Anzeige (Richtung, Beginn)
+    const turns=[];{let acc=0,st=-1;for(let i=2;i<pts.length;i++){const h1=Math.atan2(pts[i-1].x-pts[i-2].x,pts[i-1].z-pts[i-2].z),h2=Math.atan2(pts[i].x-pts[i-1].x,pts[i].z-pts[i-1].z),d=wrap(h2-h1);
+      if(Math.abs(d)>0.004){if(st<0){st=i-1;acc=0;}acc+=d;}else if(st>=0){if(Math.abs(acc)>12*DEG)turns.push({i:st,j:i-1,deg:acc/DEG});st=-1;}}if(st>=0&&Math.abs(acc)>12*DEG)turns.push({i:st,j:pts.length-1,deg:acc/DEG});}
+    const name=A.name,rwy=opt.rwy;
+    return{pts,L,iIF,iFAF,iTOD,iTop,cr:pts[iTop].y,sIF,sFAF,yF,yIF,yTH,gs,R,v,A,rev:opt.rev,rwy,name,turns,climb,TH,hdgFinal:((Math.atan2(cx,-cz)/DEG)+360)%360,last:0,made:performance.now()};}
+}
 
 // Führung für den aktuellen Moment
 export function approachGuide(pl,F,P){
