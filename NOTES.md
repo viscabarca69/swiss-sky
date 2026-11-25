@@ -10,6 +10,14 @@ Artifact slug e3615a1f-7860-4277-b4c4-84ea1ba2abea · letzte veröffentlichte Ve
 Backup Etappe 1: /tmp/af_e1 (kann nach Neustart weg sein)
 Testen: /tmp/run.sh test/<x>.py (Playwright, SwiftShader) · node test/jobs.mjs (Routen) · node test/mis.mjs
 
+## Version 11.7 (25.11.2026)
+- menus.js: Karriere, Lackier-Editor, Flugzeugbilder, Ausstellungsplatz, Flughafenplan, Freier Flug, Optionen (main.js 1326 Zeilen). Split-Werkzeug: /tmp/jsscan.py-Logik (Strings, Templates, Regex) + eslint no-undef für ctx-Namen
+- cockpit.js: panTex (Canvas mit Schaltern/Knöpfen/Beschriftung), Emissive nachts (env.night), Boden + Kniebrett (verdecken nachts angestrahlten Rumpf), Tiller, Bremsklappenhebel; aircraft.js cockpitShell: alphaTest 0.5 statt weicher Kante
+- approach.js finalSlope(A,rev,S,jet) → steilster nötiger Gleitwinkel; Flughafenplan markiert Pistenenden > 3,6° für Jets
+- realcity.js: Kirchen Art 8 (Kupfer) / 9 (Schiefer), info.x = Bodenhöhe (250 + 2·x m) → Fenster nach Höhe über Grund, Turmhelme (nW.y > 0.12) in Dachfarbe; Basler Münster Turmhelme bunt
+- world3d.js: Alpweiden (alpF ab 1150–1450 m, Steilheit), Feldfarben in Bergtälern nur Wiese (mtnF)
+- AO: aoWanted() → 0 / 0.5 / 1 (Auflösung); AOPass.setSize skaliert
+
 ## Version 11.6 (25.11.2026)
 - main.js aufgeteilt: groundops.js (Gate, Pushback, Rollweg-A*), cockpit.js (3D-Cockpit), camera.js (Kameras, Menü-Fahrten), logbook.js (Logbuch, besuchte Plätze, SPECIAL_LIV). Gemeinsamer Zustand über CTX-Getter in main.js, je Funktion `const {G,...}=ctx`
 - Prüfung auf fehlende Namen: eslint (no-undef) mit .eslintrc wie in /home/claude/lint

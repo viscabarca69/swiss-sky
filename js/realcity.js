@@ -97,9 +97,19 @@ if(abs(nW.y)<0.4&&k>15.5){
   else if(k>3.5&&k<4.5)c=vec3(0.86,0.90,0.90);
   else if(k>5.5&&k<6.5)c=vec3(0.60,0.33,0.27)*(0.92+0.08*hh(floor(vWP.xz*0.5)+floor(vWP.y)));
   else if(k>6.5&&k<7.5){c=vec3(0.22,0.33,0.32)*(0.92+0.16*step(0.82,fract((vWP.y-0.8)/3.9)));glassM=0.9;winMask=0.5;winLit=0.35*step(0.55,hh(floor(vec2(vWP.x+vWP.z,vWP.y)/vec2(4.0,3.9))));}
+  else if(k>7.5&&k<9.5){// Kirche/Wahrzeichen: Sandstein in Lagen, hohe Spitzbogenfenster unten, schräge Turmhelme in Dachfarbe
+    float hG=vWP.y-(250.0+2.0*vInfo.x);float u=abs(nW.x)>abs(nW.z)?vWP.z:vWP.x;
+    float sAA=1.0-smoothstep(0.25,0.8,fwidth(u/1.1)+fwidth(vWP.y/0.55));
+    c=vec3(0.80,0.75,0.66)*(1.0+sAA*(0.06*hh(floor(vec2(u/1.1,vWP.y/0.55)))-0.03))*(1.0-0.05*sAA*step(0.92,fract(vWP.y/0.55)));
+    vec2 g=vec2(u/4.4,hG);float fx=abs(fract(g.x)-0.5);float aa=fwidth(g.x);float fade=1.0-smoothstep(0.08,0.3,aa);
+    float arch=step(hG,10.0+0.55*sqrt(max(0.0,1.0-(fx/0.14)*(fx/0.14))))*step(3.2,hG)*step(fx,0.14);
+    float bel=step(abs(fract(g.x*1.6)-0.5),0.12)*step(0.0,hG-22.0)*step(fract((hG-22.0)/9.0),0.32)*step(hG,60.0);
+    float w=max(arch,bel*0.8)*fade;c=mix(c,vec3(0.13,0.14,0.19),w*0.85);winMask=w*0.5;winLit=arch*fade*0.45*step(0.35,hh(floor(g)+vec2(t*5.0,1.0)));
+    if(nW.y>0.12){c=k<8.5?vec3(0.32,0.52,0.43):vec3(0.29,0.29,0.31);winMask=0.0;winLit=0.0;}}
   else if(k>4.5)c=vec3(0.62,0.60,0.56);
   // Kirchen und Wahrzeichen: nachts von unten angestrahlt
-  if((k>1.5&&k<2.5)||(k>5.5&&k<6.5))flood=0.5;
+  if((k>1.5&&k<2.5)||(k>5.5&&k<9.5&&!(k>6.5&&k<7.5)))flood=0.5;
+  if(k>5.5&&k<6.5&&nW.y>0.12){vec2 q=floor(vec2(vWP.x+vWP.z,vWP.x-vWP.z)/2.6);float h3=fract((q.x+q.y*2.0)/3.0);c=h3<0.3?vec3(0.52,0.24,0.17):h3<0.62?vec3(0.66,0.55,0.26):vec3(0.27,0.36,0.29);}
   if(k<1.5||(k>1.5&&k<2.5)){
     float u=abs(nW.x)>abs(nW.z)?vWP.z:vWP.x;float tall=step(0.5,k)*step(k,1.5);
     float fh=tall>0.5?3.4:2.9,cw=tall>0.5?2.4:3.3;vec2 g=vec2(u/cw,(vWP.y-0.8)/fh);vec2 f=fract(g);vec2 id=floor(g);
@@ -116,6 +126,7 @@ if(abs(nW.y)<0.4&&k>15.5){
   vec3 r0=vec3(0.62,0.30,0.21),r1=vec3(0.54,0.25,0.18),r2=vec3(0.42,0.38,0.36),r3=vec3(0.66,0.38,0.25),r4=vec3(0.37,0.36,0.35);
   c=t<0.3?r0:t<0.5?r1:t<0.68?r3:t<0.85?r2:r4;
   if(k>1.5&&k<2.5)c=t<0.5?vec3(0.32,0.52,0.43):vec3(0.30,0.29,0.30);
+  if(k>7.5&&k<8.5)c=vec3(0.32,0.52,0.43);if(k>8.5&&k<9.5)c=vec3(0.29,0.29,0.31);
   if(k>0.5&&k<1.5)c=vec3(0.42,0.43,0.44);
   // Basler Münster: bunt glasierte Ziegel im Rautenmuster
   if(k>5.5&&k<6.5){vec2 q=floor(vec2(vWP.x+vWP.z,vWP.x-vWP.z)/2.6);float h3=fract((q.x+q.y*2.0)/3.0);c=h3<0.3?vec3(0.52,0.24,0.17):h3<0.62?vec3(0.66,0.55,0.26):vec3(0.27,0.36,0.29);}
@@ -154,7 +165,10 @@ export function buildRealCity(scene,RC,S,lights){
       if(inAirportArea(gx+(x0+x1)/2,gz+(z0+z1)/2)){const w=x1-x0,d=z1-z0,hb=y1-y0,asp=Math.max(w,d)/Math.max(1,Math.min(w,d)),ar=w*d;
         const sub=hb<7.5?3:asp>3.2?0:(ar>3500&&hb>13)?1:hb>17?0:2,at=16+sub*48+Math.min(47,Math.round(hb)),gt=Math.max(0,Math.min(255,Math.round(g+y0-380)));
         for(let j=v0;j<v;j++){info[j*2]=gt;info[j*2+1]=at;}}
-      {const wx=gx+(x0+x1)/2,wz=gz+(z0+z1)/2;for(const L of LANDMARKS)if(Math.abs(wx-L.x)<L.r&&Math.abs(wz-L.z)<L.r&&Math.hypot(wx-L.x,wz-L.z)<L.r&&y1-y0>=L.hMin){for(let j=v0;j<v;j++){info[j*2]=L.tint;info[j*2+1]=L.ty;}}}
+      {const wx=gx+(x0+x1)/2,wz=gz+(z0+z1)/2;for(const L of LANDMARKS)if(Math.abs(wx-L.x)<L.r&&Math.abs(wz-L.z)<L.r&&Math.hypot(wx-L.x,wz-L.z)<L.r&&y1-y0>=L.hMin){
+        // Kirchen/Wahrzeichen: Art 8 (Kupferdach) bzw. 9 (Schieferdach), Art 6 = Basler Münster; x = Bodenhöhe (250 m + 2 m Schritte) für Fenster und Turmhelme im Shader
+        const ty=L.ty===2?(L.tint<128?8:9):L.ty,gx2=L.ty===2||L.ty===6?Math.max(0,Math.min(255,Math.round((g+y0-250)/2))):L.tint;
+        for(let j=v0;j<v;j++){info[j*2]=gx2;info[j*2+1]=ty;}}}
       if(lights&&(nb%3===0)&&nv>14)lights.push(gx+(x0+x1)/2,g+3,gz+(z0+z1)/2);
       let hw=0;for(let j=0;j<nt*3;j++,ii++){const code=clo[ii]|(chi[ii]<<8);let l;if(code===0)l=hw++;else l=hw-code;idx[ii]=v0+l;}
       nb++;}

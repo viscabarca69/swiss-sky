@@ -16,12 +16,38 @@ function buildCockpit(model,P){const {hud,$}=ctx;
   const scrM=tex=>new THREE.MeshBasicMaterial({map:tex,toneMapped:false});
   const lev=(x,y,z,len,col)=>{const piv=new THREE.Group();piv.position.set(x,y,z);g.add(piv);const r=new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.012,len,8),metal);r.position.y=len/2;piv.add(r);
     const k=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.035,0.04),new THREE.MeshStandardMaterial({color:col,roughness:0.5}));k.position.y=len;piv.add(k);return piv;};
-  const ne=jet&&['l340','l346','l380','l747'].includes(P.id)?4:jet||P.id==='foehn'?2:1;const thr=[];let flapL,gearL=null;const sticks=[];
+  const ne=jet&&['l340','l346','l380','l747'].includes(P.id)?4:jet||P.id==='foehn'?2:1;const thr=[];let flapL,gearL=null;const sticks=[];let u_pan=[];
   if(jet&&AL){
     // ---- Airliner-Cockpit nach Airbus-Vorbild (6 Bildschirme, FCU im Blendschutz, Mittelkonsole mit MCDU, Sidesticks, Overhead) – 747: Boeing-Grau und Steuerhörner
-    const panC=boe?0x5d6165:0x4d5b69,panM=new THREE.MeshStandardMaterial({color:panC,roughness:0.75}),bez=new THREE.MeshStandardMaterial({color:0x0d0e10,roughness:0.5});
+    const panC=boe?0x5d6165:0x4d5b69,panHex=boe?'#5d6165':'#4d5b69',bez=new THREE.MeshStandardMaterial({color:0x0d0e10,roughness:0.5});
     const pz=-0.98,tilt=-0.18,W=hw*2;
+    // Paneloberflächen mit Schaltern, Drehknöpfen, Beschriftung und Schrauben (Canvas), nachts leicht hinterleuchtet
+    const lbl=['LOUD SPKR','TERR ON ND','GPWS','CHRONO','ND','PFD','BRK FAN','A/SKID','CONSOLE','FLOOD','INTEG LT','ATC','XPDR','RAD ALT','ADIRS','FUEL','APU','ENG','HYD','ELEC','BLEED','COND','PRESS','DOOR'];
+    const panTex=(w,h,draw)=>{const T=cvT(w,h),c=T.c.getContext('2d');c.fillStyle=panHex;c.fillRect(0,0,w,h);
+      // leichte Struktur und Kanten
+      for(let i=0;i<w*h/900;i++){c.fillStyle=`rgba(${Math.random()<0.5?'255,255,255':'0,0,0'},0.025)`;c.fillRect(Math.random()*w,Math.random()*h,2,2);}
+      c.strokeStyle='rgba(255,255,255,0.13)';c.lineWidth=2;c.strokeRect(2,2,w-4,h-4);c.strokeStyle='rgba(0,0,0,0.35)';c.strokeRect(5,5,w-10,h-10);
+      const scr=(x,y)=>{c.fillStyle='#2a2f35';c.beginPath();c.arc(x,y,3,0,7);c.fill();c.strokeStyle='rgba(255,255,255,0.25)';c.beginPath();c.moveTo(x-2,y);c.lineTo(x+2,y);c.stroke();};
+      scr(12,12);scr(w-12,12);scr(12,h-12);scr(w-12,h-12);
+      const knob=(x,y,r)=>{c.fillStyle='#16181b';c.beginPath();c.arc(x,y,r,0,7);c.fill();c.fillStyle='#2c3036';c.beginPath();c.arc(x-r*0.2,y-r*0.2,r*0.72,0,7);c.fill();c.strokeStyle='#e8e8e8';c.lineWidth=Math.max(1,r*0.18);c.beginPath();c.moveTo(x,y);c.lineTo(x,y-r*0.8);c.stroke();};
+      const sw=(x,y,on,amb)=>{c.fillStyle='#1a1d21';c.fillRect(x-11,y-10,22,20);c.fillStyle=on?'rgba(255,255,255,0.85)':'rgba(255,255,255,0.1)';c.fillRect(x-8,y-7,16,4);if(amb){c.fillStyle='#ffb000';c.fillRect(x-8,y+2,16,4);}};
+      const txt=(t,x,y,sz)=>{c.fillStyle='rgba(255,255,255,0.78)';c.font=`600 ${sz||10}px Arial`;c.textAlign='center';c.fillText(t,x,y);};
+      draw(c,w,h,{knob,sw,txt,scr});const t=T.t;t.needsUpdate=true;return t;};
+    const mainT=panTex(1024,256,(c,w,h,{knob,sw,txt})=>{for(let i=0;i<9;i++){const x=40+i*(w-80)/8;knob(x,h-36,11);txt(lbl[i],x,h-12,9);}
+      for(let i=0;i<6;i++){sw(w*0.44+i*26,30,i%3===0,i===4);}txt('TERR · GPWS · BRK',w*0.5,62,9);
+      c.strokeStyle='rgba(0,0,0,0.4)';c.lineWidth=3;for(const u of [0.32,0.68]){c.beginPath();c.moveTo(w*u,10);c.lineTo(w*u,h-10);c.stroke();}});
+    const pedT=panTex(256,512,(c,w,h,{knob,sw,txt})=>{for(let r=0;r<5;r++)for(let k=0;k<3;k++)sw(50+k*78,40+r*50,(r+k)%2===0,r===2&&k===1);
+      txt('ENG 1',78,330,12);txt('ENG 2',178,330,12);for(const x of [78,178]){c.fillStyle='#b0161c';c.beginPath();c.arc(x,370,18,0,7);c.fill();c.fillStyle='#16181b';c.fillRect(x-6,352,12,36);}
+      knob(128,440,20);txt('MODE  IGN · START',128,480,11);});
+    const sideT=panTex(256,512,(c,w,h,{knob,sw,txt})=>{for(let r=0;r<3;r++)sw(60+r*70,60,r===0,false);txt('OXY · MASK',w/2,100,11);knob(w/2,300,26);txt('STEERING',w/2,348,12);
+      c.fillStyle='rgba(0,0,0,0.3)';c.fillRect(20,400,w-40,80);txt('CHART HOLDER',w/2,446,11);});
+    const panM=new THREE.MeshStandardMaterial({color:0xffffff,map:mainT,roughness:0.72,emissive:0x8899aa,emissiveMap:mainT,emissiveIntensity:0}),
+      pedM=new THREE.MeshStandardMaterial({color:0xffffff,map:pedT,roughness:0.72,emissive:0x8899aa,emissiveMap:pedT,emissiveIntensity:0}),
+      sideM=new THREE.MeshStandardMaterial({color:0xffffff,map:sideT,roughness:0.72,emissive:0x8899aa,emissiveMap:sideT,emissiveIntensity:0}),
+      plainM=new THREE.MeshStandardMaterial({color:panC,roughness:0.78});
     add(new THREE.BoxGeometry(W,0.56,0.06),panM,cx,-0.56,pz,tilt);// Hauptinstrumentenbrett
+    // Blendschutz mit runder Vorderkante (Polster) statt Kante
+    add(new THREE.CylinderGeometry(0.038,0.038,W,16),dark,cx,-0.245,pz+0.235,0,0,Math.PI/2);
     add(new THREE.BoxGeometry(W,0.08,0.3),dark,cx,-0.24,pz+0.08);// Blendschutz (matt schwarz)
     // FCU / MCP vorne am Blendschutz (zum Piloten geneigt)
     add(new THREE.PlaneGeometry(0.78,0.075),scrM(FCU.t),cx,-0.25,pz+0.235,-0.3);
@@ -35,14 +61,24 @@ function buildCockpit(model,P){const {hud,$}=ctx;
     gearL=(()=>{const piv=new THREE.Group();piv.position.set(cx+dw*0.5+0.1,-0.62,pz+0.06);g.add(piv);const r=new THREE.Mesh(new THREE.CylinderGeometry(0.01,0.01,0.09,8),metal);r.rotation.x=Math.PI/2;r.position.z=0.045;piv.add(r);
       const wh=new THREE.Mesh(new THREE.CylinderGeometry(0.026,0.026,0.022,16),new THREE.MeshStandardMaterial({color:0xdddddd}));wh.rotation.z=Math.PI/2;wh.position.z=0.095;piv.add(wh);return piv;})();
     // Mittelkonsole: Schräge mit zwei MCDU, flacher Teil mit Schubhebeln, Klappen- und Bremshebel
-    add(new THREE.BoxGeometry(0.56,0.32,0.36),panM,cx,-0.84,pz+0.12,-0.55);
-    add(new THREE.BoxGeometry(0.56,0.2,0.62),panM,cx,-0.86,-0.42);
+    add(new THREE.BoxGeometry(0.56,0.32,0.36),plainM,cx,-0.84,pz+0.12,-0.55);
+    add(new THREE.BoxGeometry(0.56,0.2,0.62),pedM,cx,-0.86,-0.42);
+    // Bremsklappenhebel, Parkbremse, Trimmrad-Andeutung
+    lev(cx-0.21,-0.76,-0.36,0.09,0x9a9a9a);add(new THREE.CylinderGeometry(0.028,0.028,0.02,16),new THREE.MeshStandardMaterial({color:0x222222,roughness:0.5}),cx+0.2,-0.755,-0.24,0,0,Math.PI/2);
+    for(const sd of [-1,1])add(new THREE.CylinderGeometry(0.075,0.075,0.03,24),new THREE.MeshStandardMaterial({color:0x2a2d31,roughness:0.55}),cx+sd*0.3,-0.82,-0.52,0,0,Math.PI/2);
     for(const sd of [-1,1]){add(new THREE.BoxGeometry(0.2,0.25,0.02),bez,cx+sd*0.135,-0.78,pz+0.27,-0.55-Math.PI/2+Math.PI/2);
       add(new THREE.PlaneGeometry(0.15,0.12),scrM(MC.t),cx+sd*0.135,-0.735,pz+0.295,-0.55);}
     for(let i=0;i<ne;i++)thr.push(lev(cx+(i-(ne-1)/2)*0.055,-0.76,-0.5,0.17,0x2a2a2a));
     flapL=lev(cx+0.2,-0.76,-0.42,0.12,0xe2e2e2);lev(cx-0.2,-0.76,-0.5,0.1,0xd8d8d8);
     // Seitenkonsolen mit Sidestick (Airbus) bzw. Steuerhörner (747)
-    for(const sx of [-0.43,2*cx+0.43])add(new THREE.BoxGeometry(0.22,0.2,0.9),panM,sx,-0.72,-0.5);
+    for(const sx of [-0.43,2*cx+0.43]){add(new THREE.BoxGeometry(0.22,0.2,0.9),sideM,sx,-0.72,-0.5);
+      // Armlehne und Bugradsteuerung (Tiller) vorne an der Seitenkonsole
+      add(new THREE.BoxGeometry(0.1,0.04,0.32),new THREE.MeshStandardMaterial({color:0x2b2e33,roughness:0.9}),sx+(sx<cx?0.03:-0.03),-0.6,-0.32);
+      if(!boe){const tl=add(new THREE.TorusGeometry(0.045,0.01,8,20),dark,sx+(sx<cx?0.04:-0.04),-0.6,-0.78,Math.PI/2);tl.scale.set(1,1,1);}}
+    // Boden (Teppich) und Kniebrett: verdecken den Rumpf darunter (sonst nachts vom Landescheinwerfer hell angestrahlt)
+    {const carpet=new THREE.MeshStandardMaterial({color:0x1f2226,roughness:1});add(new THREE.BoxGeometry(W+0.3,0.04,1.5),carpet,cx,-1.0,-0.45);
+     add(new THREE.BoxGeometry(W,0.2,0.05),plainM,cx,-0.92,pz+0.06);}
+    u_pan=[panM,pedM,sideM];
     if(boe){for(const x of [0,2*cx]){const st=new THREE.Group();st.position.set(x,-0.5,-0.62);g.add(st);const col=new THREE.Mesh(new THREE.CylinderGeometry(0.03,0.035,0.45,10),dark);col.position.y=-0.22;st.add(col);
         const yk=new THREE.Mesh(new THREE.TorusGeometry(0.14,0.016,8,28,Math.PI*1.15),dark);yk.rotation.z=Math.PI*0.92;yk.position.y=0.03;st.add(yk);sticks.push(st);}}
     else for(const x of [-0.4,2*cx+0.4]){const st=new THREE.Group();st.position.set(x,-0.6,-0.38);g.add(st);const s1=new THREE.Mesh(new THREE.CylinderGeometry(0.018,0.024,0.12,10),dark);s1.position.y=0.06;st.add(s1);
@@ -72,9 +108,10 @@ function buildCockpit(model,P){const {hud,$}=ctx;
     const st=new THREE.Group();g.add(st);st.position.set(0,-0.42,-0.72);const col=new THREE.Mesh(new THREE.CylinderGeometry(0.018,0.018,0.25,8),metal);col.rotation.x=Math.PI/2;col.position.z=-0.12;st.add(col);
     const yk=new THREE.Mesh(new THREE.TorusGeometry(0.1,0.014,8,24,Math.PI),dark);yk.rotation.z=Math.PI;yk.position.y=0.03;st.add(yk);sticks.push(st);
   }
-  g.visible=false;g.userData={tex:pfd,nd,E,SD,FCU,MC,thr,flapL,gearL,sticks,jet:jet&&!!AL,boe,small};return g;
+  g.visible=false;g.userData={tex:pfd,nd,E,SD,FCU,MC,thr,flapL,gearL,sticks,jet:jet&&!!AL,boe,small,pan:u_pan};return g;
 }
-function updateCockpit(F){const {G,DEG}=ctx;const u=G.cockpit.userData;u.tex.needsUpdate=true;u.nd.needsUpdate=true;
+function updateCockpit(F){const {G,DEG,env}=ctx;const u=G.cockpit.userData;u.tex.needsUpdate=true;u.nd.needsUpdate=true;
+  if(u.pan&&u.pan.length){const n=env?env.night||0:0;for(const m of u.pan)m.emissiveIntensity=0.06+0.32*n;}
   for(const l of u.thr)l.rotation.x=-0.5+F.thr*1.0;if(u.flapL)u.flapL.rotation.x=0.2-F.flaps*0.25;if(u.gearL)u.gearL.rotation.x=F.gear?0.5:-0.5;
   for(const s of u.sticks){if(u.jet&&!u.boe)s.rotation.set(-F.elev*0.25,0,-F.ail*0.3);else{s.rotation.set(0,0,-F.ail*0.35);s.position.z=(u.jet?-0.62:-0.72)+F.elev*0.06;}}
   if((G.t*6|0)===u.lastE)return;u.lastE=G.t*6|0;

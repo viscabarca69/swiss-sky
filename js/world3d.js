@@ -130,9 +130,13 @@ float dCam=length(vWP-cameraPosition);float near=1.0-smoothstep(500.0,7000.0,dCa
  float n=fbm3(vWP.xz*0.05);float n2=fbm3(vWP.xz*0.6);
  float m=vn(vWP.xz*0.0012)*0.5+vn(vWP.xz*0.004)*0.5;
  vec3 base=diffuseColor.rgb*mix(1.0,0.78+0.44*n,near)*mix(1.0,0.88+0.24*n2,1.0-smoothstep(150.0,1500.0,dCam))*(0.93+0.14*m);
- if(cl.r>0.01){float ang=floor(vn(vWP.xz*0.00011)*4.0)*0.42;float ca=cos(ang),sa=sin(ang);vec2 q=vec2(ca*vWP.x+sa*vWP.z,-sa*vWP.x+ca*vWP.z);
+ // Berggebiet: über ~1300 m und an steilen Hängen keine Äcker mehr, sondern Alpweiden; in Bergtälern ab ~800 m nur Wiesen (keine Getreidefarben)
+ float slF=1.0-vWN.y,alpF=smoothstep(1150.0,1450.0,vWP.y+(n-0.5)*220.0),mtnF=smoothstep(700.0,950.0,vWP.y),fW=cl.r*(1.0-max(alpF,smoothstep(0.09,0.17,slF)));
+ if(cl.r>0.01){vec3 mw=pow(mix(mix(vec3(0.40,0.49,0.24),vec3(0.50,0.53,0.30),vn(vWP.xz*0.006)),vec3(0.50,0.47,0.31),smoothstep(0.55,0.85,vn(vWP.xz*0.0025))*0.7),vec3(2.2))*(0.76+0.48*fbm3(vWP.xz*0.018))*(0.9+0.2*n2);
+  base=mix(base,mw,cl.r*max(alpF,smoothstep(0.09,0.17,slF))*0.55);}
+ if(fW>0.01){float ang=floor(vn(vWP.xz*0.00011)*4.0)*0.42;float ca=cos(ang),sa=sin(ang);vec2 q=vec2(ca*vWP.x+sa*vWP.z,-sa*vWP.x+ca*vWP.z);
   vec2 cs=vec2(175.0,96.0);float ix=floor(q.x/cs.x);float off=h21(vec2(ix,7.0))*cs.y;vec2 cell=vec2(ix,floor((q.y+off)/cs.y));vec2 f=vec2(fract(q.x/cs.x),fract((q.y+off)/cs.y));
-  float id=h21(cell+3.1);vec3 pc=fieldCol(id)*(0.84+0.3*vn(vWP.xz*0.03))*(0.92+0.16*n2);
+  float id=h21(cell+3.1);id=mix(id,id*0.6,mtnF);vec3 pc=fieldCol(id)*(0.84+0.3*vn(vWP.xz*0.03))*(0.92+0.16*n2);
   // Bewirtschaftungsspuren je Feld: Mähstreifen (Wiese), Saatreihen (Getreide), Furchen (Acker); Richtung pro Feld zufällig
   {float dirR=h21(cell+11.7);float u=dirR<0.5?q.y:q.x;
    if(id<0.62){float per=7.0;float a=1.0-smoothstep(per*0.25,per*0.5,mpp);pc*=1.0+0.07*a*sign(sin(u*6.2832/per))*smoothstep(0.0,0.3,abs(sin(u*6.2832/per)));}
@@ -142,7 +146,7 @@ float dCam=length(vWP-cameraPosition);float near=1.0-smoothstep(500.0,7000.0,dCa
   pc=mix(pc,pow(vec3(0.3,0.36,0.2),vec3(2.2)),hedge*0.6);
   // Feldwege (Kies) entlang mancher Feldränder
   if(h21(cell+9.3)<0.3){float tw=f.y*cs.y;float tr=(1.0-smoothstep(2.4,2.4+max(mpp,0.5),tw))*smoothstep(0.4,0.4+max(mpp,0.5),tw);pc=mix(pc,pow(vec3(0.62,0.58,0.5),vec3(2.2))*(0.9+0.2*n2),tr*(1.0-smoothstep(6.0,22.0,mpp)));}
-  float aa=1.0-smoothstep(25.0,90.0,mpp);base=mix(base,mix(base,pc,aa*0.75),cl.r);}
+  float aa=1.0-smoothstep(25.0,90.0,mpp);base=mix(base,mix(base,pc,aa*0.75),fW);}
  if(cl.g>0.01){float c=vn(vWP.xz*0.11)*vn(vWP.xz*0.33+3.0);float c2=vn(vWP.xz*0.9);base*=mix(1.0,(0.5+1.05*c)*(0.85+0.3*c2),cl.g*(1.0-smoothstep(1500.0,9000.0,dCam)));}
  if(cl.b>0.01){// Siedlung: verzogenes, gedrehtes Strassennetz; Parzellen meist Gärten, im Zentrum mehr Plätze/Asphalt
   float ta=floor(vn(vWP.xz*0.00013+3.0)*5.0)*0.37;float tc=cos(ta),ts=sin(ta);vec2 w=vec2(vn(vWP.xz*0.004),vn(vWP.xz*0.004+9.0))*10.0;

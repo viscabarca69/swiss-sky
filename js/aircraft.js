@@ -470,9 +470,9 @@ function cockpitShell(L,PR,R,C,key){const H=R*(C.sy||1),lay=paneLayout(C,PR,L,R,
       if(Math.abs(nx)>0.3)for(const f of SP)d=Math.min(d,f(uu,P[1]));
       // weiche Kanten: Deckkraft steigt über 1 cm am Scheibenrand, Rahmen geht weich in die Verkleidung über
       const al=Math.min(1,Math.max(0,(d+0.004)/0.01));if(al<=0)return null;
-      const fw=0.045*k0,q=Math.min(1,Math.max(0,(d-fw+0.012)/0.024));
+      const fw=0.045*k0,q=Math.min(1,Math.max(0,(d-fw+0.005)/0.01));
       return[frm[0]+(wall[0]-frm[0])*q,frm[1]+(wall[1]-frm[1])*q,frm[2]+(wall[2]-frm[2])*q,al*255];});}
-  const m=new THREE.Mesh(g,new THREE.MeshStandardMaterial({map:GC[key],transparent:true,alphaTest:0.02,side:THREE.BackSide,roughness:0.85,metalness:0.0}));m.castShadow=false;m.receiveShadow=false;m.name='cockpitShell';return m;}
+  const m=new THREE.Mesh(g,new THREE.MeshStandardMaterial({map:GC[key],transparent:false,alphaTest:0.5,side:THREE.BackSide,roughness:0.85,metalness:0.0}));m.castShadow=false;m.receiveShadow=false;m.name='cockpitShell';return m;}
 // Textur mit weichem Alpha (v = [r,g,b,a] oder null)
 function softTex(W,H,fn){const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d'),im=x.createImageData(W,H),D=im.data;
   for(let py=0;py<H;py++)for(let px=0;px<W;px++){const v=fn(px/W,py/H),o=(py*W+px)*4;if(!v){D[o+3]=0;continue;}D[o]=v[0];D[o+1]=v[1];D[o+2]=v[2];D[o+3]=v[3]??255;}

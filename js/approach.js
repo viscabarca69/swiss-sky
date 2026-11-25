@@ -19,6 +19,13 @@ export function approachOptions(icao){const out=[],seen=new Set();const T=APT[ic
   return out;}
 
 // Bahn planen. F: Flugzustand, P: Flugzeugdaten, opt: Eintrag aus approachOptions
+// Wie steil muss der Endanflug auf diese Piste sein? (gleiche Regel wie im Planer: Gleitpfad überall über dem Gelände)
+// → {deg, D} mit dem flachsten möglichen Gleitwinkel; deg > 3.5 heisst: für Jets ein steiler Bergflugplatz-Anflug
+export function finalSlope(A,rev,S,jet){const s=rev?-1:1,yTH=A.elev+15,at=d=>fromLocal(A,-s*(A.len/2+d),0);
+  const ok=(D,g)=>{for(let d=600;d<=D;d+=100){const p=at(d);if(S.groundAt(p.x,p.z)+(d>D-300?60:25)>yTH+d*g)return false;}return true;};
+  const D0=jet?6000:1800,Dmin=jet?1500:800;
+  for(const g of [0.0524,0.06,0.07,0.085,0.1,0.12])for(let D=D0;D>=Dmin;D-=250)if(ok(D,g))return{deg:Math.atan(g)/Math.PI*180,D};
+  return{deg:99,D:Dmin};}
 export function planApproach(F,P,opt,S){
   const A=opt.A,s=opt.rev?-1:1,jet=!P.prop;
   const cx=s*A.sin,cz=-s*A.cos;// Landerichtung
