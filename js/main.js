@@ -835,6 +835,30 @@ function showroomSet(id){const spec=myLivery(id),key=id+'|'+JSON.stringify(spec|
   animateModel(m,{flapPos:0,gearPos:1,rpm:0,groundSpeed:0,ail:0,elev:0,rud:0,night:0},0,0.016);scene.add(m);SHOW.m=m;}
 const SPOT=ZS?[1720,-560]:[-MAIN_AP.len*0.3,MAIN_AP.side*110];
 function showroomOn(){return state==='menu'&&CSUB==='cHang'&&!$('menu').classList.contains('hidden')&&!$('tCareer').classList.contains('hidden')&&$('brief').classList.contains('hidden');}
+// ---------- Flughafenplan für die Pistenwahl ----------
+// Startrichtung einer Piste (Grad, 0 = Nord): rev=false startet am Ende rwyA in Richtung +along
+function rwyHdg(A,rev){const a=fromLocal(A,-A.len/2,0),b=fromLocal(A,A.len/2,0);const dx=(rev?a.x-b.x:b.x-a.x),dz=(rev?a.z-b.z:b.z-a.z);return((Math.atan2(dx,-dz)/DEG)+360)%360;}
+function hdgName(h){return['Nord','Nordost','Ost','Südost','Süd','Südwest','West','Nordwest'][Math.round(h/45)%8]+` (${String(Math.round(h)).padStart(3,'0')}°)`;}
+function airportPlan(icao,f){const I=ICAOS.find(q=>q.icao===icao);if(!I)return'';const W=420,H=280,pad=50;
+  const ends=I.rwys.flatMap(A=>[fromLocal(A,-A.len/2,0),fromLocal(A,A.len/2,0)]);let x0=Math.min(...ends.map(p=>p.x)),x1=Math.max(...ends.map(p=>p.x)),z0=Math.min(...ends.map(p=>p.z)),z1=Math.max(...ends.map(p=>p.z));
+  const cx=(x0+x1)/2,cz=(z0+z1)/2,span=Math.max(x1-x0,z1-z0,600),k=Math.min((W-2*pad)/span,(H-2*pad)/span),X=x=>W/2+(x-cx)*k,Y=z=>H/2+(z-cz)*k;
+  let g=`<svg class="apPlan" viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px;display:block;margin:4px 0 10px;border-radius:14px;background:radial-gradient(circle at 50% 45%,#2b3a2a,#172019);">`;
+  // Massstab und Nordpfeil
+  const sc=span>3000?1000:500;g+=`<g fill="#cfd8cf" font-size="11" font-family="Inter,Arial"><line x1="14" y1="${H-16}" x2="${14+sc*k}" y2="${H-16}" stroke="#cfd8cf" stroke-width="2"/><text x="14" y="${H-22}">${sc>=1000?sc/1000+' km':sc+' m'}</text></g>`;
+  g+=`<g transform="translate(${W-26},28)"><circle r="17" fill="rgba(0,0,0,0.35)" stroke="#9fb0a0"/><path d="M0,-13 L5,3 L0,0 L-5,3 Z" fill="#ff5a4a"/><path d="M0,13 L5,-3 L0,0 L-5,-3 Z" fill="#cfd8cf"/><text y="-19" text-anchor="middle" fill="#fff" font-size="11" font-weight="700" font-family="Inter,Arial">N</text></g>`;
+  if(f.wind&&f.wind.dir!=null){const a=f.wind.dir*DEG;g+=`<g transform="translate(${W-26},${H-30}) rotate(${f.wind.dir+180})"><path d="M0,-14 L0,12 M-5,6 L0,12 L5,6" stroke="#7ec8ff" stroke-width="2.4" fill="none"/></g><text x="${W-26}" y="${H-8}" text-anchor="middle" fill="#7ec8ff" font-size="10" font-family="Inter,Arial">Wind</text>`;}
+  const labs=[];for(const A of I.rwys){const a=fromLocal(A,-A.len/2,0),b=fromLocal(A,A.len/2,0),ang=Math.atan2(Y(b.z)-Y(a.z),X(b.x)-X(a.x))/DEG,len=Math.hypot(X(b.x)-X(a.x),Y(b.z)-Y(a.z)),wd=Math.max(7,A.w*k*1.6);
+    g+=`<g transform="translate(${(X(a.x)+X(b.x))/2},${(Y(a.z)+Y(b.z))/2}) rotate(${ang})"><rect x="${-len/2}" y="${-wd/2}" width="${len}" height="${wd}" rx="2" fill="#3a3f45" stroke="#6b737c"/><line x1="${-len/2+10}" y1="0" x2="${len/2-10}" y2="0" stroke="#e8e8e8" stroke-width="1.2" stroke-dasharray="6 5"/></g>`;
+    for(const rev of [false,true]){const st=rev?b:a,to=rev?a:b,sel=f.ap===A.id&&f.rev===rev&&!f.gate,ux=(X(to.x)-X(st.x))/len,uy=(Y(to.z)-Y(st.z))/len;
+      labs.push({A,rev,sel,ux,uy,sx:X(st.x),sy:Y(st.z),lx:X(st.x)-ux*22,ly:Y(st.z)-uy*22,len});}}
+  // Nummern-Kreise nicht überlappen lassen
+  for(let it=0;it<30;it++)for(let i=0;i<labs.length;i++)for(let j=i+1;j<labs.length;j++){const p=labs[i],q=labs[j],dx=q.lx-p.lx,dy=q.ly-p.ly,d=Math.hypot(dx,dy)||0.1;if(d<32){const m=(32-d)/2;p.lx-=dx/d*m;p.ly-=dy/d*m;q.lx+=dx/d*m;q.ly+=dy/d*m;}}
+  for(const L of labs){const {A,rev,sel,ux,uy,sx,sy,lx,ly,len}=L;
+      g+=`<g class="apEnd" data-id="${A.id}" data-r="${rev}" style="cursor:pointer"><line x1="${sx}" y1="${sy}" x2="${lx}" y2="${ly}" stroke="rgba(255,255,255,0.35)"/><circle cx="${lx}" cy="${ly}" r="15" fill="${sel?'#ffd84a':'rgba(20,28,22,0.85)'}" stroke="${sel?'#fff':'#c9d1c9'}" stroke-width="1.5"/><text x="${lx}" y="${ly+4}" text-anchor="middle" font-size="12" font-weight="800" fill="${sel?'#1b1b1b':'#fff'}" font-family="Inter,Arial">${rev?A.rwyB:A.rwyA}</text>`+
+        (sel?`<path d="M${sx+ux*8},${sy+uy*8} L${sx+ux*Math.min(len*0.7,120)},${sy+uy*Math.min(len*0.7,120)}" stroke="#ffd84a" stroke-width="3" marker-end="url(#ah)"/>`:'')+`</g>`;}
+  g+=`<defs><marker id="ah" markerWidth="8" markerHeight="8" refX="5" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#ffd84a"/></marker></defs>`;
+  const sA=AP[f.ap],tt=sA&&sA.icao===icao?`<p style="margin:2px 0 4px;font-weight:700">${f.gate?'Am Gate (mit Pushback)':'Start auf Piste '+(f.rev?sA.rwyB:sA.rwyA)+' · Richtung '+hdgName(rwyHdg(sA,f.rev))}</p>`:'';
+  return tt+g+`</svg><p class="hint" style="margin:-4px 0 8px">Tippe auf eine Pistennummer: dort beginnt dein Start, der gelbe Pfeil zeigt die Startrichtung.</p>`;}
 function renderFree(){
   const f=save.free;
   $('fArea').innerHTML=`<button class="chip sel" disabled>Ganze Karte<small>Zürich · Luzern · Bern · Berner Oberland · Wallis – alles verbunden</small></button>`;
@@ -846,10 +870,11 @@ function renderFree(){
   $('fAP').innerHTML=ICAOS.map(I=>`<button class="chip ${cur.icao===I.icao?'sel':''}" data-i="${I.icao}">${I.name}<small>${I.icao} · ${Math.max(...I.rwys.map(r=>r.len))} m</small></button>`).join('');
   $('fAP').querySelectorAll('.chip').forEach(el=>el.onclick=()=>{f.ap=ICAOS.find(I=>I.icao===el.dataset.i).rwys[0].id;f.rev=false;persist();renderFree();});
   const rw=ICAOS.find(I=>I.icao===cur.icao).rwys;
-  $('fRwy').innerHTML=rw.flatMap(A=>[false,true].map(r=>`<button class="chip ${f.ap===A.id&&f.rev===r?'sel':''}" data-id="${A.id}" data-r="${r}">Piste ${r?A.rwyB:A.rwyA}</button>`)).join('')+'<br>'+
+  $('fRwy').innerHTML=airportPlan(cur.icao,f)+rw.flatMap(A=>[false,true].map(r=>`<button class="chip ${f.ap===A.id&&f.rev===r?'sel':''}" data-id="${A.id}" data-r="${r}">Piste ${r?A.rwyB:A.rwyA}<small>Start Richtung ${hdgName(rwyHdg(A,r))}</small></button>`)).join('')+'<br>'+
     [false,true].map(a=>`<button class="chip ${f.air===a?'sel':''}" data-a="${a}">${a?'Im Anflug (Luft)':'Auf der Piste'}</button>`).join('');
-  $('fRwy').querySelectorAll('[data-r]').forEach(el=>el.onclick=()=>{f.ap=el.dataset.id;f.rev=el.dataset.r==='true';persist();renderFree();});
+  $('fRwy').querySelectorAll('[data-r]').forEach(el=>el.onclick=()=>{f.ap=el.dataset.id;f.rev=el.dataset.r==='true';f.gate=false;persist();renderFree();});
   $('fRwy').querySelectorAll('[data-a]').forEach(el=>el.onclick=()=>{f.air=el.dataset.a==='true';f.gate=false;persist();renderFree();});
+  $('fRwy').querySelectorAll('.apEnd').forEach(el=>el.onclick=()=>{f.ap=el.dataset.id;f.rev=el.dataset.r==='true';f.gate=false;persist();renderFree();});
   if(cur.icao==='LSZH'&&PLANES[f.plane].cls==='jet'){$('fRwy').insertAdjacentHTML('beforeend',`<button class="chip ${f.gate?'sel':''}" id="fGate">Am Gate (mit Pushback)<small>Rollen zur Piste 34</small></button>`);$('fGate').onclick=()=>{f.gate=!f.gate;if(f.gate){f.air=false;f.ap='ZRH16';f.rev=true;}persist();renderFree();};}else f.gate=false;
   $('fTime').innerHTML=[[7.2,'Morgen'],[12.5,'Mittag'],[17,'Nachmittag'],[20.1,'Abendrot'],[22.8,'Nacht']].map(([h,n])=>`<button class="chip ${Math.abs(f.hour-h)<0.01?'sel':''}" data-h="${h}">${n}<small>${fmtH(h)}</small></button>`).join('');
   $('fTime').querySelectorAll('.chip').forEach(el=>el.onclick=()=>{f.hour=+el.dataset.h;persist();renderFree();});
