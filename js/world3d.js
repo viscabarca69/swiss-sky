@@ -168,7 +168,8 @@ float dCam=length(vWP-cameraPosition);float near=1.0-smoothstep(500.0,7000.0,dCa
  base=mix(base,rcol,rock*0.85);
  {float scree=smoothstep(0.1,0.16,slope)*(1.0-smoothstep(0.24,0.32,slope))*smoothstep(1500.0,1900.0,vWP.y)*smoothstep(0.45,0.6,vn(vWP.xz*0.003));
   vec3 sc=pow(vec3(0.58,0.56,0.52),vec3(2.2))*(0.75+0.5*h21(floor(vWP.xz*0.7)))*(0.9+0.2*n);base=mix(base,sc,scree*0.7*(1.0-0.5*smoothstep(3.0,12.0,mpp)));}
- float sl0=mix(2250.0,330.0,uWin);float snow=smoothstep(sl0,sl0+(uWin>0.5?120.0:300.0),vWP.y+(n-0.5)*260.0)*(1.0-smoothstep(0.22+0.3*uWin,0.37+0.42*uWin,slope+(n2-0.5)*0.08));
+ // Nordhänge halten den Schnee länger: Schneegrenze dort bis 300 m tiefer, Südhänge etwas höher
+ float asp=clamp(-vWN.z/max(0.05,length(vWN.xz))*smoothstep(0.08,0.25,slope),-1.0,1.0);float sl0=mix(2250.0,330.0,uWin)-(1.0-uWin)*(asp>0.0?300.0*asp:120.0*asp);float snow=smoothstep(sl0,sl0+(uWin>0.5?120.0:300.0),vWP.y+(n-0.5)*260.0)*(1.0-smoothstep(0.22+0.3*uWin,0.37+0.42*uWin,slope+(n2-0.5)*0.08));
  snow*=1.0-(1.0-uWin)*0.55*smoothstep(0.62,0.8,n)*smoothstep(0.16,0.3,slope);
  snow*=1.0-0.45*uWin*cl.b;
  if(uWin>0.5)snow*=mix(0.62+0.3*n,1.0,smoothstep(700.0,1100.0,vWP.y))*(1.0-0.35*cl.g);

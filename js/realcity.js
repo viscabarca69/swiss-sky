@@ -12,6 +12,7 @@ const LANDMARKS=[
   {n:'Zytglogge',lat:46.94797,lon:7.44781,r:9,hMin:25,ty:2,tint:230},
   {n:'Basler Münster',lat:47.55642,lon:7.59231,r:45,hMin:20,ty:6,tint:60},
   {n:'Kathedrale St. Gallen',lat:47.42335,lon:9.37730,r:45,hMin:20,ty:2,tint:30},
+  {n:'Prime Tower',lat:47.38617,lon:8.51726,r:30,hMin:80,ty:7,tint:128},
   {n:'Cathédrale Saint-Pierre',lat:46.20100,lon:6.14848,r:40,hMin:40,ty:2,tint:30}].map(L=>({...L,...toXZ(L.lat,L.lon)}));
 
 export async function loadRealCity(){
@@ -91,6 +92,7 @@ if(abs(nW.y)<0.4&&k>15.5){
   else if(k>2.5&&k<3.5)c=vec3(0.78,0.78,0.77);
   else if(k>3.5&&k<4.5)c=vec3(0.86,0.90,0.90);
   else if(k>5.5&&k<6.5)c=vec3(0.60,0.33,0.27)*(0.92+0.08*hh(floor(vWP.xz*0.5)+floor(vWP.y)));
+  else if(k>6.5&&k<7.5){c=vec3(0.22,0.33,0.32)*(0.92+0.16*step(0.82,fract((vWP.y-0.8)/3.9)));glassM=0.9;winMask=0.5;winLit=0.35*step(0.55,hh(floor(vec2(vWP.x+vWP.z,vWP.y)/vec2(4.0,3.9))));}
   else if(k>4.5)c=vec3(0.62,0.60,0.56);
   // Kirchen und Wahrzeichen: nachts von unten angestrahlt
   if((k>1.5&&k<2.5)||(k>5.5&&k<6.5))flood=0.5;
@@ -102,7 +104,7 @@ if(abs(nW.y)<0.4&&k>15.5){
     winMask=inW*fade*(k>1.5?0.4:1.0);farLit=(1.0-fade)*step(0.62,hh(floor(vWP.xz/5.0)+floor(vWP.y/3.0)*3.1+t))*0.16*(k>1.5?0.3:1.0);
     float r=hh(id+vec2(t*91.0,t*37.0));winLit=winMask*step(0.55,r)*(0.6+0.4*hh(id*1.7+t));
     c=mix(c,vec3(0.10,0.12,0.14)+vec3(0.10,0.14,0.18)*tall,winMask*0.7);c=mix(c,c*0.86,(1.0-fade)*(k<0.5?1.0:0.0));}
-}else if(nW.y>0.94){
+}else if(nW.y>0.985){
   c=mix(vec3(0.50,0.50,0.49),vec3(0.62,0.61,0.58),fract(t*7.0));
   if(t>0.86&&k<0.5)c=vec3(0.36,0.45,0.30);
   if(k>2.5&&k<3.5)c=vec3(0.70,0.70,0.69);
@@ -116,7 +118,7 @@ if(abs(nW.y)<0.4&&k>15.5){
 }
 diffuseColor.rgb*=pow(c,vec3(2.2));
 // Dächer im Luftbild-Gebiet: echte Dachfarbe aus dem Luftbild
-if(nW.y>0.4){vec4 o4=orthoAt(vWP.xz);if(o4.a>0.0)diffuseColor.rgb=mix(diffuseColor.rgb,o4.rgb*0.82,o4.a*(nW.y>0.94?0.95:0.85));}`)
+if(nW.y>0.4){vec4 o4=orthoAt(vWP.xz);if(o4.a>0.0)diffuseColor.rgb=mix(diffuseColor.rgb,o4.rgb*0.82,o4.a*(nW.y>0.985?0.95:0.85));}`)
       .replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\ntotalEmissiveRadiance+=mix(vec3(1.0,0.74,0.44),vec3(0.82,0.9,1.0),cool)*(winLit*1.5+farLit)*uNight+diffuseColor.rgb*vec3(1.0,0.86,0.62)*flood*uNight;')
       .replace('#include <roughnessmap_fragment>','#include <roughnessmap_fragment>\nroughnessFactor=mix(roughnessFactor,0.15,winMask);roughnessFactor=mix(roughnessFactor,0.05,glassM);if(metA>0.0)roughnessFactor=min(roughnessFactor,0.5);')
       .replace('#include <metalnessmap_fragment>','#include <metalnessmap_fragment>\nmetalnessFactor=max(metalnessFactor,max(glassM*0.92,metA));');

@@ -180,9 +180,11 @@ function startFlight(cfg){
   let pos,yaw,air=!mission&&(lesson?lesson.air:cfg.air||P.glider);
   if(mission&&mission.air){const p=toXZ(mission.air.lat,mission.air.lon);pos=new THREE.Vector3(p.x,mission.air.alt,p.z);yaw=-mission.air.hdg*DEG;air=true;}
   else{const [apId,rev,mAir]=mission?mission.start:lesson?[lesson.ap,lesson.rev]:[cfg.ap,cfg.rev];const A=AP[apId],s=rev?-1:1;yaw=-A.a+(rev?Math.PI:0);if(mAir)air=true;
-    if(air){const aa=lesson&&lesson.airAt||(mAir&&[mAir.dist,mAir.agl]),dist=aa?aa[0]:P.prop?6000:9000;const p=fromLocal(A,-s*(A.len/2+dist),0);let alt=A.elev+(aa?aa[1]:P.prop?420:560);
+    if(air){const aa=lesson&&lesson.airAt||(mAir&&[mAir.dist,mAir.agl]),dist=aa?aa[0]:P.prop?6000:10000;const p=fromLocal(A,-s*(A.len/2+dist),0);let alt=A.elev+(aa?aa[1]:P.prop?420:560);
       for(let d=0;d<=dist+800;d+=150){const q=fromLocal(A,-s*(A.len/2+d),0);alt=Math.max(alt,S.groundAt(q.x,q.z)+(d>dist-1500?280:150));}
       pos=new THREE.Vector3(p.x,alt,p.z);}
+    else if(!mission&&!lesson&&cfg.hold&&!P.heli){// Rollhalt: neben der Piste vor der Haltelinie, Nase zur Piste
+      const sd=A.side||1,p=fromLocal(A,-s*(A.len/2-110),sd*(A.w/2+60));pos=new THREE.Vector3(p.x,S.heightAt(p.x,p.z)+P.gearH,p.z);const dx=-sd*Math.cos(A.a),dz=-sd*Math.sin(A.a);yaw=Math.atan2(-dx,-dz);}
     else{const p=fromLocal(A,-s*(A.len/2-25-(P.prop?0:30)),0);pos=new THREE.Vector3(p.x,A.elev+P.gearH,p.z);}}
   let gateP=null;if((mission?mission.gate:cfg.gate)&&P.cls==='jet'){const cand=PARKED.filter(q=>q.A.icao==='LSZH'&&AIRLINER[q.id]);gateP=cand.find(q=>q.id===planeId&&q.along>1500)||cand.find(q=>q.id===planeId)||cand.sort((a,b)=>b.along-a.along)[0];
     if(gateP){gateP.m.visible=false;gateP.gate=true;pos=gateP.m.position.clone();yaw=gateP.m.rotation.y;air=false;}}
@@ -869,16 +871,16 @@ function renderFree(){
   $('fPlanes').querySelectorAll('.pc').forEach(el=>el.onclick=()=>{f.plane=el.dataset.id;persist();renderFree();});
   if(PLANES[f.plane]&&!PLANES[f.plane].heli){$('fLiv').innerHTML=livHTML(f.plane);livBind($('fLiv'),f.plane,renderFree);}else $('fLiv').innerHTML='<p class="hint">Dieses Luftfahrzeug hat eine feste Lackierung.</p>';
   const cur=AP[f.ap];
-  {const P=PLANES[f.plane];$('fSum').textContent=`${P?P.name:''} · ${cur?cur.name:''} · ${f.air?'in der Luft':'auf der Piste'}`;}
+  {const P=PLANES[f.plane];$('fSum').textContent=`${P?P.name:''} · ${cur?cur.name:''} · ${f.air?'im Anflug':f.hold?'am Rollhalt':'auf der Piste'}`;}
   $('fAP').innerHTML=ICAOS.map(I=>`<button class="chip ${cur.icao===I.icao?'sel':''}" data-i="${I.icao}">${I.name}<small>${I.icao} · ${Math.max(...I.rwys.map(r=>r.len))} m</small></button>`).join('');
   $('fAP').querySelectorAll('.chip').forEach(el=>el.onclick=()=>{f.ap=ICAOS.find(I=>I.icao===el.dataset.i).rwys[0].id;f.rev=false;persist();renderFree();});
   const rw=ICAOS.find(I=>I.icao===cur.icao).rwys;
   $('fRwy').innerHTML=airportPlan(cur.icao,f)+rw.flatMap(A=>[false,true].map(r=>`<button class="chip ${f.ap===A.id&&f.rev===r?'sel':''}" data-id="${A.id}" data-r="${r}">Piste ${r?A.rwyB:A.rwyA}<small>Start Richtung ${hdgName(rwyHdg(A,r))}</small></button>`)).join('')+'<br>'+
-    [false,true].map(a=>`<button class="chip ${f.air===a?'sel':''}" data-a="${a}">${a?'Im Anflug (Luft)':'Auf der Piste'}</button>`).join('');
+    [['rwy','Auf der Piste','startbereit'],['hold','Am Rollhalt','neben der Piste'],['air','Im Anflug',PLANES[f.plane]&&PLANES[f.plane].prop?'6 km vor der Piste':'10 km vor der Piste']].map(([k,n,d])=>`<button class="chip ${(k==='air'?f.air:k==='hold'?(!f.air&&f.hold):(!f.air&&!f.hold))?'sel':''}" data-a="${k}">${n}<small>${d}</small></button>`).join('');
   $('fRwy').querySelectorAll('[data-r]').forEach(el=>el.onclick=()=>{f.ap=el.dataset.id;f.rev=el.dataset.r==='true';f.gate=false;persist();renderFree();});
-  $('fRwy').querySelectorAll('[data-a]').forEach(el=>el.onclick=()=>{f.air=el.dataset.a==='true';f.gate=false;persist();renderFree();});
+  $('fRwy').querySelectorAll('[data-a]').forEach(el=>el.onclick=()=>{f.air=el.dataset.a==='air';f.hold=el.dataset.a==='hold';f.gate=false;persist();renderFree();});
   $('fRwy').querySelectorAll('.apEnd').forEach(el=>el.onclick=()=>{f.ap=el.dataset.id;f.rev=el.dataset.r==='true';f.gate=false;persist();renderFree();});
-  if(cur.icao==='LSZH'&&PLANES[f.plane].cls==='jet'){$('fRwy').insertAdjacentHTML('beforeend',`<button class="chip ${f.gate?'sel':''}" id="fGate">Am Gate (mit Pushback)<small>Rollen zur Piste 34</small></button>`);$('fGate').onclick=()=>{f.gate=!f.gate;if(f.gate){f.air=false;f.ap='ZRH16';f.rev=true;}persist();renderFree();};}else f.gate=false;
+  if(cur.icao==='LSZH'&&PLANES[f.plane].cls==='jet'){$('fRwy').insertAdjacentHTML('beforeend',`<button class="chip ${f.gate?'sel':''}" id="fGate">Am Gate (mit Pushback)<small>Rollen zur Piste 34</small></button>`);$('fGate').onclick=()=>{f.gate=!f.gate;if(f.gate){f.air=false;f.hold=false;f.ap='ZRH16';f.rev=true;}persist();renderFree();};}else f.gate=false;
   $('fTime').innerHTML=[[7.2,'Morgen'],[12.5,'Mittag'],[17,'Nachmittag'],[20.1,'Abendrot'],[22.8,'Nacht']].map(([h,n])=>`<button class="chip ${Math.abs(f.hour-h)<0.01?'sel':''}" data-h="${h}">${n}<small>${fmtH(h)}</small></button>`).join('');
   $('fTime').querySelectorAll('.chip').forEach(el=>el.onclick=()=>{f.hour=+el.dataset.h;persist();renderFree();});
   $('fWx').innerHTML=[['clear','Klar'],['fair','Schönwetterwolken'],['cloudy','Bewölkt'],['rain','Regen'],['storm','Gewitter'],['snow','Schneefall'],['fog','Nebelmeer'],['foehn','Föhn (klar)']].map(([k,n])=>`<button class="chip ${f.weather===k?'sel':''}" data-w="${k}">${n}</button>`).join('');

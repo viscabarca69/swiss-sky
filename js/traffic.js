@@ -2,8 +2,7 @@
 // Platzrunden der Kleinflugzeuge an kleinen Flugplätzen, Segelflieger in der Thermik, Rega-Flüge und
 // Reiseflugverkehr in 9–11 km Höhe mit Kondensstreifen. Alles wird nur in der Nähe des Spielers erzeugt.
 import * as THREE from 'three';
-import {APM,AIRPORTS,ROADS,fromLocal,toLocal} from './worldgen.js';
-import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
+import {APM,AIRPORTS,fromLocal,toLocal} from './worldgen.js';
 const DEG=Math.PI/180;
 const ZRH_TYPES=['l320','l32n','l330','l350','l340','l346','l32n','l380','l747'];
 // Plätze mit Linienverkehr: Landungen (Piste, Richtung) und Starts (Piste, Richtung, Anteil); bevorzugte Richtung wie im Alltag
@@ -111,37 +110,15 @@ export function createTraffic(scene,S,buildModel,animateModel,PLANES){
     const a={kind:'cruise',id,key:'cruise:'+id,P,m:getModel(id,'cruise:'+id),x0:ox-dx*L/2,z0:oz-dz*L/2,dx,dz,s:0,L,y:rnd(9000,11300),v:rnd(225,250),t:0,cs:callsign('LUIS')};
     a.pos=new THREE.Vector3(a.x0,a.y,a.z0);T.list.push(a);}
   T._dbg={arrDist,depDist,circuitFor};
-  // ---------- Autos auf den Hauptstrassen (nur in der Nähe und in geringer Höhe) ----------
-  const CARS=(()=>{const RD=ROADS.filter(r=>r.w>=3&&r.pts.length>1).map(r=>{const cum=[0];for(let i=1;i<r.pts.length;i++)cum.push(cum[i-1]+Math.hypot(r.pts[i][0]-r.pts[i-1][0],r.pts[i][1]-r.pts[i-1][1]));return{pts:r.pts,cum,L:cum[cum.length-1]};});
-    if(!RD.length)return null;const grid=new Map();RD.forEach((r,ri)=>{for(let i=0;i<r.pts.length-1;i++){const k=Math.floor(r.pts[i][0]/1000)+','+Math.floor(r.pts[i][1]/1000);if(!grid.has(k))grid.set(k,[]);grid.get(k).push([ri,i]);}});
-    const N=150,geo=mergeGeometries([new THREE.BoxGeometry(1.8,0.75,4.4).translate(0,0.55,0),new THREE.BoxGeometry(1.6,0.55,2.3).translate(0,1.2,0.25)]);
-    const mesh=new THREE.InstancedMesh(geo,new THREE.MeshStandardMaterial({roughness:0.35,metalness:0.5}),N);mesh.frustumCulled=false;mesh.count=0;mesh.castShadow=false;
-    const col=new THREE.Color(),PAL=[0xf2f2f2,0x1d1f22,0x8a939e,0xc8ccd0,0x9b1c2c,0x1d3a7a,0x2f5d3a,0xd9d4c8,0x30343a,0xe8b330];
-    for(let i=0;i<N;i++)mesh.setColorAt(i,col.set(PAL[i%PAL.length]));scene.add(mesh);
-    const cars=[];for(let i=0;i<N;i++)cars.push({r:null});
-    const m4=new THREE.Matrix4(),q=new THREE.Quaternion(),pv=new THREE.Vector3(),sv=new THREE.Vector3(1,1,1),Y=new THREE.Vector3(0,1,0);
-    function place(c,F){for(let tries=0;tries<12;tries++){const cx=Math.floor((F.pos.x+(Math.random()*2-1)*3200)/1000),cz=Math.floor((F.pos.z+(Math.random()*2-1)*3200)/1000),L0=grid.get(cx+','+cz);
-        if(!L0)continue;const [ri,si]=L0[Math.floor(Math.random()*L0.length)],r=RD[ri];c.r=r;c.s=r.cum[si]+Math.random()*(r.cum[si+1]-r.cum[si]);c.dir=Math.random()<0.5?1:-1;c.v=rnd(22,34);c.seg=si;return true;}
-      c.r=null;return false;}
-    return{mesh,update(dt,F,on){if(!on){mesh.count=0;return;}let n=0;
-      for(const c of cars){if(!c.r||Math.hypot(c.px-F.pos.x,c.pz-F.pos.z)>3800||c.s<0||c.s>c.r.L){if(!place(c,F))continue;}
-        c.s+=c.v*c.dir*dt;const r=c.r;if(c.s<0||c.s>r.L){c.r=null;continue;}
-        while(c.seg<r.pts.length-2&&c.s>r.cum[c.seg+1])c.seg++;while(c.seg>0&&c.s<r.cum[c.seg])c.seg--;
-        const a=r.pts[c.seg],b=r.pts[c.seg+1],f=(c.s-r.cum[c.seg])/((r.cum[c.seg+1]-r.cum[c.seg])||1),dx=(b[0]-a[0])*c.dir,dz=(b[1]-a[1])*c.dir,l=Math.hypot(dx,dz)||1,fx=dx/l,fz=dz/l;
-        // Rechtsverkehr: 2,5 m rechts der Mittellinie
-        c.px=a[0]+(b[0]-a[0])*f-fz*2.5;c.pz=a[1]+(b[1]-a[1])*f+fx*2.5;
-        pv.set(c.px,S.heightAt(c.px,c.pz)+0.15,c.pz);q.setFromAxisAngle(Y,Math.atan2(-fx,-fz));m4.compose(pv,q,sv);mesh.setMatrixAt(n++,m4);}
-      mesh.count=n;mesh.instanceMatrix.needsUpdate=true;}};})();
   T.prewarm=()=>{for(const id of [...new Set([...ZRH_TYPES,'alpina','saentis','titlis','foehn','rega','segler'])]){if(!PLANES[id])continue;const m=buildModel(id,{landingLight:true});m.visible=false;(T.pool[id]=T.pool[id]||[]).push(m);}};
   T.reset=()=>{for(const a of T.list)free(a);T.list.length=0;T.ga={};for(const H of T.hubs)H.t={arr:rnd(6,16),dep:rnd(25,45)};T.timer={ga:rnd(5,20),gl:rnd(10,30),rega:rnd(60,150),cruise:rnd(2,10)};};
   function drop(i){free(T.list[i]);T.list.splice(i,1);}
   let MENU_F=null;
   T.update=(dt,F,t,night,glow)=>{
-    if(!T.on){if(T.list.length)T.reset();if(CARS)CARS.mesh.count=0;return;}
+    if(!T.on){if(T.list.length)T.reset();return;}
     // im Menü: Linienverkehr in Zürich als Kulisse
     const menu=!F;if(menu){const Z=T.hubs[0].C;F=MENU_F||(MENU_F={pos:new THREE.Vector3(Z.x,Z.elev+2000,Z.z),onGround:false});}
     const day=night<0.35;
-    if(CARS)CARS.update(dt,F,!menu&&F.pos.y-S.heightAt(F.pos.x,F.pos.z)<2500);
     // Linienverkehr an den Plätzen in Reichweite
     for(const H of T.hubs){const near=Math.hypot(F.pos.x-H.C.x,F.pos.z-H.C.z)<45000;
       if(!near){for(let i=T.list.length-1;i>=0;i--)if(T.list[i].hub===H)drop(i);continue;}
