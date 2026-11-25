@@ -22,14 +22,27 @@ function roadTex(){
   x.fillStyle='#f0f0e6';x.fillRect(31,0,2,110);
   const t=new THREE.CanvasTexture(c);t.wrapS=t.wrapT=THREE.RepeatWrapping;t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=8;return t;
 }
-function ribbon(list,S,widthOf,yOff,skip){
+// Flussläufe einmalig in die Talsohle legen: quer zur Fliessrichtung den tiefsten Punkt suchen
+// (gleicht Ungenauigkeiten der Daten und das grobe Gelände aus – sonst liegen Flüsse am Hang)
+export function snapRivers(S){for(const R of RIVERS){if(R.snapped)continue;R.snapped=true;const pts=smoothPts(R.pts,120);
+  const off=pts.map(([x,z],i)=>{const a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)];let dx=b[0]-a[0],dz=b[1]-a[1];const l=Math.hypot(dx,dz)||1;const nx=-dz/l,nz=dx/l;
+    let best=0,bh=S.heightAt(x,z)-4;for(let o=-1400;o<=1400;o+=100){const h=S.heightAt(x+nx*o,z+nz*o)+Math.abs(o)*0.004;if(h<bh){bh=h;best=o;}}return[best,nx,nz];});
+  const sm=off.map((_,i)=>{let s2=0,n=0;for(let k=Math.max(0,i-3);k<=Math.min(off.length-1,i+3);k++){s2+=off[k][0];n++;}return s2/n;});
+  R.pts=pts.map(([x,z],i)=>[Math.round(x+off[i][1]*sm[i]),Math.round(z+off[i][2]*sm[i])]);}}
+function ribbon(list,S,widthOf,yOff,skip,water){
   const P=[],UV=[],I=[];
-  for(const R of list){const pts=smoothPts(R.pts,30),w=widthOf(R);let run=false,v=0;
+  for(const R of list){let pts=smoothPts(R.pts,30);const w0=widthOf(R);let run=false,v=0;
+    // Wasser: fliesst immer bergab (Pegel nie höher als flussaufwärts), liegt am tiefsten Punkt des Querschnitts,
+    // und steile Abschnitte (Wildbäche) sind schmal statt als breite Wassertreppe am Hang
+    let lev=null;if(water){
+      if(S.heightAt(pts[0][0],pts[0][1])<S.heightAt(pts[pts.length-1][0],pts[pts.length-1][1]))pts=pts.slice().reverse();
+      lev=[];let m=1e9;for(const [x,z] of pts){m=Math.min(m,S.heightAt(x,z));lev.push(m);}}
     for(let i=0;i<pts.length;i++){const [x,z]=pts[i],a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)];
+      let w=w0;if(water){const j=Math.min(pts.length-1,i+3),k=Math.max(0,i-3),d=Math.hypot(pts[j][0]-pts[k][0],pts[j][1]-pts[k][1])||1,gr=Math.abs(lev[k]-lev[j])/d;w=gr>0.06?Math.min(w0,9):gr>0.03?Math.min(w0,w0*0.5+6):w0;}
       let dx=b[0]-a[0],dz=b[1]-a[1];const l=Math.hypot(dx,dz)||1;dx/=l;dz/=l;const nx=-dz*w/2,nz=dx*w/2;
       if(skip(x,z)||Math.abs(x)>HALF-300||Math.abs(z)>HALF-300){run=false;continue;}
       if(i>0)v+=Math.hypot(x-pts[i-1][0],z-pts[i-1][1]);
-      const y=Math.max(S.heightAt(x+nx,z+nz),S.heightAt(x-nx,z-nz),S.heightAt(x,z))+yOff;
+      const y=water?Math.min(lev[i],S.heightAt(x+nx,z+nz),S.heightAt(x-nx,z-nz))+yOff:Math.max(S.heightAt(x+nx,z+nz),S.heightAt(x-nx,z-nz),S.heightAt(x,z))+yOff;
       const n=P.length/3;P.push(x+nx,y,z+nz,x-nx,y,z-nz);UV.push(0,v/w/4,1,v/w/4);
       if(run)I.push(n-2,n,n-1,n-1,n,n+1);run=true;}}
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(P,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(UV,2));g.setIndex(I);g.computeVertexNormals();
@@ -43,7 +56,7 @@ export function buildExtras(scene,S,Q,W,airportNear){
   const rm=new THREE.MeshStandardMaterial({map:rt,roughness:0.85,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4});
   const road=new THREE.Mesh(ribbon(ROADS,S,R=>R.w>2?22:12,0.8,(x,z)=>S.isLake(x,z)||!!airportNear(x,z,0)||(W.inOrtho&&W.inOrtho(x,z,-60))),rm);road.receiveShadow=true;scene.add(road);
   const rvm=new THREE.MeshStandardMaterial({color:0x1d4148,roughness:0.12,metalness:0.1,envMapIntensity:1.0,normalMap:W.waterTex,normalScale:new THREE.Vector2(0.25,0.25),polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3});
-  const river=new THREE.Mesh(ribbon(RIVERS,S,R=>Math.max(18,R.w),0.5,(x,z)=>S.isLake(x,z)||(W.inOrtho&&W.inOrtho(x,z,-60))),rvm);scene.add(river);
+  const river=new THREE.Mesh(ribbon(RIVERS,S,R=>Math.max(18,R.w),0.9,(x,z)=>S.isLake(x,z)||(W.inOrtho&&W.inOrtho(x,z,-60)),true),rvm);scene.add(river);
 
   // ---------- Kirchtürme ----------
   const rnd=mulberry(77);const spots=[];

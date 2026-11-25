@@ -19,7 +19,7 @@ let orthoUp=null;
 const MISSIONS=ALL_MISSIONS;
 import {createHUD} from './hud.js';
 import {createAudio} from './audio.js';
-import {nightU} from './gfx.js';
+import {nightU,snapRivers} from './gfx.js';
 import {LESSONS,tutorTick} from './tutorial.js';
 import {createGamepad,createMenuNav,BTN} from './gamepad.js';
 import {createWeather,WIND_PRESETS} from './weather.js';
@@ -81,6 +81,7 @@ function toDesktop(){if(!window.__desk||!window.__desk.show)return;if(state==='m
 async function boot(){
   prog(0.01,'Höhenmodell wird berechnet');await new Promise(r=>setTimeout(r,30));
   const {H,LK}=await buildGrid(p=>prog(p*0.08,'Höhendaten der Schweiz werden geladen'));S=makeSampler(H,LK);
+  snapRivers(S);// Flüsse in die Talsohle
   world=await buildWorld(scene,H,LK,S,Q,(p,t)=>prog(0.08+p*1.1,t));
   orthoUp=initOrtho(renderer);onOrthoReady(()=>{if(world)world.updateTrees(cam.position,true);});
   prog(0.85,'Himmel und Licht');await new Promise(r=>setTimeout(r,0));
