@@ -62,8 +62,8 @@ function menuCam(t){const {S,AP,cam,SHOW,showroomOn,ZS,env,world}=ctx;
   const W=innerWidth,H=innerHeight,off=W>900?Math.min(230,W*0.17):0;
   if(sh.apron){if(!ZS){const A=MAIN_AP,p=fromLocal(A,-A.len*0.18+el*1.2,A.side*(A.flatW-25)),l=fromLocal(A,A.len*0.35,-A.side*600);cam.near=1;cam.fov=50;
       cam.position.set(p.x,A.elev+9+Math.sin(t*0.03)*1.5,p.z);cam.lookAt(l.x,A.elev+160,l.z);}
-    else{const A=AP.ZRH16,p=fromLocal(A,1260-el*1.4,-585+el*0.5),l=fromLocal(A,1010,-735);cam.near=1;cam.fov=46;
-      cam.position.set(p.x,A.elev+8+Math.sin(t*0.03)*1.5,p.z);cam.lookAt(l.x,A.elev+9,l.z);}}
+    else{const A=AP.ZRH16,p=fromLocal(A,1600-el*1.2,-380+el*0.3),l=fromLocal(A,1150,-720);cam.near=1;cam.fov=46;// freies Vorfeld mit Blick über Rollweg und Piste (nicht mehr auf eine Terminalwand)
+      cam.position.set(p.x,A.elev+16+Math.sin(t*0.03)*1.5,p.z);cam.lookAt(l.x,A.elev+12,l.z);}}
   else{const u=el/sh.dur,e=u*u*(3-2*u)*0.6+u*0.4,lp=(a,b)=>a+(b-a)*e;cam.near=2;cam.fov=48;
     cam.position.set(lp(sh.a[0],sh.b[0]),lp(sh.a[1],sh.b[1]),lp(sh.a[2],sh.b[2]));cam.lookAt(lp(sh.la[0],sh.lb[0]),lp(sh.la[1],sh.lb[1]),lp(sh.la[2],sh.lb[2]));}
   cam.setViewOffset(W,H,-off,0,W,H);cam.updateProjectionMatrix();
