@@ -37,7 +37,7 @@ export function stepHeli(F,ctl,dt,W){
   T=Math.min(T,Tmax*ge*tl);F.eng=clamp(0.3+0.7*T/(mass*G*1.6),0,1)*F.rotor;F.thrust=T;
   // Kräfte
   _F.set(0,-mass*G,0).addScaledVector(_up,T);
-  const qh=0.5*rho*vh;_F.x-=qh*3.2*_va.x;_F.z-=qh*3.2*_va.z;_F.y-=0.5*rho*Math.abs(_va.y)*_va.y*14+0.5*rho*vh*_va.y*1.5;
+  const qh=0.5*rho*vh;_F.x-=qh*2.1*_va.x;_F.z-=qh*2.1*_va.z;_F.y-=0.5*rho*Math.abs(_va.y)*_va.y*14+0.5*rho*vh*_va.y*1.5;
   // ---- am Boden ----
   if(F.onGround){F.groundTime+=dt;F.vel.set(0,0,0);F.w.set(0,0,0);
     if(T>mass*G*1.02&&F.rotor>0.95){F.onGround=false;F.airTime=0;F.vel.y=0.4;F.events.push({type:'liftoff'});}
@@ -46,9 +46,12 @@ export function stepHeli(F,ctl,dt,W){
   // ---- Lage regeln (Fly-by-wire mit Flughilfe) ----
   const fwdH=new THREE.Vector3(-Math.sin(yaw),0,-Math.cos(yaw)),rgtH=new THREE.Vector3(Math.cos(yaw),0,-Math.sin(yaw));
   const vf=F.vel.dot(fwdH),vr=F.vel.dot(rgtH);let pt,rt;
-  if(F.assist){const centered=Math.abs(ctl.pitch)<0.05&&Math.abs(ctl.roll)<0.05;
-    pt=ctl.pitch*22*DEG+(centered?clamp(vf*0.035,-0.22,0.22):0);rt=ctl.roll*30*DEG+(centered?clamp(vr*0.05,-0.25,0.25):0);
-    pt=clamp(pt,-25*DEG,25*DEG);rt=clamp(rt,-(P.maxBank||35)*DEG,(P.maxBank||35)*DEG);
+  if(F.assist){const cP=Math.abs(ctl.pitch)<0.05,centered=cP&&Math.abs(ctl.roll)<0.05;
+    // Tempo halten: Zyklisch loslassen im Reiseflug = aktuelle Fahrt bleibt (wie Attitude-Hold); langsam (< 12 m/s) = von selbst schweben
+    if(!cP)F.vHold=null;else if(F.vHold==null)F.vHold=vf>12?vf:0;
+    const vT=F.vHold||0;pt=ctl.pitch*30*DEG+(cP?clamp((vf-vT)*0.035,-0.22,0.22)-(vT>0?Math.min(14*DEG,0.0016*vT*vT*DEG*0.9+vT*0.06*DEG):0):0);
+    rt=ctl.roll*30*DEG+(centered?clamp(vr*0.05,-0.25,0.25):0);
+    pt=clamp(pt,-30*DEG,25*DEG);rt=clamp(rt,-(P.maxBank||35)*DEG,(P.maxBank||35)*DEG);
     F.w.x+=((pt-pitch)*2.8-F.w.x)*Math.min(1,dt*6);F.w.z+=((rt-roll)*2.6-F.w.z)*Math.min(1,dt*6);}
   else{F.w.x+=(ctl.pitch*1.1-F.w.x*0.6)*dt*3;F.w.z+=(ctl.roll*1.4-F.w.z*0.6)*dt*3;}
   // Gieren: Pedale + koordinierte Kurve im Vorwärtsflug + Wetterfahne
@@ -67,7 +70,7 @@ export function stepHeli(F,ctl,dt,W){
     const sink=-F.vel.y,hs=Math.hypot(F.vel.x,F.vel.z),tilt=Math.max(Math.abs(pitch),Math.abs(roll))/DEG,sl=W.slopeAt(F.pos.x,F.pos.z);
     if(lake2)return crash(F,'Im See notgewassert – der Helikopter ist gekentert.');
     if(sink>P.ldgSink*1.25)return crash(F,`Zu harte Landung (Sinkrate ${sink.toFixed(1)} m/s).`);
-    if(hs>7)return crash(F,'Mit zu viel Fahrt aufgesetzt – der Helikopter ist umgekippt.');
+    if(hs>9)return crash(F,'Mit zu viel Fahrt aufgesetzt – der Helikopter ist umgekippt.');
     if(tilt>16)return crash(F,'Die Rotorblätter haben den Boden berührt.');
     if(sl>0.36)return crash(F,'Der Hang ist zu steil – der Helikopter ist abgerutscht.');
     F.onGround=true;F.pos.y=surf2+P.gearH;F.vel.set(0,0,0);F.w.set(0,0,0);_e.set(0,yaw,0,'YXZ');F.q.setFromEuler(_e);

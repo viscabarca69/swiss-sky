@@ -29,7 +29,7 @@ export const PLANES={
     Tmax:0,prop:true,Vprop:100,spool:1,Vr:20,Vref:27,gearH:0.62,bellyH:0.35,steer:0.6,rotRate:0.14,tailStrike:12,rollRate:0.75,yawAuth:1.2,kAlpha:9,dampP:4.8,qRef:450,
     brakeMu:0.5,reverse:0,maxBank:50,wingStrike:7,camDist:14,camH:2.6,shadow:20,ldgSink:2.4,engines:0,crates:0,wingTip:9.1,glider:true},
   rega:{id:'rega',name:'Rega Da Vinci',type:'Rettungshelikopter · 2 Turbinen',cls:'heli',heli:true,desc:'Der rot-weisse Rettungshelikopter: senkrecht starten, schweben, am Berg landen und Patienten ins Spital fliegen.',
-    mass:3700,S:20,CL0:0,CLa:5,alphaStall:15,flapCL:[0,0,0,0],flapCD:0,flapNames:['–','–','–','–'],CD0:0.05,K:0.05,gearCD:0,fixedGear:true,rotorR:5.5,Vmax:72,
+    mass:3700,S:20,CL0:0,CLa:5,alphaStall:15,flapCL:[0,0,0,0],flapCD:0,flapNames:['–','–','–','–'],CD0:0.05,K:0.05,gearCD:0,fixedGear:true,rotorR:5.5,Vmax:79,
     Tmax:0,prop:true,Vprop:100,spool:2,Vr:0,Vref:22,gearH:1.32,bellyH:1.2,steer:0,rotRate:0,tailStrike:20,rollRate:1,yawAuth:1,kAlpha:5,dampP:4,qRef:1000,
     brakeMu:1,reverse:0,maxBank:35,wingStrike:20,camDist:20,camH:5,shadow:22,ldgSink:3,engines:2,crates:0,wingTip:6},
   l320:{id:'l320',name:'LUIS L-320',type:'Mittelstrecke · 180 Plätze',cls:'jet',desc:'Kurz- und Mittelstrecken-Jet der Flotte. Wendig für einen Airliner.',
@@ -681,7 +681,8 @@ function buildAirliner(C,body,parts,root,P){
    parts.eye=new THREE.Vector3(C.eye[0],yb+0.42*(yt-yb),Math.max(C.eye[2],uB-L/2+0.9));}
   parts.lights=navLights(body,[{p:[-tipx,tipy,tipz+1.3],c:[1,0.05,0.05],s:1.4},{p:[tipx,tipy,tipz+1.3],c:[0.05,1,0.2],s:1.4},{p:[0,R*0.6*C.up,L/2+0.3],c:[1,1,1],s:1.1},
     {p:[0,R*sy+0.1,L*0.05],c:[1,0.1,0.05],beacon:1,s:1.3},{p:[0,-R*sy-0.1,0],c:[1,0.1,0.05],beacon:1,s:1.3},{p:[-tipx,tipy,tipz+1.7],c:[0,0,0],strobe:1,s:2.2},{p:[tipx,tipy,tipz+1.7],c:[0,0,0],strobe:1,s:2.2},{p:[0,R*0.6*C.up,L/2+0.4],c:[0,0,0],strobe:1,s:1.8}]);
-  parts.landing=new THREE.Vector3(-W.x0-2,W.y0,W.z0+1);
+  // Landescheinwerfer in der Mitte: im Bug über dem Bugfahrwerk (leuchtet nach vorne unten, nicht auf den eigenen Rumpf)
+  parts.landing=new THREE.Vector3(0,gearTop+0.35,C.ng-1.2);
   root.userData.cgShift=C.cg;body.position.z=C.cg;
 }
 export function buildModel(id,opts={}){
@@ -716,7 +717,7 @@ export function buildModel(id,opts={}){
     parts.props.push(prop(body,0,-0.02,-4.32,0.95,2));
     parts.eye=new THREE.Vector3(-0.3,0.72,-1.25);
     parts.lights=navLights(body,[{p:[-5.52,1.12,-1.4],c:[1,0.05,0.05]},{p:[5.52,1.12,-1.4],c:[0.05,1,0.2]},{p:[0,0.4,4.15],c:[1,1,1]},{p:[0,1.92,3.3],c:[1,0.1,0.05],beacon:1,s:0.5},{p:[-5.55,1.12,-1.2],c:[0,0,0],strobe:1,s:1.1},{p:[5.55,1.12,-1.2],c:[0,0,0],strobe:1,s:1.1}]);
-    parts.landing=new THREE.Vector3(-2.2,1.0,-2.0);
+    parts.landing=new THREE.Vector3(0,0.2,-2.6);
     root.userData.cgShift=1.15;body.position.z=1.15;
   }
   if(id==='foehn'){
@@ -749,7 +750,7 @@ export function buildModel(id,opts={}){
       parts.wheels.push(wheel(0.33,0.2,g,0.16,-0.67,0),wheel(0.33,0.2,g,-0.16,-0.67,0));parts.gear.push({g,axis:'x',dir:1});}
     parts.eye=new THREE.Vector3(-0.55,0.35,-9.35);
     parts.lights=navLights(body,[{p:[-12.3,1.95,-0.9],c:[1,0.05,0.05],s:0.9},{p:[12.3,1.95,-0.9],c:[0.05,1,0.2],s:0.9},{p:[0,1.0,11.3],c:[1,1,1],s:0.8},{p:[0,5.6,9.6],c:[1,0.1,0.05],beacon:1,s:0.8},{p:[0,-1.4,0],c:[1,0.1,0.05],beacon:1,s:0.8},{p:[-12.35,1.95,-0.6],c:[0,0,0],strobe:1,s:1.6},{p:[12.35,1.95,-0.6],c:[0,0,0],strobe:1,s:1.6}]);
-    parts.landing=new THREE.Vector3(-3,0.6,-3);
+    parts.landing=new THREE.Vector3(0,0.2,-3.2);
     root.userData.cgShift=0.6;body.position.z=0.6;
   }
   if(id==='saentis'){
@@ -772,7 +773,7 @@ export function buildModel(id,opts={}){
     parts.props.push(prop(body,0,-0.02,-4.12,0.98,3));
     parts.eye=new THREE.Vector3(-0.3,0.62,-1.05);
     parts.lights=navLights(body,[{p:[-5.85,0.1,-1.0],c:[1,0.05,0.05]},{p:[5.85,0.1,-1.0],c:[0.05,1,0.2]},{p:[0,0.35,3.9],c:[1,1,1]},{p:[-5.88,0.1,-0.8],c:[0,0,0],strobe:1,s:1.1},{p:[5.88,0.1,-0.8],c:[0,0,0],strobe:1,s:1.1}]);
-    parts.landing=new THREE.Vector3(-2,-0.3,-1.6);root.userData.cgShift=1.1;body.position.z=1.1;
+    parts.landing=new THREE.Vector3(0,-0.3,-2.4);root.userData.cgShift=1.1;body.position.z=1.1;
   }
   if(id==='titlis'){
     // PC-12-artig: schlanke Motorhaube, steil ansteigende Frontscheibe, runde Kabine, hochgezogenes Heck
@@ -805,7 +806,7 @@ export function buildModel(id,opts={}){
     parts.props.push(prop(body,0,0,-6.72,1.3,4));
     parts.eye=new THREE.Vector3(-0.38,0.45,-3.33);
     parts.lights=navLights(body,[{p:[-8.15,-0.1,-0.8],c:[1,0.05,0.05],s:0.8},{p:[8.15,-0.1,-0.8],c:[0.05,1,0.2],s:0.8},{p:[0,2.95,6.55],c:[1,1,1],s:0.7},{p:[0,1.0,2.25],c:[1,0.1,0.05],beacon:1,s:0.7},{p:[-8.2,-0.1,-0.6],c:[0,0,0],strobe:1,s:1.3},{p:[8.2,-0.1,-0.6],c:[0,0,0],strobe:1,s:1.3}]);
-    parts.landing=new THREE.Vector3(-2.5,-0.6,-2);root.userData.cgShift=1.3;body.position.z=1.3;
+    parts.landing=new THREE.Vector3(0,-0.4,-2.8);root.userData.cgShift=1.3;body.position.z=1.3;
   }
   if(id==='feuer'){
     const L=19.8,R=1.4;
@@ -834,7 +835,7 @@ export function buildModel(id,opts={}){
     {const g=new THREE.Group();g.position.set(0,-1.2,-7.4);body.add(g);strut(g,new THREE.Vector3(0,0,0),new THREE.Vector3(0,-0.9,0),0.07);parts.wheels.push(wheel(0.34,0.2,g,0.15,-0.95,0),wheel(0.34,0.2,g,-0.15,-0.95,0));parts.gear.push({g,axis:'x',dir:1});}
     parts.eye=new THREE.Vector3(-0.5,0.85,-7.55);
     parts.lights=navLights(body,[{p:[-14.3,2.15,-0.6],c:[1,0.05,0.05],s:0.9},{p:[14.3,2.15,-0.6],c:[0.05,1,0.2],s:0.9},{p:[0,5.8,8.9],c:[1,1,1],s:0.8},{p:[0,2.4,0.5],c:[1,0.1,0.05],beacon:1,s:0.8},{p:[0,-1.75,0],c:[1,0.1,0.05],beacon:1,s:0.8},{p:[-14.35,2.15,-0.4],c:[0,0,0],strobe:1,s:1.5},{p:[14.35,2.15,-0.4],c:[0,0,0],strobe:1,s:1.5}]);
-    parts.landing=new THREE.Vector3(-3.2,1.7,-2.6);root.userData.cgShift=0.4;body.position.z=0.4;
+    parts.landing=new THREE.Vector3(0,0.3,-3.2);root.userData.cgShift=0.4;body.position.z=0.4;
   }
   if(id==='segler'){
     const L=7.3,PRs=[{t:0,r:0.1,y:-0.04},{t:0.04,r:0.28,y:-0.03},{t:0.13,r:0.38,y:0},{t:0.26,r:0.4,y:0.03,sy:1.15},{t:0.38,r:0.34,y:0.07,sy:1.08},{t:0.52,r:0.19,y:0.13},{t:0.85,r:0.11,y:0.2},{t:1,r:0.07,y:0.22}];
@@ -937,7 +938,7 @@ export function buildModel(id,opts={}){
   }
   if(AIRLINER[id])buildAirliner(AIRLINER[id],body,parts,root,P);
   body.traverse(o=>{if(o.isMesh&&!o.material.transparent)o.castShadow=true;});
-  if(opts.landingLight){const sl=new THREE.SpotLight(0xfff1dc,0,1400,0.32,0.6,1.3);sl.position.copy(parts.landing);sl.target.position.copy(parts.landing).add(new THREE.Vector3(0,-0.9,-25));body.add(sl,sl.target);parts.spot=sl;}
+  if(opts.landingLight){const sl=new THREE.SpotLight(0xfff1dc,0,1400,0.32,0.6,1.3);sl.position.copy(parts.landing);sl.target.position.copy(parts.landing).add(new THREE.Vector3(0,-2.4,-25));body.add(sl,sl.target);parts.spot=sl;}
   root.userData.parts=parts;root.userData.spec=P;
   return root;
 }

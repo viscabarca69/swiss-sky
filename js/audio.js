@@ -48,7 +48,7 @@ export function createAudio(){
   let rainG=null;A.setRain=v=>{if(!A.on)return;if(!rainG){const r=ctx.createBufferSource();r.buffer=noiseBuf;r.loop=true;const f=ctx.createBiquadFilter();f.type='highpass';f.frequency.value=1800;rainG=ctx.createGain();rainG.gain.value=0;r.connect(f);f.connect(rainG);rainG.connect(master);r.start();}
     rainG.gain.setTargetAtTime(v*0.06,ctx.currentTime,0.5);};
   A.chime=()=>{blip(880,880,0.25,'sine',0.12);setTimeout(()=>blip(1320,1320,0.4,'sine',0.1),120);};
-  A.touch=v=>{burst(0.25,1800,Math.min(0.5,0.15+v*0.1));};
+  A.touch=v=>{burst(0.25,1800,Math.min(0.5,0.04+v*0.14));};
   A.crash=()=>{burst(2.2,500,0.9);burst(1.2,3000,0.4);};
   A.click=()=>blip(1200,900,0.05,'square',0.05);
   A.alarm=()=>{for(let i=0;i<3;i++)setTimeout(()=>blip(1000,1000,0.16,'square',0.07),i*260);setTimeout(()=>blip(700,700,0.3,'square',0.06),820);};

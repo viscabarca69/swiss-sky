@@ -191,7 +191,7 @@ function startFlight(cfg){
   if(lesson&&lesson.airAt){F.gammaT=0;F.thr=F.eng=0.62;}if(lesson&&lesson.noAssist)F.assist=false;
   const model=buildModel(planeId,{landingLight:true,livery:myLivery(planeId)});scene.add(model);if(SHOW.m)SHOW.m.visible=false;cam.clearViewOffset();setMFade(0);
   G={cfg,mission,F,P,model,dyn:[model],obj:mission?buildObjectives(mission,S,{vref:P.heli?0:P.Vref}):[],oi:0,t:0,cam:0,camSnap:true,look:new THREE.Vector2(),zoom:1,
-     crates:mission?(mission.obj.toString().includes('D(')?P.crates:0):lesson?0:P.crates,lesson,tut:lesson?{k:0,alt00:pos.y}:null,boxes:[],fx:[],trail:[],lastTouch:null,done:false,liftMsg:false,comfort:100,rec:[],recT:0,startAP,startRev,flyby:null,camPos:new THREE.Vector3(),lastWarn:'',gh:[],ghN:0};
+     crates:mission?(/\bDL?\(/.test(mission.obj.toString())?P.crates:0):lesson?0:P.crates,lesson,tut:lesson?{k:0,alt00:pos.y}:null,boxes:[],fx:[],trail:[],lastTouch:null,done:false,liftMsg:false,comfort:100,rec:[],recT:0,startAP,startRev,flyby:null,camPos:new THREE.Vector3(),lastWarn:'',gh:[],ghN:0};
   if(mission&&!mission.dyn&&career.C.ghost!==false){const gd=career.ghostGet(mission.id);if(gd&&gd.d&&gd.d.length>70){G.ghost={d:gd.d,t:gd.t,m:makeGhost(planeId)};scene.add(G.ghost.m);G.dyn.push(G.ghost.m);}}
   // Cockpit-Innenraum
   G.cockpit=buildCockpit(model,P);
@@ -407,9 +407,10 @@ function vaporTick(dt){const V=G.vap;if(!V||dt<=0)return;const F=G.F,body=G.mode
 // ---------- Aufsetzen: Bewertung, Reifenqualm, Kamerastoss ----------
 let PUFF_T=null;const puffTex=()=>PUFF_T||(PUFF_T=(()=>{const c=document.createElement('canvas');c.width=c.height=64;const x=c.getContext('2d'),g=x.createRadialGradient(32,32,2,32,32,31);g.addColorStop(0,'rgba(255,255,255,0.9)');g.addColorStop(0.5,'rgba(235,235,235,0.45)');g.addColorStop(1,'rgba(220,220,220,0)');x.fillStyle=g;x.fillRect(0,0,64,64);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;return t;})());
 function touchFx(F,ev){const P=F.P,sink=ev.sink,lim=P.ldgSink||2.5;
-  G.shake=Math.max(G.shake||0,clamp(0.12+sink/lim*0.5,0.1,1.4));
+  // Federbeine schlucken sanfte Landungen: kaum Wackeln unter 1 m/s, erst harte Landungen rütteln richtig
+  G.shake=Math.max(G.shake||0,sink<1?0.03+sink*0.05:clamp(0.08+(sink-1)/lim*0.7,0.08,1.4));
   // Bewertung als grosser Schriftzug
-  const [t,c]=sink<0.6?['BUTTERWEICH','g1']:sink<1.2?['SANFT','g1']:sink<lim*0.85?['SAUBER','g2']:sink<lim*1.3?['HART','g3']:['SEHR HART','g4'];
+  const [t,c]=sink<0.7?['BUTTERWEICH','g1']:sink<1.4?['SANFT','g1']:sink<lim*0.9?['SAUBER','g2']:sink<lim*1.3?['HART','g3']:['SEHR HART','g4'];
   const el=$('tdb');if(el){el.className='';void el.offsetWidth;el.classList.add('on',c);setTxt('tdbT',ev.heli?t.replace('BUTTERWEICH','SAMTWEICH'):t);
     setTxt('tdbS',`Sinkrate ${sink.toFixed(1)} m/s${G.tdLetter&&!ev.heli?' · Note '+G.tdLetter:''}${ev.grass?' · Gras':''}`);G.tdbUntil=G.t+3;}
   G.tdLetter=null;

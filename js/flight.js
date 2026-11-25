@@ -41,8 +41,10 @@ export function stepFlight(F,ctl,dt,W){
   F.spoiler=(F.onGround&&F.thr<0.05&&Vs>8&&!P.prop)||F.airbrake;
   if(F.spoiler)CL*=F.airbrake?0.9:0.5;
   const idle=Math.max(0,1-F.eng/0.3)*(P.prop?0.03:0.02);
+  // Bodeneffekt: unter etwa einer halben Spannweite trägt der Flügel mehr und der induzierte Widerstand sinkt – das Flugzeug «schwebt» beim Abfangen
+  let kInd=1;if(!F.onGround&&!P.heli){const span=(P.wingTip||10)*2,h=F.pos.y-P.gearH-W.heightAt(F.pos.x,F.pos.z);if(h<span*0.5&&h>-1){const r=Math.pow(16*Math.max(h,0.3)/span,2);kInd=0.4+0.6*r/(1+r);CL*=1+0.04*(1-Math.max(h,0)/(span*0.5));}F.gEff=1-kInd;}
   F.CL=CL;
-  const CD=P.CD0+P.K*CL*CL+P.flapCD*F.flapPos+P.gearCD*F.gearPos+(F.spoiler?(F.airbrake?(P.prop?0.045:0.07):0.08):0)+idle+(F.stalled?0.22:0)+Math.abs(beta)*0.6;
+  const CD=P.CD0+P.K*kInd*CL*CL+P.flapCD*F.flapPos+P.gearCD*F.gearPos+(F.spoiler?(F.airbrake?(P.prop?0.045:0.07):0.08):0)+idle+(F.stalled?0.22:0)+Math.abs(beta)*0.6;
   let T=P.prop?TM*P.Tmax*F.eng*Math.max(0.15,1-Vs/P.Vprop*0.75):TM*P.Tmax*F.eng*(1-Vs/650);
   T*=Math.pow(rho/1.225,0.75)*(F.thrMul??1);F.thrust=T;
   _F.set(0,-P.mass*G,0);
@@ -61,7 +63,10 @@ export function stepFlight(F,ctl,dt,W){
     else if(F.elev<-0.1||Vs<P.Vr*0.65)pitch-=0.1*dt;
     pitch=clamp(pitch,0,P.tailStrike*DEG);
     F.tailStrike=pitch>=P.tailStrike*DEG-0.002;
-    _e.set(pitch,yaw,0,'YXZ');F.q.setFromEuler(_e);F.w.set(0,0,0);
+    // Federbeine: nach dem Aufsetzen federt der Rumpf weich ein und aus, eine Restquerlage legt sich sanft
+    const SU=F.susp;if(SU){const om=P.cls==='jet'?6:P.cls==='regional'?7.5:9,ze=0.62;SU.v+=(-om*om*SU.y-2*ze*om*SU.v)*dt;SU.y+=SU.v*dt;SU.r*=Math.exp(-dt*7);
+      if(Math.abs(SU.y)<0.002&&Math.abs(SU.v)<0.01&&Math.abs(SU.r)<0.001)F.susp=null;}
+    _e.set(pitch,yaw,F.susp?F.susp.r:0,'YXZ');F.q.setFromEuler(_e);F.w.set(0,0,0);
     const ff=_t.set(-Math.sin(yaw),0,-Math.cos(yaw));
     let vl=F.vel.dot(ff);
     const N=Math.max(0,P.mass*G-Math.max(0,lift*Math.cos(pitch)));
@@ -71,13 +76,13 @@ export function stepFlight(F,ctl,dt,W){
     if(Math.abs(vl)<0.05&&Math.abs(a)<=fr)vl=0;else{vl+=a*dt;const dv=fr*dt;if(Math.abs(vl)<=dv)vl=0;else vl-=Math.sign(vl)*dv;}
     const ay=_F.y/P.mass;
     F.vel.copy(ff).multiplyScalar(vl);
-    if(ay>0.2&&pitch>1.5*DEG){F.onGround=false;F.water=false;F.vel.y=ay*dt;F.airTime=0;F.gammaT=Math.max(3*DEG,pitch*0.6);F.events.push({type:'liftoff'});}
+    if(ay>0.2&&pitch>1.5*DEG){F.susp=null;F.onGround=false;F.water=false;F.vel.y=ay*dt;F.airTime=0;F.gammaT=Math.max(3*DEG,pitch*0.6);F.events.push({type:'liftoff'});}
     F.pos.addScaledVector(F.vel,dt);
     if(F.onGround){
       const lk=W.isLake(F.pos.x,F.pos.z);
       if(lk&&P.amphib){F.water=true;F.pos.y=W.waterLevel(F.pos.x,F.pos.z)+P.waterH;return;}
       if(F.water&&!lk&&F.gearPos<0.9)return crash(F,'Mit eingefahrenem Fahrwerk ans Ufer gerutscht.');
-      F.water=false;F.pos.y=W.heightAt(F.pos.x,F.pos.z)+P.gearH;
+      F.water=false;F.pos.y=W.heightAt(F.pos.x,F.pos.z)+P.gearH+(F.susp?F.susp.y:0);
       if(lk)return crash(F,'Im See versunken.');
       if(!W.airportZone(F.pos.x,F.pos.z)&&W.slopeAt(F.pos.x,F.pos.z)>0.14&&Math.abs(vl)>4)return crash(F,'Im unebenen Gelände verunglückt.');
     }
@@ -108,7 +113,7 @@ export function stepFlight(F,ctl,dt,W){
   // Querruder: Rollraten-Befehl (wie Fly-by-Wire) – kleine Ausschläge = langsames, feines Rollen
   if(Math.abs(F.ail)>0.04){const ai=F.apIn?F.ail:Math.sign(F.ail)*Math.pow(Math.abs(F.ail),1.4);rt=ai*P.rollRate*Math.min(1,ce*1.2+0.2);F.bHold=null;
     if(Math.sign(F.ail)===Math.sign(bankL)){const room=(mb-Math.abs(bankL))/(7*DEG);rt=room>0?rt*Math.min(1,room):-Math.sign(bankL)*(over*4+0.02);}}
-  else{const rb=Math.abs(F.rud)>0.05?F.rud*(P.cls==='small'?20:P.cls==='regional'?17:15)*DEG:0;
+  else{const rb=Math.abs(F.rud)>0.05?F.rud*(P.cls==='small'?6:5)*DEG:0;// Seitenruder: flache Kurve, nur leichte Querlage
     if(Math.abs(F.rud)>0.05){rt=clamp((rb-bankL)*1.6,-P.rollRate*0.5,P.rollRate*0.5);F.bHold=null;}
     else if(!F.assist||F.level>=1.5)rt=F.level>0?clamp(-bankL*F.level,-P.rollRate*0.45,P.rollRate*0.45):0;
     else{// Querlage halten (Normal Law): losgelassene Querlage bleibt stehen; über 33° zurück auf 33°, unter der Schwelle sanft waagrecht
@@ -117,12 +122,17 @@ export function stepFlight(F,ctl,dt,W){
       rt=clamp((F.bHold-bankL)*1.8,-P.rollRate*0.45,P.rollRate*0.45);}
     if(over>0)rt=-Math.sign(bankL)*Math.max(Math.abs(rt),over*4+0.05);}
   F.w.z+=(rt-F.w.z)*Math.min(1,dt*4.5);
-  const yr=(F.rud*(P.cls==='small'?0.26:P.cls==='regional'?0.19:0.15)+(F.asym||0)*0.1*F.eng)*Math.min(1,0.35+ce);
+  const yr=(F.rud*(P.cls==='small'?0.22:P.cls==='regional'?0.15:0.105)+(F.asym||0)*0.1*F.eng)*Math.min(1,0.35+ce);
   // Kurvenkoordination (mit Flughilfe, wie ein Gierdämpfer): die Nase dreht mit der Kurve mit, kaum Schiebewinkel
   const wco=F.assist&&Vs>15?CO_SIGN*G*Math.sin(clamp(bankL,-1.2,1.2))/Vs:0;
   F.w.y+=(-beta*2.2*ceF+(yr+wco-F.w.y)*3.2)*dt;
   const ang=F.w.length()*dt;if(ang>1e-7){_t.copy(F.w).normalize();_q.setFromAxisAngle(_t,ang);F.q.multiply(_q).normalize();}
   F.vel.addScaledVector(_F,dt/P.mass);
+  // Kein seitliches Rutschen: die Flugbahn folgt der Nase (Seitenleitwerk + Rumpf), mit Seitenruder besonders direkt.
+  // Gerechnet gegenüber der Luft – bei Seitenwind bleibt der natürliche Vorhaltewinkel.
+  if(Vs>12){const wx=W.wind?W.wind.x:0,wy=W.wind?W.wind.y:0,wz=W.wind?W.wind.z:0;const ax=F.vel.x-wx,ay=F.vel.y-wy,az=F.vel.z-wz,sp=Math.hypot(ax,ay,az);
+    const sv2=ax*right.x+ay*right.y+az*right.z,k=1-Math.exp(-dt*((F.assist?1.1:0.45)+2.4*Math.abs(F.rud)));
+    let nx=ax-right.x*sv2*k,ny=ay-right.y*sv2*k,nz=az-right.z*sv2*k;const ns=Math.hypot(nx,ny,nz)||1;F.vel.set(nx*sp/ns+wx,ny*sp/ns+wy,nz*sp/ns+wz);}
   F.pos.addScaledVector(F.vel,dt);
   const gh=W.heightAt(F.pos.x,F.pos.z),lake=W.isLake(F.pos.x,F.pos.z);
   const surf=lake?W.waterLevel(F.pos.x,F.pos.z):gh,bottom=F.pos.y-(lake&&P.amphib?P.waterH:F.gearPos>0.9?P.gearH:P.bellyH);
@@ -140,8 +150,8 @@ export function stepFlight(F,ctl,dt,W){
     if(pitch<-5)return crash(F,'Mit der Nase voran aufgeschlagen.');
     const rw=W.runwayAt(F.pos.x,F.pos.z),zone=W.airportZone(F.pos.x,F.pos.z);
     if(!rw&&!zone){if(W.slopeAt(F.pos.x,F.pos.z)<0.09&&sink<P.ldgSink*1.2&&Vs<P.Vr*1.4)F.events.push({type:'outlanding'});else return crash(F,'Bodenberührung im Gelände.');}
-    F.onGround=true;F.pos.y=gh+P.gearH;F.vel.y=0;
-    _e.set(clamp(_e.x,0,P.tailStrike*DEG),_e.y,0,'YXZ');F.q.setFromEuler(_e);F.w.set(0,0,0);
+    F.onGround=true;F.pos.y=gh+P.gearH;F.vel.y=0;F.susp={y:0,v:-Math.min(sink,4.5),r:clamp(_e.z,-0.2,0.2)};
+    _e.set(clamp(_e.x,0,P.tailStrike*DEG),_e.y,F.susp.r,'YXZ');F.q.setFromEuler(_e);F.w.set(0,0,0);
     if(F.airTime>4)F.events.push({type:'touchdown',sink,pitch,bank,x:F.pos.x,z:F.pos.z,rw:rw||zone,grass:!rw});
   }
 }

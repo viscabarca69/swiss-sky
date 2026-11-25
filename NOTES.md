@@ -190,3 +190,12 @@ Morgen-Zusammenfassung an Luis gesendet. Offene Grenzen: Flugschule nur ZS; L-32
   Fenster: Airbus 22,9×31,2 cm / 533 mm, A350 24,2×34,3 cm / 635 mm, 747 25,4×35,6 cm / 508 mm. Typ-III-Notausstieg mit eigenem Fenster (row.extra).
 - Fenstermaske 60 px/m (schärfer). A380-Schriftzug über die Oberdeckfenster, 747-Schriftzug weiter vorn.
 - Test ohne Server: /home/claude/tools/shot.py (Seitenansichten, page.route), tools/game.py (Spiel laden + startFlight).
+
+## 2026-11-25 – Version 11.2: Fehlerbehebungen
+- Abwurf-Missionen m4/m10: Kistenzahl wurde über `obj.toString().includes('D(')` bestimmt – DL( fiel durch → 0 Kisten → sofort «Keine Kisten mehr an Bord». Jetzt Regex /\bDL?\(/.
+- ATC: Platzrunde unter 450 m: nach 40 s in der Luft kann die Landung angefragt werden (Phase bleibt 'departure', `circuit`).
+- flight.js: Federbein F.susp (Feder-Dämpfer, ω 6–9, ζ 0,62, Restquerlage klingt ab), Bodeneffekt (induzierter Widerstand ↓, CL +4 % unter halber Spannweite), Seitenruder = flache Kurve (5–6° Querlage), Schiebewinkel wird gegenüber der Luft abgebaut (kein Rutschen, Vorhaltewinkel bei Seitenwind bleibt). Gierraten Seitenruder kleiner.
+- touchFx: Wackeln unter 1 m/s kaum, Bewertungsgrenzen BUTTERWEICH <0,7 / SANFT <1,4.
+- Landescheinwerfer aller Flugzeuge auf der Mittelachse (Airliner: im Bug über dem Bugfahrwerk), Kegel 5,5° nach unten.
+- heli.js: Tempo halten beim Loslassen (vHold), Zyklisch bis 30°, Widerstand 2,1 m², Vmax 79 m/s, Aufsetzen bis 9 m/s seitlich.
+- Tests: tools/fsim.mjs (Kurve/Seitenruder/Landung), tools/ld.mjs, tools/hsim.mjs, tools/reg.py (alle Missionen), tools/drop.py, tools/night.py (Bilder im Spiel; __deskPlay() nötig, sonst rendert nichts).

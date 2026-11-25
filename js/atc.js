@@ -45,7 +45,8 @@ export function createATC(audio,opts){
       return;}
     if(A.phase==='ground'&&A.reqTO&&!A.clrTO){say('twr',`${A.cs}, bitte warten.`,`${A.csS}, bitte warten`,1);return;}
     // nach dem Start: erst die Abflugkontrolle, nicht schon wieder eine Landung anfragen
-    if(!F.onGround&&A.phase==='departure'){say('me',`${A.twrName}, ${A.cs}, in der Luft.`,`${A.twrName}, ${A.csS}, in der Luft`);
+    // Platzrunde: wer nach dem Start tief bleibt (unter 450 m), kann nach 40 s direkt die Landung anfragen
+    if(!F.onGround&&A.phase==='departure'&&A.t-A.depT<=40){say('me',`${A.twrName}, ${A.cs}, in der Luft.`,`${A.twrName}, ${A.csS}, in der Luft`);
       say('twr',`${A.cs}, weiter steigen. Ab ${altTxt(450,metric)[0]} über Grund rufen Sie die Abflugkontrolle.`,`${A.csS}, weiter steigen, danach rufen Sie die Abflugkontrolle`,1.4);return;}
     if(!F.onGround&&A.depCall){A.depCall=false;const nm=(A.home?A.home.name:'Abflug').split('-')[0]+' Abflug',[at,as]=altTxt(F.pos.y,metric);
       say('me',`${nm}, ${A.cs}, steigend durch ${at}.`,`${nm}, ${A.csS}, steigend durch ${as}`);
@@ -76,12 +77,13 @@ export function createATC(audio,opts){
       if(A.depCall)p=`Funk: ${key} drücken – Abflugkontrolle rufen`;
       if(A.home&&!A.leftHome&&Math.hypot(F.pos.x-A.home.x,F.pos.z-A.home.z)>16000)A.leftHome=true;
       const Ap=target(F);
-      if(Ap&&A.phase!=='departure'){const d=Math.hypot(F.pos.x-Ap.x,F.pos.z-Ap.z);
+      const circuit=A.phase==='departure'&&A.depT!=null&&A.t-A.depT>40;
+      if(Ap&&(A.phase!=='departure'||circuit)){const d=Math.hypot(F.pos.x-Ap.x,F.pos.z-Ap.z);
         if(A.reqLdg&&A.ldgAP&&A.ldgAP.icao===Ap.icao){
           if(A.waitLdg&&!A.clrLdg&&!(ctx.traffic&&ctx.traffic.busy(Ap,A.rw.R,'arr'))){A.waitLdg=false;A.clrLdg=true;const [wt,ws]=windTxt(ctx.wind,ctx.metric);say('twr',`${A.cs}, ${wt}, Piste ${A.rw.name}, Landung frei.`,`${A.csS}, ${ws}, Piste ${spell(A.rw.name)}, Landung frei`,0.3);}
           if(!A.clrLdg)p='Warte auf Landefreigabe – weiter im Anflug';
           if(d>20000){A.reqLdg=false;A.clrLdg=false;}}
-        else if(!A.depCall&&d<16000&&(A.phase==='enroute'||A.phase==='landed')&&!(A.depT!=null&&!A.leftHome&&A.t-A.depT<240&&A.home&&A.home.icao===Ap.icao)){p=`Funk: ${key} drücken – Landefreigabe für ${Ap.name} anfordern`;
+        else if(!A.depCall&&d<16000&&(A.phase==='enroute'||A.phase==='landed'||circuit)&&!(!circuit&&A.depT!=null&&!A.leftHome&&A.t-A.depT<240&&A.home&&A.home.icao===Ap.icao)){p=`Funk: ${key} drücken – Landefreigabe für ${Ap.name} anfordern`;
           if(d<4500&&ctrl(Ap)&&!A.warned['call'+Ap.icao]&&ctx.agl<350&&F.vel.y<-1){A.warned['call'+Ap.icao]=1;A.twrName=(TWR[Ap.icao]||{n:Ap.name}).n;say('twr',`Unbekanntes Flugzeug im Anflug, melden Sie sich bei ${A.twrName}!`,`Unbekanntes Flugzeug im Anflug, melden Sie sich`);}}
         // Nahbereich kontrollierter Plätze: unter 1000 m über Grund und näher als 10 km höchstens 460 km/h (250 Knoten)
         const inZone=d<10000&&ctx.agl<1000&&ctrl(Ap)&&!(A.depT!=null&&A.t-A.depT<240&&A.home&&A.home.icao===Ap.icao);
