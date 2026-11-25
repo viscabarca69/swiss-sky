@@ -10,6 +10,12 @@ Artifact slug e3615a1f-7860-4277-b4c4-84ea1ba2abea · letzte veröffentlichte Ve
 Backup Etappe 1: /tmp/af_e1 (kann nach Neustart weg sein)
 Testen: /tmp/run.sh test/<x>.py (Playwright, SwiftShader) · node test/jobs.mjs (Routen) · node test/mis.mjs
 
+## Version 11.3 (25.11.2026)
+- Flugzeuge: paintMat Klarlack, Wurzel-AO, Bauchverkleidung, Cockpitglas-Maske, Pylon-Finnen, Klappen-Kanus, Räder exakt auf -gearH, Triebwerk-Bodenabstand ≥0.5 m
+- Anflugplaner (approach.js): Kandidatensuche IF nah/fern, Basisteil, Volte, schräger Intercept, judge mit Gleitpfad-Marge, unsafe-Warnung
+- gfx.js snapRivers + Wasserband bergab; main.js airportPlan (SVG, .apEnd klickbar)
+- Offen: #16 neueste Modelle, #17 Gebäude/Wahrzeichen, #18 KI-Verkehr ausserhalb ZRH, Daten-Downloads von Luis (OSM Rollwege, swissALTIRegio, swissBUILDINGS3D, SWISSIMAGE)
+
 ## Erledigt
 - L-3xx-Nasen neu (NOSE-Tabellen mit Breite, monotone Interpolation, neue Cockpitscheiben, A350-Maske, Radom-Naht)
 - Lackier-System: paint(), Vorlagen klassisch/retro/bauch/voll/swoosh/schweiz, finMats(style), LIV_* Exporte
