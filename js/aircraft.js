@@ -12,7 +12,7 @@ export const PLANES={
     mass:1450,S:13.5,CL0:0.25,CLa:5.2,alphaStall:15,flapCL:[0,0.3,0.55,0.75],flapCD:0.05,flapNames:['0°','16°','32°','40°'],CD0:0.026,K:0.05,gearCD:0,fixedGear:true,
     Tmax:6000,prop:true,Vprop:190,spool:3,Vr:36,Vref:40,gearH:1.25,bellyH:0.55,steer:0.7,rotRate:0.14,tailStrike:12,rollRate:1.1,yawAuth:1.2,kAlpha:9,dampP:4.6,qRef:1500,
     brakeMu:0.7,reverse:0,maxBank:45,wingStrike:18,camDist:12,camH:2.8,shadow:18,ldgSink:2.6,engines:1,crates:0,wingTip:5.85},
-  titlis:{id:'titlis',name:'Titlis T-12',type:'Einmotorige Turboprop · 9 Plätze',cls:'small',desc:'Robuster Alleskönner für Berge und kurze Pisten. Schnell (≈500 km/h), kann Kisten abwerfen.',
+  titlis:{id:'titlis',name:'Titlis T-12 NGX',type:'Einmotorige Turboprop · 9 Plätze',cls:'small',desc:'Robuster Alleskönner für Berge und kurze Pisten, neueste Ausführung mit Fünfblatt-Propeller. Schnell (≈500 km/h), kann Kisten abwerfen.',
     mass:4300,S:25.8,CL0:0.3,CLa:5.3,alphaStall:15,flapCL:[0,0.35,0.6,0.85],flapCD:0.055,flapNames:['0°','15°','30°','40°'],CD0:0.024,K:0.045,gearCD:0.015,
     Tmax:14000,prop:true,Vprop:230,spool:2,Vr:40,Vref:45,gearH:1.7,bellyH:0.8,steer:0.55,rotRate:0.1,tailStrike:11,rollRate:0.8,yawAuth:0.9,kAlpha:7,dampP:4,qRef:3000,
     brakeMu:0.65,reverse:0.25,maxBank:45,wingStrike:16,camDist:20,camH:4.5,shadow:28,ldgSink:2.8,engines:1,crates:4,wingTip:8.1},
@@ -20,7 +20,7 @@ export const PLANES={
     mass:16500,S:54.5,CL0:0.3,CLa:5.4,alphaStall:14,flapCL:[0,0.35,0.6,0.85],flapCD:0.055,flapNames:['0','15','25','35'],CD0:0.026,K:0.042,gearCD:0.016,
     Tmax:54000,prop:true,Vprop:185,spool:1.6,Vr:52,Vref:56,gearH:2.15,bellyH:1.0,steer:0.45,rotRate:0.07,tailStrike:9,rollRate:0.5,yawAuth:0.7,kAlpha:6,dampP:3.4,qRef:3500,
     brakeMu:0.65,reverse:0.25,maxBank:40,wingStrike:14,camDist:31,camH:7,shadow:45,ldgSink:2.8,engines:2,crates:6,wingTip:12.3},
-  feuer:{id:'feuer',name:'Feuervogel FV-415',type:'Amphibien-Löschflugzeug · 2 Motoren',cls:'regional',desc:'Landet auf Seen, schöpft im Gleiten 6000 Liter Wasser und löscht Waldbrände. Fahrwerk auf dem Wasser eingefahren lassen!',
+  feuer:{id:'feuer',name:'Feuervogel FV-515',type:'Amphibien-Löschflugzeug · 2 Motoren',cls:'regional',desc:'Landet auf Seen, schöpft im Gleiten 6000 Liter Wasser und löscht Waldbrände. Fahrwerk auf dem Wasser eingefahren lassen!',
     mass:17000,S:100,CL0:0.35,CLa:5.2,alphaStall:15,flapCL:[0,0.3,0.55,0.8],flapCD:0.05,flapNames:['0°','10°','20°','30°'],CD0:0.034,K:0.05,gearCD:0.015,
     Tmax:52000,prop:true,Vprop:170,spool:1.8,Vr:36,Vref:42,gearH:2.3,bellyH:0.95,waterH:0.95,steer:0.5,rotRate:0.08,tailStrike:10,rollRate:0.6,yawAuth:0.8,kAlpha:5.5,dampP:3.6,qRef:2600,
     brakeMu:0.6,reverse:0.2,maxBank:40,wingStrike:12,camDist:30,camH:7,shadow:40,ldgSink:3,engines:2,crates:0,wingTip:14.5,amphib:true},
@@ -28,22 +28,22 @@ export const PLANES={
     mass:450,S:10.5,CL0:0.4,CLa:5.6,alphaStall:14,flapCL:[0,0.12,0.25,0.4],flapCD:0.025,flapNames:['0°','5°','10°','Landung'],CD0:0.0095,K:0.018,gearCD:0,fixedGear:true,
     Tmax:0,prop:true,Vprop:100,spool:1,Vr:20,Vref:27,gearH:0.62,bellyH:0.35,steer:0.6,rotRate:0.14,tailStrike:12,rollRate:0.75,yawAuth:1.2,kAlpha:9,dampP:4.8,qRef:450,
     brakeMu:0.5,reverse:0,maxBank:50,wingStrike:7,camDist:14,camH:2.6,shadow:20,ldgSink:2.4,engines:0,crates:0,wingTip:9.1,glider:true},
-  rega:{id:'rega',name:'Rega Da Vinci',type:'Rettungshelikopter · 2 Turbinen',cls:'heli',heli:true,desc:'Der rot-weisse Rettungshelikopter: senkrecht starten, schweben, am Berg landen und Patienten ins Spital fliegen.',
+  rega:{id:'rega',name:'Rega H145',type:'Rettungshelikopter · 2 Turbinen · 5 Rotorblätter',cls:'heli',heli:true,desc:'Der neue rot-weisse Rettungshelikopter (Airbus H145 D3): senkrecht starten, schweben, am Berg landen und Patienten ins Spital fliegen.',
     mass:3700,S:20,CL0:0,CLa:5,alphaStall:15,flapCL:[0,0,0,0],flapCD:0,flapNames:['–','–','–','–'],CD0:0.05,K:0.05,gearCD:0,fixedGear:true,rotorR:5.5,Vmax:79,
     Tmax:0,prop:true,Vprop:100,spool:2,Vr:0,Vref:22,gearH:1.32,bellyH:1.2,steer:0,rotRate:0,tailStrike:20,rollRate:1,yawAuth:1,kAlpha:5,dampP:4,qRef:1000,
     brakeMu:1,reverse:0,maxBank:35,wingStrike:20,camDist:20,camH:5,shadow:22,ldgSink:3,engines:2,crates:0,wingTip:6},
-  l320:{id:'l320',name:'LUIS L-320',type:'Mittelstrecke · 180 Plätze',cls:'jet',desc:'Kurz- und Mittelstrecken-Jet der Flotte. Wendig für einen Airliner.',
-    mass:64000,S:122.6,CL0:0.2,CLa:5.6,alphaStall:15,flapCL:[0,0.4,0.75,1.1],flapCD:0.065,flapNames:['0','1','2','FULL'],CD0:0.021,K:0.042,gearCD:0.02,
-    Tmax:240000,prop:false,spool:0.45,Vr:76,Vref:70,gearH:3.8,bellyH:1.9,steer:0.3,rotRate:0.05,tailStrike:11,rollRate:0.36,yawAuth:0.5,kAlpha:4.5,dampP:2.8,qRef:9000,
-    brakeMu:0.6,reverse:0.3,maxBank:30,wingStrike:11,camDist:54,camH:11,shadow:70,ldgSink:2.8,engines:2,crates:0,wingTip:17},
+  l320:{id:'l320',name:'LUIS L-321neo',type:'Mittelstrecke lang · 220 Plätze',cls:'jet',desc:'Die lange Version mit neuen Triebwerken: 44,5 m, vier Türpaare, Sharklets. Mehr Plätze, braucht etwas mehr Piste.',
+    mass:76000,S:122.6,CL0:0.2,CLa:5.6,alphaStall:15,flapCL:[0,0.42,0.8,1.17],flapCD:0.066,flapNames:['0','1','2','FULL'],CD0:0.0205,K:0.04,gearCD:0.02,
+    Tmax:292000,prop:false,spool:0.45,Vr:80,Vref:72,gearH:3.8,bellyH:1.9,steer:0.28,rotRate:0.045,tailStrike:9.7,rollRate:0.34,yawAuth:0.47,kAlpha:4.3,dampP:2.7,qRef:9100,
+    brakeMu:0.6,reverse:0.3,maxBank:30,wingStrike:11,camDist:62,camH:12,shadow:78,ldgSink:2.8,engines:2,crates:0,wingTip:17.9},
   l32n:{id:'l32n',name:'LUIS L-320neo',type:'Mittelstrecke · neue Triebwerke · 180 Plätze',cls:'jet',desc:'Die sparsame Neuauflage der L-320: grosse Triebwerke, Sharklets an den Flügelspitzen, mehr Schub.',
     mass:66000,S:122.6,CL0:0.2,CLa:5.6,alphaStall:15,flapCL:[0,0.4,0.75,1.1],flapCD:0.065,flapNames:['0','1','2','FULL'],CD0:0.0205,K:0.04,gearCD:0.02,
     Tmax:262000,prop:false,spool:0.45,Vr:76,Vref:70,gearH:3.8,bellyH:1.9,steer:0.3,rotRate:0.05,tailStrike:11,rollRate:0.36,yawAuth:0.5,kAlpha:4.5,dampP:2.8,qRef:9000,
     brakeMu:0.6,reverse:0.3,maxBank:30,wingStrike:11,camDist:54,camH:11,shadow:70,ldgSink:2.8,engines:2,crates:0,wingTip:17.9},
-  l330:{id:'l330',name:'LUIS L-330',type:'Grossraum · 2 Triebwerke · 300 Plätze',cls:'jet',desc:'Zuverlässiger Zweistrahler für Langstrecken – 64 m lang, 60 m Spannweite.',
-    mass:185000,S:361.6,CL0:0.22,CLa:5.6,alphaStall:14,flapCL:[0,0.42,0.78,1.12],flapCD:0.06,flapNames:['0','1','2','FULL'],CD0:0.02,K:0.04,gearCD:0.02,
-    Tmax:620000,prop:false,spool:0.4,Vr:78,Vref:72,gearH:4.7,bellyH:2.8,steer:0.24,rotRate:0.042,tailStrike:10,rollRate:0.3,yawAuth:0.42,kAlpha:3.8,dampP:2.5,qRef:9500,
-    brakeMu:0.6,reverse:0.3,maxBank:30,wingStrike:9,camDist:88,camH:17,shadow:110,ldgSink:2.7,engines:2,crates:0,wingTip:30.2},
+  l330:{id:'l330',name:'LUIS L-330neo',type:'Grossraum · 2 Triebwerke · 290 Plätze',cls:'jet',desc:'Der neue Grossraum-Zweistrahler: 64 m lang, 64 m Spannweite mit Sharklets und riesigen Trent-7000-Triebwerken.',
+    mass:190000,S:370,CL0:0.22,CLa:5.6,alphaStall:14,flapCL:[0,0.42,0.78,1.12],flapCD:0.06,flapNames:['0','1','2','FULL'],CD0:0.0195,K:0.037,gearCD:0.02,
+    Tmax:650000,prop:false,spool:0.4,Vr:78,Vref:72,gearH:4.7,bellyH:2.8,steer:0.24,rotRate:0.042,tailStrike:10,rollRate:0.3,yawAuth:0.42,kAlpha:3.8,dampP:2.5,qRef:9500,
+    brakeMu:0.6,reverse:0.3,maxBank:30,wingStrike:9,camDist:88,camH:17,shadow:110,ldgSink:2.7,engines:2,crates:0,wingTip:32.0},
   l340:{id:'l340',name:'LUIS L-340',type:'Langstrecke · 4 Triebwerke · 280 Plätze',cls:'jet',desc:'Der klassische Vierstrahler wie bei Swiss: 64 m lang, vier schlanke Triebwerke.',
     mass:220000,S:361.6,CL0:0.22,CLa:5.6,alphaStall:14,flapCL:[0,0.42,0.78,1.12],flapCD:0.06,flapNames:['0','1','2','FULL'],CD0:0.02,K:0.04,gearCD:0.02,
     Tmax:600000,prop:false,spool:0.38,Vr:82,Vref:76,gearH:4.7,bellyH:2.8,steer:0.22,rotRate:0.038,tailStrike:9,rollRate:0.27,yawAuth:0.4,kAlpha:3.6,dampP:2.4,qRef:9500,
@@ -56,10 +56,10 @@ export const PLANES={
     mass:250000,S:465,CL0:0.22,CLa:5.6,alphaStall:14,flapCL:[0,0.45,0.8,1.15],flapCD:0.06,flapNames:['0','1','2','FULL'],CD0:0.019,K:0.038,gearCD:0.02,
     Tmax:860000,prop:false,spool:0.4,Vr:80,Vref:74,gearH:5.1,bellyH:2.9,steer:0.22,rotRate:0.04,tailStrike:10.5,rollRate:0.27,yawAuth:0.4,kAlpha:3.6,dampP:2.4,qRef:9500,
     brakeMu:0.6,reverse:0.3,maxBank:30,wingStrike:9,camDist:96,camH:19,shadow:120,ldgSink:2.6,engines:2,crates:0,wingTip:32.4},
-  l747:{id:'l747',name:'LUIS L-747',type:'Jumbo · 4 Triebwerke · 410 Plätze',cls:'jet',desc:'Die Königin der Lüfte mit dem berühmten Buckel: Cockpit im Oberdeck, vier Triebwerke, 71 m lang.',
-    mass:330000,S:525,CL0:0.22,CLa:5.6,alphaStall:14,flapCL:[0,0.42,0.8,1.12],flapCD:0.062,flapNames:['0','1','2','FULL'],CD0:0.021,K:0.041,gearCD:0.02,
-    Tmax:1120000,prop:false,spool:0.36,Vr:84,Vref:77,gearH:5.4,bellyH:3.5,steer:0.21,rotRate:0.036,tailStrike:10,rollRate:0.24,yawAuth:0.36,kAlpha:3.3,dampP:2.3,qRef:9800,
-    brakeMu:0.6,reverse:0.3,maxBank:30,wingStrike:8,camDist:112,camH:23,shadow:140,ldgSink:2.6,engines:4,crates:0,wingTip:33.4},
+  l747:{id:'l747',name:'LUIS L-747-8',type:'Jumbo · 4 Triebwerke · 465 Plätze',cls:'jet',desc:'Die neueste Königin der Lüfte: 76 m lang, längeres Oberdeck, GEnx-Triebwerke mit Zackendüsen und schräge Flügelspitzen.',
+    mass:360000,S:554,CL0:0.22,CLa:5.6,alphaStall:14,flapCL:[0,0.42,0.8,1.12],flapCD:0.062,flapNames:['0','1','2','FULL'],CD0:0.0205,K:0.039,gearCD:0.02,
+    Tmax:1190000,prop:false,spool:0.36,Vr:85,Vref:78,gearH:5.4,bellyH:3.5,steer:0.2,rotRate:0.034,tailStrike:9.5,rollRate:0.23,yawAuth:0.35,kAlpha:3.2,dampP:2.3,qRef:9800,
+    brakeMu:0.6,reverse:0.3,maxBank:30,wingStrike:8,camDist:120,camH:24,shadow:150,ldgSink:2.6,engines:4,crates:0,wingTip:34.2},
   l380:{id:'l380',name:'LUIS L-380',type:'Doppelstöcker · 4 Triebwerke · 500 Plätze',cls:'jet',desc:'Der Riese: zwei volle Passagierdecks, 80 m Spannweite. Nur für lange Pisten wie Zürich.',
     mass:420000,S:845,CL0:0.24,CLa:5.6,alphaStall:14,flapCL:[0,0.42,0.78,1.1],flapCD:0.06,flapNames:['0','1','2','FULL'],CD0:0.021,K:0.04,gearCD:0.02,
     Tmax:1360000,prop:false,spool:0.35,Vr:82,Vref:74,gearH:6.3,bellyH:4.2,steer:0.2,rotRate:0.035,tailStrike:10,rollRate:0.22,yawAuth:0.35,kAlpha:3.2,dampP:2.2,qRef:10000,
@@ -102,6 +102,12 @@ function loftFrames(secs,loop){loop=loop||AF;const n=loop.length,pos=[],idx=[];
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));
   const uv=[];secs.forEach((S0,k)=>{for(let i=0;i<n;i++)uv.push(k/(secs.length-1),i/(n-1));});g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));
   g.setIndex(idx);g.computeVertexNormals();return g;}
+// Zackenkranz (Chevrons): Ring mit n dreieckigen Zacken nach hinten, Spitzen leicht nach innen geneigt
+function chevronGeo(r0,r1,h,n){const pos=[],idx=[],N=n*2;for(let i=0;i<=N;i++){const a=i/N*Math.PI*2,tip=i%2===0,r=tip?r1:r0*0.985,z=tip?h:h*0.12;
+    pos.push(Math.cos(a)*r0,Math.sin(a)*r0,0,Math.cos(a)*r,Math.sin(a)*r,z);}
+  for(let i=0;i<N;i++){const a=i*2,b=a+1,c=a+2,d=a+3;idx.push(a,b,c,c,b,d);}
+  const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setIndex(idx);g.computeVertexNormals();return g;}
+let CHM=null;function chevMat(){return CHM||(CHM=new THREE.MeshStandardMaterial({color:0xa9aeb4,roughness:0.36,metalness:0.4,side:THREE.DoubleSide}));}
 // Winglet als weich gebogene Fläche aus der Flügelspitze heraus (rechte Seite):
 // h Höhe, cant Neigung nach aussen (Grad, 0 = senkrecht), rb Biegeradius, sw Vorderkanten-Pfeilung (Grad), c0/c1 Sehne Wurzel/Spitze, dn nach unten
 function wingletGeo(tip,o){const n=14,thE=(90-o.cant)*Math.PI/180*(o.dn?-1:1),rb=o.rb,sgn=o.dn?-1:1;
@@ -517,18 +523,20 @@ const solidMat=(c,r)=>new THREE.MeshStandardMaterial({color:new THREE.Color(c),r
 function tailDecal(){return canvasTex(512,512,(x)=>{x.clearRect(0,0,512,512);x.save();x.translate(256,256);x.rotate(-0.55);x.fillStyle=RED;x.fillRect(-400,40,800,70);x.fillStyle='#ffffff';x.fillRect(-400,118,800,14);x.restore();
   x.fillStyle='#ffffff';x.font='900 250px Arial';x.textAlign='center';x.textBaseline='middle';x.fillText('L',230,215);});}
 export const AIRLINER={
-  l320:{L:37.6,R:1.98,sy:1.05,nose:0.12,tail:0.68,up:1,reg:'HB-LAA',
-    wing:{x0:1.6,span:15.4,root:6.6,tip:1.55,sweep:7.6,dih:5.5,y0:-1.25,z0:-4.0,tr:0.14,tt:0.11,kink:0.34},winglet:'fence',
-    eng:[{x:5.7,len:4.4,r:1.04,k:1.05}],fin:{z:12.2,root:6.2,tip:2.5,h:6.3,sweep:4.4,y:1.7},stab:{x0:0.6,span:5.6,root:3.7,tip:1.6,sweep:3.4,dih:6,y:0.85,z:14.9},
-    main:[{x:3.8,z:1.2,ax:1}],ng:-13.4,eye:[-0.52,0.62,-16.55],cg:1.8,winX:[0.12,0.86],doors:[0.12,0.41,0.84],skip:[[0.105,0.135],[0.39,0.43],[0.82,0.86]]},
+  // A321neo: A320 + 4,27 m vor und 2,67 m hinter dem Flügel (44,51 m), LEAP-1A, Sharklets, vier Türpaare
+  l320:{L:44.51,R:1.98,sy:1.05,nose:0.101,tail:0.73,up:1,reg:'HB-LAA',
+    wing:{x0:1.6,span:15.4,root:6.7,tip:1.55,sweep:7.6,dih:5.5,y0:-1.25,z0:-3.19,tr:0.14,tt:0.11,kink:0.34},winglet:'sharklet',
+    eng:[{x:5.9,len:5.3,r:1.3,k:0.86,fwd:0.68,neo:1}],fin:{z:15.69,root:6.2,tip:2.5,h:6.3,sweep:4.4,y:1.7},stab:{x0:0.6,span:5.6,root:3.7,tip:1.6,sweep:3.4,dih:6,y:0.85,z:18.39},
+    main:[{x:3.8,z:2.02,ax:1}],ng:-16.86,eye:[-0.52,0.62,-20.0],cg:2.6,winX:[0.1,0.86],doors:[0.11,0.39,0.61,0.86],skip:[]},
   l32n:{L:37.6,R:1.98,sy:1.05,nose:0.12,tail:0.68,up:1,reg:'HB-LNA',
     wing:{x0:1.6,span:15.4,root:6.6,tip:1.55,sweep:7.6,dih:5.5,y0:-1.25,z0:-4.0,tr:0.14,tt:0.11,kink:0.34},winglet:'sharklet',
     eng:[{x:5.9,len:5.3,r:1.3,k:0.86,fwd:0.68,neo:1}],fin:{z:12.2,root:6.2,tip:2.5,h:6.3,sweep:4.4,y:1.7},stab:{x0:0.6,span:5.6,root:3.7,tip:1.6,sweep:3.4,dih:6,y:0.85,z:14.9},
     main:[{x:3.8,z:1.2,ax:1}],ng:-13.4,eye:[-0.52,0.62,-16.55],cg:1.8,winX:[0.12,0.86],doors:[0.12,0.41,0.84],skip:[[0.105,0.135],[0.39,0.43],[0.82,0.86]]},
-  l330:{L:63.7,R:2.82,sy:1.04,nose:0.1,tail:0.72,up:1,reg:'HB-LBA',
-    wing:{x0:2.7,span:27.4,root:10.6,tip:2.2,sweep:16.5,dih:5.5,y0:-1.75,z0:-6.2,tr:0.13,tt:0.1,kink:0.36},winglet:'tall',
-    eng:[{x:9.4,len:6.6,r:1.55}],fin:{z:22.0,root:10,tip:4,h:9.4,sweep:8,y:2.4},stab:{x0:1.1,span:8.5,root:5.6,tip:2.1,sweep:5.8,dih:6,y:1.2,z:25.6},
-    main:[{x:5.4,z:2.2,ax:2}],ng:-26.4,eye:[-0.55,0.9,-29.0],cg:3.0,winX:[0.1,0.87],doors:[0.1,0.3,0.6,0.85],skip:[[0.09,0.115],[0.29,0.315],[0.59,0.615],[0.84,0.865]]},
+  // A330-900neo: Rumpf wie A330-300, Trent 7000 (Fan 2,84 m), neue Flügelspitze mit Sharklet (64 m), schwarze Cockpitmaske
+  l330:{L:63.66,R:2.82,sy:1.04,nose:0.1,tail:0.72,up:1,reg:'HB-LBA',mask:1,
+    wing:{x0:2.7,span:27.4,root:10.6,tip:2.2,sweep:16.5,dih:5.5,y0:-1.75,z0:-6.2,tr:0.13,tt:0.1,kink:0.36},winglet:'neo330',
+    eng:[{x:9.4,len:7.1,r:1.78,k:0.8,fwd:0.7,neo:1}],fin:{z:22.0,root:10,tip:4,h:9.4,sweep:8,y:2.4},stab:{x0:1.1,span:8.5,root:5.6,tip:2.1,sweep:5.8,dih:6,y:1.2,z:25.6},
+    main:[{x:5.4,z:2.2,ax:2}],ng:-26.4,eye:[-0.55,0.9,-29.0],cg:3.0,winX:[0.1,0.87],doors:[0.1,0.3,0.6,0.85],skip:[]},
   l340:{L:63.7,R:2.82,sy:1.04,nose:0.1,tail:0.72,up:1,reg:'HB-LCA',
     wing:{x0:2.7,span:27.4,root:10.6,tip:2.2,sweep:16.5,dih:5.5,y0:-1.75,z0:-6.2,tr:0.13,tt:0.1,kink:0.36},winglet:'tall',
     eng:[{x:10.0,len:5.0,r:1.0,k:1.0,fwd:0.62,cfm:1},{x:18.6,len:5.0,r:1.0,k:1.0,fwd:0.6,cfm:1}],fin:{z:22.0,root:10,tip:4,h:9.4,sweep:8,y:2.4},stab:{x0:1.1,span:8.5,root:5.6,tip:2.1,sweep:5.8,dih:6,y:1.2,z:25.6},
@@ -541,13 +549,15 @@ export const AIRLINER={
     wing:{x0:2.8,span:29.6,root:12.5,tip:2.6,sweep:18.4,dih:6,y0:-1.9,z0:-6.5,tr:0.13,tt:0.1,kink:0.32},winglet:'curved',
     eng:[{x:10.3,len:7.6,r:1.75,k:1.0,fwd:0.62}],fin:{z:23.6,root:11,tip:4.3,h:9.0,sweep:7.2,y:2.6},stab:{x0:1.2,span:9.6,root:6.5,tip:2.4,sweep:6.5,dih:5,y:1.4,z:27.0},
     main:[{x:5.6,z:2.0,ax:3}],ng:-29.2,eye:[-0.55,1.12,-32.3],cg:3.4,winX:[0.1,0.88],doors:[0.097,0.282,0.532,0.792],skip:[[0.085,0.11],[0.27,0.295],[0.52,0.545],[0.78,0.805]],mask:1},
-  l747:{L:70.6,R:3.25,sy:1.14,nose:0.2,tail:0.74,up:1,reg:'HB-LGA',noseK:'b747',
-    wing:{x0:3.0,span:29.2,root:14.5,tip:4.0,sweep:22.5,dih:7,y0:-2.1,z0:-9.2,tr:0.13,tt:0.09,kink:0.34},winglet:'canted',
-    eng:[{x:11.8,len:6.0,r:1.42},{x:21.0,len:5.8,r:1.38}],fin:{z:22.0,root:12.5,tip:4.6,h:11.2,sweep:10,y:2.9},stab:{x0:1.3,span:10.4,root:7.6,tip:2.6,sweep:8.4,dih:7,y:1.1,z:26.0},
-    main:[{x:5.9,z:1.6,ax:2},{x:1.95,z:4.6,ax:2}],ng:-26.6,eye:[-0.55,4.1,-28.2],cg:3.6,winX:[0.1,0.9],doors:[0.105,0.25,0.43,0.62,0.84],skip:[[0.095,0.118],[0.24,0.262],[0.42,0.442],[0.61,0.632],[0.83,0.852]],
-    hump:{top:0.48,tb:0.17,tc:0.32,td:0.45,pts:[[0,0],[0.0035,0.08],[0.0085,0.15],[0.0142,0.23],[0.028,0.4],[0.0425,0.53],[0.061,0.66],[0.08,0.78],[0.099,0.88],[0.12,0.95],[0.142,0.98],[0.17,1]]}},
+  // 747-8 Intercontinental: 747-400 + 4,1 m vor und 1,5 m hinter dem Flügel (76,3 m), Oberdeck 4,1 m länger,
+  // GEnx-2B mit Zacken an Fan- und Kerndüse, neuer Flügel mit schräger Spitze (68,4 m)
+  l747:{L:76.3,R:3.25,sy:1.14,nose:0.185,tail:0.758,up:1,reg:'HB-LGA',noseK:'b747',
+    wing:{x0:3.0,span:29.2,root:14.8,tip:4.0,sweep:22.5,dih:7,y0:-2.1,z0:-7.95,tr:0.13,tt:0.09,kink:0.34},winglet:'raked',
+    eng:[{x:11.9,len:6.4,r:1.56,k:0.92,fwd:0.62,neo:1,chev:1},{x:20.9,len:6.3,r:1.55,k:0.92,fwd:0.6,neo:1,chev:1}],fin:{z:24.75,root:12.5,tip:4.6,h:11.2,sweep:10,y:2.9},stab:{x0:1.3,span:10.4,root:7.6,tip:2.6,sweep:8.4,dih:7,y:1.1,z:28.75},
+    main:[{x:5.9,z:2.85,ax:2},{x:1.95,z:5.85,ax:2}],ng:-29.45,eye:[-0.55,4.1,-31.05],cg:4.85,winX:[0.1,0.9],doors:[],skip:[],
+    hump:{top:0.48,tb:0.1573,tc:0.3498,td:0.4701,pts:[[0,0],[0.0032,0.08],[0.0079,0.15],[0.0131,0.23],[0.0259,0.4],[0.0393,0.53],[0.0564,0.66],[0.074,0.78],[0.0916,0.88],[0.111,0.95],[0.1314,0.98],[0.1573,1]]}},
   l380:{L:72.7,R:3.57,sy:1.2,nose:0.2,tail:0.72,up:0.8,reg:'HB-LEA',deck2:1,
-    wing:{x0:3.4,span:36.4,root:17.5,tip:4.0,sweep:24.5,dih:5.6,y0:-2.6,z0:-9.8,tr:0.14,tt:0.1,kink:0.31},winglet:'fence',
+    wing:{x0:3.4,span:36.4,root:17.5,tip:4.0,sweep:24.5,dih:5.6,y0:-2.6,z0:-9.8,tr:0.14,tt:0.1,kink:0.31},winglet:'split',
     eng:[{x:14.8,len:7.3,r:1.72},{x:25.7,len:7.1,r:1.7}],fin:{z:21.5,root:14,tip:5.5,h:13.5,sweep:10.5,y:3.6},stab:{x0:1.8,span:13.2,root:9,tip:3,sweep:8.5,dih:5,y:1.3,z:25.2},
     main:[{x:6.0,z:1.8,ax:2},{x:2.4,z:4.6,ax:3}],ng:-26.8,eye:[-0.6,1.35,-33.3],cg:4.4,winX:[0.1,0.88],doors:[0.1,0.3,0.55,0.8],skip:[[0.09,0.115],[0.29,0.315],[0.54,0.565],[0.79,0.815]]}
 };
@@ -559,16 +569,18 @@ export const AIRLINER={
 const DOORT={A:[1.07,1.93],I:[0.81,1.85],III:[0.51,0.92]};
 const AIRBUS_W={pitch:0.533,ww:0.229,wh:0.312},A350_W={pitch:0.635,ww:0.242,wh:0.343},B747_W={pitch:0.508,ww:0.254,wh:0.356},A380_W={pitch:0.635,ww:0.25,wh:0.36};
 const LAYOUT={
-  l320:{doors:[[4.95,'A'],[16.0,'III'],[16.95,'III'],[31.45,'A']],cargo:[[8.4,1.82,1.24],[26.6,1.82,1.24],[29.6,0.95,0.77]],win:{...AIRBUS_W,z0:6.05,z1:30.6}},
+  l32n:{doors:[[4.95,'A'],[16.0,'III'],[16.95,'III'],[31.45,'A']],cargo:[[8.4,1.82,1.24],[26.6,1.82,1.24],[29.6,0.95,0.77]],win:{...AIRBUS_W,z0:6.05,z1:30.6}},
+  // A321neo (klassische Kabine): Tür 2 vor, Tür 3 hinter dem Flügel statt Notausstiegen
+  l320:{doors:[[4.95,'A'],[17.35,'I'],[27.35,'I'],[38.39,'A']],cargo:[[8.4,1.82,1.24],[33.54,1.82,1.24],[36.54,0.95,0.77]],win:{...AIRBUS_W,z0:6.05,z1:37.54}},
   l330:{doors:[[5.85,'A'],[17.741,'A'],[35.793,'I'],[50.956,'A']],cargo:[[9.53,2.7,1.69],[44.36,2.7,1.69],[47.342,0.95,0.63]],win:{...AIRBUS_W,z0:7.0,z1:49.85}},
   l346:{doors:[[5.85,'A'],[23.91,'A'],[34.087,'A'],[47.46,'I'],[61.576,'A']],cargo:[[9.53,2.7,1.69],[54.98,2.7,1.69],[57.962,0.95,0.63]],win:{...AIRBUS_W,z0:7.0,z1:60.5}},
   // A350-1000: A350-900-Werte (6,85 / 18,85 / 37,93 / 52,55 m) plus 6 Spanten vor und 5 Spanten hinter dem Flügel
   l350:{doors:[[6.85,'A'],[22.66,'A'],[41.74,'A'],[59.53,'A']],cargo:[[11.69,2.7,1.69],[54.28,2.7,1.69],[56.97,0.95,0.63]],win:{...A350_W,z0:8.1,z1:58.3}},
-  l747:{doors:[[7.4,'A'],[17.65,'A'],[30.4,'A'],[43.8,'A'],[59.3,'A']],cargo:[[12.2,2.64,1.68],[48.5,2.64,1.68],[54.6,1.12,1.19]],win:{...B747_W,z0:8.5,z1:58.4},
-    upper:{...B747_W,z0:9.5,z1:21.3,doors:[[15.2,'I']]}},
+  l747:{doors:[[7.4,'A'],[21.75,'A'],[34.5,'A'],[47.9,'A'],[64.9,'A']],cargo:[[12.2,2.64,1.68],[52.6,2.64,1.68],[60.2,1.12,1.19]],win:{...B747_W,z0:8.5,z1:64.0},
+    upper:{...B747_W,z0:9.5,z1:25.4,doors:[[15.2,'I']]}},
   l380:{doors:[[7.2,'A'],[17.3,'A'],[25.0,'A'],[47.0,'A'],[58.4,'A']],cargo:[[12.0,2.7,1.7],[49.6,2.7,1.7],[53.0,1.43,1.45]],win:{...A380_W,z0:8.4,z1:62.6},
     upper:{...A380_W,z0:10.6,z1:59.5,doors:[[19.0,'A'],[42.5,'A'],[52.8,'A']]}}};
-LAYOUT.l32n=LAYOUT.l320;LAYOUT.l340=LAYOUT.l330;
+LAYOUT.l340=LAYOUT.l330;
 // Fenster dort weglassen, wo Türen sitzen (Typ A/I: ganze Tür + Rahmen; Typ III hat ein eigenes Fenster)
 function winSkip(doors,L){return doors.map(([z,t])=>{const w=DOORT[t][0]/2+(t==='III'?0.2:0.32);return[(z-w)/L,(z+w)/L];});}
 for(const [id,Lo] of Object.entries(LAYOUT)){const C=AIRLINER[id];if(!C)continue;const L=C.L;
@@ -619,7 +631,7 @@ function buildAirliner(C,body,parts,root,P){
    win.forEach((w,i)=>cabinGlass(L,PR,w,'cw'+C.L+'_'+i,parts));}
   const wm=wingMat(0xd8dce0,{walk:1});
   // Spannweite wie beim Vorbild inkl. Winglets: Flügel um die seitliche Ausladung der Flügelspitze kürzen
-  const SPAN_REAL={l320:34.1,l32n:35.8,l330:60.3,l340:60.3,l346:63.45,l350:64.75,l747:64.44,l380:79.75},WEXT={fence:0.15,sharklet:1.25,tall:1.55,curved:2.9,canted:1.25};
+  const SPAN_REAL={l320:35.8,l32n:35.8,l330:64.0,l340:60.3,l346:63.45,l350:64.75,l747:68.45,l380:79.75},WEXT={fence:0.15,sharklet:1.25,tall:1.55,curved:2.9,canted:1.25,neo330:2.19,raked:3.4,split:1.9};
   const W={...C.wing},D=W.dih*Math.PI/180;if(SPAN_REAL[P.id])W.span=SPAN_REAL[P.id]/2-(WEXT[C.winglet]||0)-W.x0;
   const kS=W.kink||0.34,WG=wing({...W,dih:D,surfaces:[[0.0,kS,'flap'],[kS,0.74,'flap'],[0.76,0.94,'ail']]},wm,wm,body,parts);
   const yW=x=>W.y0+(x-W.x0)*Math.tan(D),zLE=x=>W.z0+(x-W.x0)/W.span*W.sweep,cW=x=>WG.chord(Math.max(0,Math.min(1,(x-W.x0)/W.span)));
@@ -633,6 +645,8 @@ function buildAirliner(C,body,parts,root,P){
      const m=new THREE.Mesh(ftR,surfMat(wm));m.scale.set(1,1,c*0.5);m.position.set(sg*x,yb,zLE(x)+c*0.8);m.castShadow=true;body.add(m);
      const seg=(parts.flaps||[]).find(f=>s>=f.s0&&s<=f.s1),fl=seg&&(sg>0?seg.R:seg.L);if(fl){body.updateMatrixWorld(true);fl.attach(m);}}}}
   const tipx=W.x0+W.span,tipy=yW(tipx),tipz=zLE(tipx);
+  // echte Flügelspitze (bei der schrägen 747-8-Spitze gut 3 m weiter aussen und 5 m weiter hinten)
+  const rk=C.winglet==='raked',lx=tipx+(rk?3.35:0),ly=tipy+(rk?0.36:0),lz=tipz+(rk?4.4:0);
   const wlm=solidMat(FS[1],0.35);
   {const tc=W.tip,tt=W.tt,WT={// nach Vorbildern: A320 Sharklet 2,4 m, A320ceo Wingtip-Fence, A330/A340 Winglet 2,7 m (~27° nach aussen),
       // A350 stark gebogene Flügelspitze, 747-400 Winglet 1,8 m (29° nach aussen, 60° Pfeilung), A380 Wingtip-Fence
@@ -640,7 +654,12 @@ function buildAirliner(C,body,parts,root,P){
       fence:[{h:C.deck2?1.35:0.86,cant:0,rb:0.08,sw:58,c0:tc*0.95,c1:tc*0.18,t0:0.09,t1:0.07,tp:0.8},{h:C.deck2?0.85:0.55,cant:0,rb:0.08,sw:58,c0:tc*0.8,c1:tc*0.15,t0:0.09,t1:0.07,dn:1,tp:0.8}],
       tall:[{h:2.74,cant:24,rb:0.45,sw:46,c0:tc,c1:tc*0.28,t0:tt,t1:0.085,tp:1.2}],
       curved:[{h:3.6,cant:12,rb:2.6,sw:52,c0:tc,c1:tc*0.16,t0:tt,t1:0.08,tp:1.6}],
-      canted:[{h:1.83,cant:29,rb:0.35,sw:58,c0:tc*0.92,c1:tc*0.3,t0:tt,t1:0.085,tp:1.1}]}[C.winglet]||[];
+      canted:[{h:1.83,cant:29,rb:0.35,sw:58,c0:tc*0.92,c1:tc*0.3,t0:tt,t1:0.085,tp:1.1}],
+      // A330neo: Sharklet 3,7 m, weich aus dem Flügel gebogen; 747-8: schräge Flügelspitze (flach, stark gepfeilt);
+      // A380 neueste Ausführung: geteiltes Winglet (oben gross, unten klein)
+      neo330:[{h:3.7,cant:12,rb:1.7,sw:40,c0:tc,c1:tc*0.27,t0:tt,t1:0.085,tp:1.3}],
+      raked:[{h:0.36,cant:84,rb:0.4,sw:58,c0:tc,c1:tc*0.22,t0:tt,t1:0.075,tp:0.9}],
+      split:[{h:3.6,cant:16,rb:1.1,sw:46,c0:tc*0.95,c1:tc*0.26,t0:tt,t1:0.08,tp:1.2},{h:1.4,cant:28,rb:0.5,sw:52,c0:tc*0.62,c1:tc*0.22,t0:0.09,t1:0.075,dn:1,tp:1}]}[C.winglet]||[];
     for(const o of WT){const g=wingletGeo({x:tipx,y:tipy,z:tipz},o),gl=mirror(g);
       for(const gg of [g,gl]){const m=new THREE.Mesh(gg,wlm);m.castShadow=true;body.add(m);}}}
   // Leitwerk wie beim Vorbild: Seitenleitwerk endet oben etwa über dem Heckkonus, Höhenleitwerk vor dem Rumpfende
@@ -661,6 +680,9 @@ function buildAirliner(C,body,parts,root,P){
     const spn=new THREE.Mesh(new THREE.ConeGeometry(E.r*0.3,E.r*0.62,28).rotateX(-Math.PI/2),M.spin);spn.position.set(x,cy,z1+E.r*0.12);body.add(spn);parts.fans.push(spn);
     // Schubdüse: Ring, Kernstrom-Düse, Abgaskegel
     const noz=new THREE.Mesh(new THREE.CylinderGeometry(E.r*0.57,E.r*0.6,E.len*0.05,36,1,true).rotateX(Math.PI/2),M.metal);noz.position.set(x,cy,z1+E.len*1.0);body.add(noz);
+    // GEnx-2B (747-8): Zacken (Chevrons) an der Fan-Düse und an der Kerndüse
+    if(E.chev){const fc=new THREE.Mesh(chevronGeo(E.r*0.62*0.995,E.r*0.585,E.len*0.045,14),chevMat());fc.position.set(x,cy,z1+E.len*0.998);body.add(fc);
+      const cc=new THREE.Mesh(chevronGeo(E.r*0.47,E.r*0.445,E.len*0.035,12),M.hot);cc.position.set(x,cy,z1+E.len*1.195);body.add(cc);}
     const core=new THREE.Mesh(new THREE.CylinderGeometry(E.r*0.42,E.r*0.52,E.len*0.2,32,1,true).rotateX(-Math.PI/2),M.hot);core.position.set(x,cy,z1+E.len*1.1);if(!E.cfm)body.add(core);
     const ex=new THREE.Mesh(new THREE.ConeGeometry(E.r*(E.cfm?0.36:0.3),E.len*(E.cfm?0.16:0.24),24),M.hot);ex.rotation.x=Math.PI/2;ex.position.set(x,cy,z1+E.len*(E.cfm?1.07:1.3));body.add(ex);
     // Pylon: schmale Finne, vorne flach auf der Gondel, steigt zum Flügel an, hinten Heckverkleidung unter dem Flügel
@@ -690,8 +712,8 @@ function buildAirliner(C,body,parts,root,P){
   // Augenpunkt: auf Höhe der Frontscheibe (gut 40 % der Scheibenhöhe), etwa 0,9 m hinter der Scheiben-Unterkante
   {const lay=paneLayout(C,PRF,L,R,H),yb=lay.F[0][0][1],yt=lay.F[0][1][1],uB=uAtWidth(PRF,L,lay.F[0][3][0],lay.F[0][3][1],0.003,0.3);
    parts.eye=new THREE.Vector3(C.eye[0],yb+0.42*(yt-yb),Math.max(C.eye[2],uB-L/2+0.9));}
-  parts.lights=navLights(body,[{p:[-tipx,tipy,tipz+1.3],c:[1,0.05,0.05],s:1.4},{p:[tipx,tipy,tipz+1.3],c:[0.05,1,0.2],s:1.4},{p:[0,R*0.6*C.up,L/2+0.3],c:[1,1,1],s:1.1},
-    {p:[0,R*sy+0.1,L*0.05],c:[1,0.1,0.05],beacon:1,s:1.3},{p:[0,-R*sy-0.1,0],c:[1,0.1,0.05],beacon:1,s:1.3},{p:[-tipx,tipy,tipz+1.7],c:[0,0,0],strobe:1,s:2.2},{p:[tipx,tipy,tipz+1.7],c:[0,0,0],strobe:1,s:2.2},{p:[0,R*0.6*C.up,L/2+0.4],c:[0,0,0],strobe:1,s:1.8}]);
+  parts.lights=navLights(body,[{p:[-lx,ly,lz+1.3],c:[1,0.05,0.05],s:1.4},{p:[lx,ly,lz+1.3],c:[0.05,1,0.2],s:1.4},{p:[0,R*0.6*C.up,L/2+0.3],c:[1,1,1],s:1.1},
+    {p:[0,R*sy+0.1,L*0.05],c:[1,0.1,0.05],beacon:1,s:1.3},{p:[0,-R*sy-0.1,0],c:[1,0.1,0.05],beacon:1,s:1.3},{p:[-lx,ly,lz+1.7],c:[0,0,0],strobe:1,s:2.2},{p:[lx,ly,lz+1.7],c:[0,0,0],strobe:1,s:2.2},{p:[0,R*0.6*C.up,L/2+0.4],c:[0,0,0],strobe:1,s:1.8}]);
   // Landescheinwerfer in der Mitte: im Bug über dem Bugfahrwerk (leuchtet nach vorne unten, nicht auf den eigenen Rumpf)
   parts.landing=new THREE.Vector3(0,gearTop+0.35,C.ng-1.2);
   root.userData.cgShift=C.cg;body.position.z=C.cg;
@@ -814,7 +836,7 @@ export function buildModel(id,opts={}){
     for(const s of [1,-1]){const g=new THREE.Group();g.position.set(s*1.55,-0.7,-0.2);body.add(g);strut(g,new THREE.Vector3(0,0,0),new THREE.Vector3(s*0.15,-0.7,0),0.07);
       parts.wheels.push(wheel(0.3,0.18,g,s*0.15,-0.7,0));parts.gear.push({g,axis:'z',dir:s});}
     {const g=new THREE.Group();g.position.set(0,-0.65,-4.8);body.add(g);strut(g,new THREE.Vector3(0,0,0),new THREE.Vector3(0,-0.75,0),0.06);parts.wheels.push(wheel(0.25,0.15,g,0,-0.75,0));parts.gear.push({g,axis:'x',dir:1});}
-    parts.props.push(prop(body,0,0,-6.72,1.3,4));
+    parts.props.push(prop(body,0,0,-6.72,1.3,5));// PC-12 NGX: Fünfblatt-Verbundpropeller
     parts.eye=new THREE.Vector3(-0.38,0.45,-3.33);
     parts.lights=navLights(body,[{p:[-8.15,-0.1,-0.8],c:[1,0.05,0.05],s:0.8},{p:[8.15,-0.1,-0.8],c:[0.05,1,0.2],s:0.8},{p:[0,2.95,6.55],c:[1,1,1],s:0.7},{p:[0,1.0,2.25],c:[1,0.1,0.05],beacon:1,s:0.7},{p:[-8.2,-0.1,-0.6],c:[0,0,0],strobe:1,s:1.3},{p:[8.2,-0.1,-0.6],c:[0,0,0],strobe:1,s:1.3}]);
     parts.landing=new THREE.Vector3(0,-0.4,-2.8);root.userData.cgShift=1.3;body.position.z=1.3;
@@ -865,87 +887,106 @@ export function buildModel(id,opts={}){
     parts.landing=new THREE.Vector3(0,0,-2);root.userData.cgShift=0.2;body.position.z=0.2;
   }
   if(id==='rega'){
-    // Rega «Da Vinci» (AW109-Bauart): spitze Nase, grosse Frontscheibe, Schiebetür mit zwei Fenstern, weisses Feld mit Kreuz,
-    // Triebwerkshaube oben, schlanker Heckausleger mit hohem Seitenleitwerk und Heckrotor links, Räder mit Schneekufen
-    const L=11.4,Z=zn=>zn-4.5,st=(z,W,T,B)=>({t:z/L,r:W,y:(T+B)/2,sy:(T-B)/(2*W)});
-    const PRh=[st(0,0.1,-0.18,-0.36),st(0.45,0.4,0.02,-0.56),st(1.1,0.64,0.34,-0.72),st(1.9,0.78,0.84,-0.79),st(2.6,0.83,1.05,-0.8),st(4.7,0.83,1.05,-0.8),
-      st(5.6,0.72,0.97,-0.6),st(6.4,0.44,0.8,-0.12),st(7.3,0.27,0.68,0.2),st(9.6,0.21,0.72,0.36),st(11.0,0.15,0.8,0.52),st(11.4,0.1,0.84,0.62)];
-    const red=LV.c1||'#e30613',wh=LV.base||'#f8f8f7';
+    // Rega Airbus H145 D3: runde, hohe Nase mit grossen Frontscheiben und Kinnfenstern, hohe Kabine, Schiebetüren,
+    // Heck-Klapptüren unter dem hoch angesetzten Heckausleger, ummantelter Heckrotor (Fenestron) mit Finne darüber,
+    // Höhenleitwerk mit Endscheiben, zwei Arriel-Turbinen unter flacher Haube, Kufen, lagerloser Fünfblatt-Rotor
+    const L=10.4,Z=zn=>zn-4.5,st=(z,W,T,B)=>({t:z/L,r:W,y:(T+B)/2,sy:(T-B)/(2*W)});
+    const PRh=[st(0,0.03,-0.16,-0.24),st(0.04,0.22,0.0,-0.44),st(0.12,0.4,0.16,-0.57),st(0.3,0.56,0.38,-0.68),st(0.62,0.73,0.66,-0.78),st(1.05,0.84,0.9,-0.83),st(1.6,0.88,1.06,-0.85),st(2.3,0.89,1.12,-0.86),
+      st(4.65,0.89,1.12,-0.86),st(5.1,0.87,1.11,-0.74),st(5.55,0.78,1.07,-0.32),st(6.0,0.56,1.02,0.18),st(6.5,0.36,0.96,0.46),st(7.4,0.27,0.92,0.53),st(9.6,0.2,0.88,0.58),st(10.1,0.17,0.88,0.62),st(10.4,0.1,0.88,0.7)];
+    const red=LV.c1||'#e30613',wh=LV.base||'#f8f8f7',fz=L/2-4.5;
     const tex=canvasTex(2048,512,(x,w,h)=>{const pa=w/L,pr=h/(2*Math.PI*0.86);x.fillStyle=red;x.fillRect(0,0,w,h);
-      // weisser Bauch unter Nase und Kabine
-      const bg=x.createLinearGradient(0.55*w,0,0.62*w,0);bg.addColorStop(0,wh);bg.addColorStop(1,red);x.fillStyle=bg;x.fillRect(0,h*0.385,w*0.62,h*0.23);
+      // weisser Bauch unter Nase und Kabine, läuft hinter der Kabine aus
+      const bg=x.createLinearGradient(4.9*pa,0,5.5*pa,0);bg.addColorStop(0,wh);bg.addColorStop(1,red);x.fillStyle=bg;x.fillRect(0,h*0.37,5.5*pa,h*0.26);
       for(const sd of [1,-1]){const Y=a=>sd>0?h*a:h*(1-a);
-        // weisses Feld hinter der Tür, oben mit schräger Kante
-        x.fillStyle=wh;x.beginPath();x.moveTo(4.85*pa,Y(0.13));x.lineTo(5.75*pa,Y(0.13));x.lineTo(5.75*pa,Y(0.42));x.lineTo(4.85*pa,Y(0.42));x.closePath();x.fill();
-        // rotes Kreuz und Schriftzug im Feld
-        x.save();x.translate(5.3*pa,Y(0.255));if(sd<0)x.rotate(Math.PI);x.scale(1,pr/pa);x.fillStyle=red;const c=0.36*pa,k=c*0.32;x.fillRect(c*0.15-k/2,-c/2,k,c);x.fillRect(c*0.15-c/2,-k/2,c,k);
-        x.font=`800 ${0.2*pa}px Arial`;x.textAlign='right';x.textBaseline='middle';x.fillText('rega',-c*0.2,0);x.restore();
-        // «Rega 1414» unter dem Cockpitfenster, Kennzeichen am Heckausleger
-        x.save();x.translate(3.1*pa,Y(0.33));if(sd<0)x.rotate(Math.PI);x.scale(1,pr/pa);x.fillStyle=wh;x.font=`800 ${0.16*pa}px Arial`;x.textAlign='center';x.textBaseline='middle';x.fillText('Rega 1414',0,0);x.restore();
-        x.save();x.translate(8.6*pa,Y(0.2));if(sd<0)x.rotate(Math.PI);x.scale(1,pr/pa*2.4);x.fillStyle=wh;x.font=`800 ${0.2*pa}px Arial`;x.textAlign='center';x.textBaseline='middle';x.fillText('HB-ZRR',0,0);x.restore();}
-      // Blechstösse
-      x.strokeStyle='rgba(0,0,0,0.08)';x.lineWidth=1;for(const zz of [2.55,4.82,5.8,7.3])x.strokeRect(zz*pa,0,1,h);});
-    const fus=new THREE.Mesh(fuselageGeo(L,PRh,48),paintMat({map:tex,roughness:0.3,metalness:0.1}));fus.position.z=1.2;fus.castShadow=true;body.add(fus);parts.body=body;
-    const glassBody=new THREE.Group();glassBody.position.z=1.2;body.add(glassBody);
-    // Frontscheibe (gross, mit Mittelsteg) und Cockpit-Türfenster
-    {const F=0.04,P=0.035;glassBody.add(windshield(L,PRh,0.83,{ta:0.95/L,tb:3.35/L,maxPd:84,yl:-0.1,yh:1.0,fr:F,fn:(z,y,s)=>{
-        const zs=yy=>2.0+(yy-0.1)*0.55,ws=y>-0.05+(2.0-z)*0.18&&z>1.0&&z<zs(y),sw=y>0.02&&y<0.78&&z>=zs(y)&&z<3.25-(y-0.02)*0.18;if(!ws&&!sw)return 0;
-        if(ws&&y>-0.05+(2.0-z)*0.18+F&&z>1.0+F&&z<zs(y)-P&&s>P)return 2;if(sw&&y>0.02+F&&y<0.78-F&&z>zs(y)+P&&z<3.25-(y-0.02)*0.18-F)return 2;return 1;}},'wsRega2'));
-     const pp={body:glassBody};cabinGlass(L,PRh,{x0:3.62/L,x1:4.3/L,pitch:0.66,ww:0.52,wh:0.64,a:0.2,dph:0.34},'cwRega2',pp);if(pp.cabin)parts.cabin=pp.cabin;}
-    // Seitenkästen (Sponsons) unten, weiss
-    const whm=new THREE.MeshStandardMaterial({color:new THREE.Color(wh),roughness:0.3,metalness:0.1}),rdm=new THREE.MeshStandardMaterial({color:new THREE.Color(red),roughness:0.28,metalness:0.12});
-    for(const sd of [1,-1]){const sp=new THREE.Mesh(new THREE.CapsuleGeometry(0.3,2.5,6,14).rotateX(Math.PI/2),whm);sp.scale.set(0.85,0.75,1);sp.position.set(sd*0.72,-0.52,Z(4.2));body.add(sp);}
-    // Triebwerkshaube mit Auslässen
-    const cowl=new THREE.Mesh(new THREE.CapsuleGeometry(0.52,2.6,6,16).rotateX(Math.PI/2),rdm);cowl.scale.set(1.05,0.62,1);cowl.position.set(0,1.18,Z(4.85));body.add(cowl);
-    const dk=new THREE.MeshStandardMaterial({color:0x1d1f22,roughness:0.6});
-    for(const sd of [1,-1]){const ex=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.24,0.7),dk);ex.position.set(sd*0.5,1.28,Z(5.9));body.add(ex);}
-    {const ch=new THREE.Mesh(new THREE.BoxGeometry(0.62,0.3,0.5),rdm);ch.position.set(0,1.15,Z(3.0));body.add(ch);}
-    // Seitenleitwerk (hoch, gepfeilt, Schweizerkreuz), Bauchflosse mit Schleifsporn, Höhenleitwerk mit Endscheiben
-    const finG=loft([{x:0,y:0,z:Z(10.15),c:1.25,t:0.12},{x:1.75,y:0,z:Z(10.15)+1.0,c:0.62,t:0.1}]);finG.rotateZ(Math.PI/2);finG.translate(0,0.66,0);finUV(finG);
-    body.add(new THREE.Mesh(finG,finMats(['cross',red,red,'',wh])));
-    const vf=loft([{x:0,y:0,z:Z(10.3),c:0.9,t:0.1},{x:0.55,y:0,z:Z(10.3)+0.35,c:0.5,t:0.1}]);vf.rotateZ(-Math.PI/2);vf.translate(0,0.5,0);body.add(new THREE.Mesh(vf,rdm));
-    {const sk=new THREE.Mesh(new THREE.TorusGeometry(0.45,0.03,6,16,Math.PI*0.6),dk);sk.rotation.set(0,Math.PI/2,Math.PI*0.9);sk.position.set(0,0.3,Z(10.65));body.add(sk);}
-    const stab=new THREE.Mesh(new THREE.BoxGeometry(2.3,0.07,0.62),rdm);stab.position.set(0,0.66,Z(9.3));body.add(stab);
-    for(const sd of [1,-1]){const ep=new THREE.Mesh(new THREE.BoxGeometry(0.05,0.42,0.55),rdm);ep.position.set(sd*1.15,0.72,Z(9.33));body.add(ep);}
-    // Heckrotor links am Leitwerk (2 Blätter)
-    {const tr=new THREE.Group();tr.position.set(-0.24,1.45,Z(10.95));tr.rotation.y=Math.PI/2;const tb=new THREE.MeshStandardMaterial({color:0x2b2f35,roughness:0.5});
-      for(let i=0;i<2;i++){const bl=new THREE.Mesh(new THREE.BoxGeometry(0.13,0.98,0.03).translate(0,0.5,0),tb);bl.rotation.z=i*Math.PI;tr.add(bl);const tp=new THREE.Mesh(new THREE.BoxGeometry(0.131,0.16,0.031).translate(0,0.92,0),new THREE.MeshStandardMaterial({color:0xffffff}));tp.rotation.z=i*Math.PI;tr.add(tp);}
-      tr.add(new THREE.Mesh(new THREE.CylinderGeometry(0.07,0.07,0.12,10).rotateX(Math.PI/2),M.metal));body.add(tr);parts.fans.push(tr);}
-    // Fahrwerk: Räder mit weissen Schneekufen (vorne doppelt unter dem Cockpit, hinten unter den Seitenkästen)
-    const sk=new THREE.MeshStandardMaterial({color:0x8d939a,roughness:0.4,metalness:0.6});
-    const leg=(x,y0,z,len)=>{strut(body,new THREE.Vector3(x,y0,z),new THREE.Vector3(x,y0-len,z),0.05,sk);wheel(0.2,0.12,body,x,y0-len,z);
-      const ski=new THREE.Mesh(new THREE.BoxGeometry(0.42,0.05,1.25),whm);ski.position.set(x,y0-len-0.17,z+0.05);body.add(ski);const tipS=new THREE.Mesh(new THREE.BoxGeometry(0.42,0.05,0.3),whm);tipS.position.set(x,y0-len-0.11,z-0.68);tipS.rotation.x=-0.45;body.add(tipS);};
-    for(const sd of [1,-1]){leg(sd*0.28,-0.7,Z(1.9),0.42);leg(sd*0.98,-0.62,Z(4.9),0.52);}
+        // weisses Feld auf den Heck-Klapptüren mit Kreuz und Schriftzug
+        x.fillStyle=wh;x.beginPath();x.moveTo(4.55*pa,Y(0.12));x.lineTo(5.25*pa,Y(0.12));x.lineTo(5.6*pa,Y(0.3));x.lineTo(4.55*pa,Y(0.3));x.closePath();x.fill();
+        x.save();x.translate(4.95*pa,Y(0.205));if(sd<0)x.rotate(Math.PI);x.scale(1,pr/pa);x.fillStyle=red;const c=0.3*pa,k=c*0.32;x.fillRect(c*0.1-k/2,-c/2,k,c);x.fillRect(c*0.1-c/2,-k/2,c,k);
+        x.font=`800 ${0.17*pa}px Arial`;x.textAlign='right';x.textBaseline='middle';x.fillText('rega',-c*0.12,0);x.restore();
+        // «Rega 1414» unter dem Seitenfenster, Kennzeichen am Heckausleger
+        x.save();x.translate(3.3*pa,Y(0.335));if(sd<0)x.rotate(Math.PI);x.scale(1,pr/pa);x.fillStyle=wh;x.font=`800 ${0.15*pa}px Arial`;x.textAlign='center';x.textBaseline='middle';x.fillText('Rega 1414',0,0);x.restore();
+        x.save();x.translate(8.1*pa,Y(0.21));if(sd<0)x.rotate(Math.PI);x.scale(1,pr/pa*2.6);x.fillStyle=wh;x.font=`800 ${0.19*pa}px Arial`;x.textAlign='center';x.textBaseline='middle';x.fillText('HB-ZRR',0,0);x.restore();
+        // Türfugen: Cockpittür, Schiebetür mit Laufschiene, Klapptüren
+        x.strokeStyle='rgba(0,0,0,0.32)';x.lineWidth=2;
+        const dr=(z0,z1,a0,a1)=>{x.strokeRect(z0*pa,Math.min(Y(a0),Y(a1)),(z1-z0)*pa,Math.abs(Y(a1)-Y(a0)));};
+        dr(1.42,2.46,0.07,0.36);dr(2.56,4.32,0.08,0.39);x.fillStyle='rgba(0,0,0,0.25)';x.fillRect(2.5*pa,Y(0.085)-2,2.4*pa,3);
+        x.beginPath();x.moveTo(4.5*pa,Y(0.07));x.lineTo(5.6*pa,Y(0.3));x.stroke();}
+      x.strokeStyle='rgba(0,0,0,0.08)';x.lineWidth=1;for(const zz of [1.38,4.45,6.2,7.9])x.strokeRect(zz*pa,0,1,h);});
+    const fus=new THREE.Mesh(fuselageGeo(L,PRh,56),paintMat({map:tex,roughness:0.28,metalness:0.08}));fus.position.z=fz;fus.castShadow=true;body.add(fus);parts.body=body;
+    const glassBody=new THREE.Group();glassBody.position.z=fz;body.add(glassBody);
+    // Frontscheiben bis aufs Dach (Mittelsteg), darunter Kinnfenster; Seitenfenster in Cockpit-, Schiebe- und Hecktür
+    {const F=0.04;glassBody.add(windshield(L,PRh,0.88,{ta:0.01/L,tb:1.9/L,maxPd:150,yl:-0.62,yh:1.1,fr:F,fn:(z,y,s,pd)=>{
+        // Frontscheiben: unten waagrecht, A-Pfosten leicht nach hinten geneigt, oben bis zur Dachkante, breiter Mittelsteg
+        const zA=1.34+(y+0.08)*0.3,yT=0.97-Math.max(0,z-1.15)*0.25;
+        if(y>-0.08&&y<yT&&z<zA&&pd<118){if(y<-0.08+F||yT-y<F||zA-z<F||s<0.05)return 1;return 2;}
+        if(y>-0.15&&y<=-0.08&&z<zA&&pd<128)return 1;
+        // Kinnfenster unten links und rechts, dazwischen lackierter Bug
+        const zc=1.05+(y+0.15)*0.35;if(y>-0.66&&y<=-0.15&&z<zc&&z>0.16&&s>0.2&&pd<150){if(y>-0.15-F||y<-0.66+F||zc-z<F||s<0.2+F||z<0.16+F)return 1;return 2;}
+        return 0;}},'wsH145'));
+     const pp={body:glassBody};
+     cabinGlass(L,PRh,{x0:1.96/L,x1:1.96/L,pitch:1,ww:0.86,wh:0.84,y:0.44,pw:5,dph:0.62,fr:1.08},'cwH145a',pp);
+     cabinGlass(L,PRh,{x0:3.3/L,x1:3.3/L,pitch:1,ww:1.12,wh:0.74,y:0.47,pw:5,dph:0.58,fr:1.08},'cwH145b',pp);
+     cabinGlass(L,PRh,{x0:4.62/L,x1:4.62/L,pitch:1,ww:0.42,wh:0.52,y:0.5,pw:4,dph:0.5,fr:1.12},'cwH145c',pp);
+     if(pp.cabin)parts.cabin=pp.cabin;}
+    const whm=new THREE.MeshStandardMaterial({color:new THREE.Color(wh),roughness:0.3,metalness:0.1}),rdm=paintMat({color:new THREE.Color(red),roughness:0.26,metalness:0.08}),dk=new THREE.MeshStandardMaterial({color:0x1d1f22,roughness:0.6});
+    // Triebwerks- und Getriebehaube: flach, breit, vorne gerundet, seitliche Lufteinlässe, zwei Abgasrohre nach hinten aussen
+    {const rr=(w,h,r)=>{const q=new THREE.Shape(),x0=-w/2,y0=0;q.moveTo(x0+r,y0);q.lineTo(-x0-r,y0);q.quadraticCurveTo(-x0,y0,-x0,y0+r);q.lineTo(-x0,h-r);q.quadraticCurveTo(-x0,h,-x0-r,h);q.lineTo(x0+r,h);q.quadraticCurveTo(x0,h,x0,h-r);q.lineTo(x0,y0+r);q.quadraticCurveTo(x0,y0,x0+r,y0);return q;};
+     const cg=new THREE.ExtrudeGeometry(rr(1.12,0.36,0.16),{depth:3.2,bevelEnabled:true,bevelThickness:0.34,bevelSize:0.12,bevelSegments:6,curveSegments:8});cg.translate(0,0,-1.6);cg.computeVertexNormals();
+     const cw=new THREE.Mesh(cg,rdm);cw.position.set(0,1.0,Z(3.95));cw.castShadow=true;body.add(cw);
+     for(const sd of [1,-1]){for(let k=0;k<5;k++){const sl=new THREE.Mesh(new THREE.BoxGeometry(0.025,0.035,0.5),dk);sl.position.set(sd*0.69,1.15+k*0.055,Z(2.95));body.add(sl);}
+       const ex=new THREE.Mesh(new THREE.CylinderGeometry(0.14,0.12,0.42,16,1,true),M.hot);ex.rotation.set(Math.PI/2+0.25,0,sd*0.55);ex.position.set(sd*0.42,1.42,Z(5.62));body.add(ex);
+       const ri=new THREE.Mesh(new THREE.TorusGeometry(0.14,0.02,6,16),M.metal);ri.rotation.set(0.25,sd*0.55,0);ri.position.set(sd*0.52,1.46,Z(5.8));body.add(ri);}}
+    // Fenestron: Ummantelung mit rundem Kanal, 10 Blätter, Finne darüber, Bauchsporn darunter
+    {const sh=new THREE.Shape(),P2=[[9.75,0.6],[10.15,0.3],[10.6,0.2],[11.05,0.32],[11.35,0.68],[11.42,1.05],[11.25,1.42],[10.95,1.62],[10.55,1.62],[10.15,1.2],[9.75,0.9]];
+     P2.forEach(([zz,yy],k)=>{if(k)sh.lineTo(Z(zz),yy);else sh.moveTo(Z(zz),yy);});sh.closePath();
+     const hole=new THREE.Path();hole.absarc(Z(10.82),0.94,0.5,0,Math.PI*2,true);sh.holes.push(hole);
+     const fg=new THREE.ExtrudeGeometry(sh,{depth:0.26,bevelEnabled:true,bevelThickness:0.06,bevelSize:0.06,bevelSegments:3,curveSegments:24});fg.translate(0,0,-0.13);fg.rotateY(-Math.PI/2);fg.computeVertexNormals();
+     const fe=new THREE.Mesh(fg,rdm);fe.castShadow=true;body.add(fe);
+     const duct=new THREE.Mesh(new THREE.CylinderGeometry(0.5,0.5,0.38,32,1,true).rotateZ(Math.PI/2),dk);duct.position.set(0,0.94,Z(10.82));body.add(duct);
+     const tr=new THREE.Group();tr.position.set(0,0.94,Z(10.82));tr.rotation.y=Math.PI/2;const tb=new THREE.MeshStandardMaterial({color:0x3a3e44,roughness:0.45,metalness:0.5,side:THREE.DoubleSide});
+     for(let i=0;i<10;i++){const bl=new THREE.Mesh(new THREE.BoxGeometry(0.09,0.4,0.015).translate(0,0.27,0),tb);bl.rotation.z=i*Math.PI/5+(i%2?0.08:0);bl.rotation.y=0.35;tr.add(bl);}
+     tr.add(new THREE.Mesh(new THREE.CylinderGeometry(0.1,0.1,0.14,14).rotateX(Math.PI/2),M.metal));body.add(tr);parts.fans.push(tr);
+     for(const sd of [1,-1])for(const k of [0,1,2]){const st2=new THREE.Mesh(new THREE.BoxGeometry(0.04,0.03,0.5),dk);const a=k*2.1+0.4;st2.position.set(sd*0.12,0.94+Math.sin(a)*0.27,Z(10.82)+Math.cos(a)*0.27);st2.rotation.x=-a;body.add(st2);}
+     const finG=loft([{x:0,y:0,z:Z(10.5),c:0.98,t:0.12},{x:0.92,y:0,z:Z(10.5)+0.62,c:0.56,t:0.1}]);finG.rotateZ(Math.PI/2);finG.translate(0,1.5,0);finUV(finG);
+     const fin=new THREE.Mesh(finG,finMats(['cross',red,red,'',wh]));fin.castShadow=true;body.add(fin);
+     const sk=new THREE.Mesh(new THREE.TorusGeometry(0.32,0.025,6,14,Math.PI*0.5),M.metal);sk.rotation.set(0,Math.PI/2,Math.PI*0.95);sk.position.set(0,0.42,Z(10.7));body.add(sk);}
+    // Höhenleitwerk mit schräg gestellten Endscheiben
+    {const hs=loft([{x:-1.22,y:0.82,z:Z(9.05),c:0.52,t:0.13},{x:1.22,y:0.82,z:Z(9.05),c:0.52,t:0.13}]);const m=new THREE.Mesh(hs,rdm);m.castShadow=true;body.add(m);
+     for(const sd of [1,-1]){const ep=loft([{x:0,y:0,z:Z(8.98),c:0.62,t:0.1},{x:0.46,y:0,z:Z(8.98)+0.16,c:0.42,t:0.1}]);ep.rotateZ(Math.PI/2);ep.rotateZ(-sd*0.3);ep.translate(sd*1.22,0.74,0);const e2=new THREE.Mesh(ep,rdm);e2.castShadow=true;body.add(e2);}}
+    // Kufenlandegestell: zwei gebogene Querrohre, Kufen mit hochgezogener Spitze
+    {const skm=new THREE.MeshStandardMaterial({color:0x8d939a,roughness:0.35,metalness:0.7}),yk=-1.272,xk=1.08;
+     for(const zz of [Z(1.75),Z(4.3)]){const c=new THREE.CatmullRomCurve3([[-xk,yk+0.02],[-xk+0.05,yk+0.25],[-0.82,-0.84],[0,-0.83],[0.82,-0.84],[xk-0.05,yk+0.25],[xk,yk+0.02]].map(([x,y])=>new THREE.Vector3(x,y,zz)));
+       const t=new THREE.Mesh(new THREE.TubeGeometry(c,40,0.045,8),skm);t.castShadow=true;body.add(t);}
+     for(const sd of [1,-1]){const c=new THREE.CatmullRomCurve3([[Z(5.0),yk],[Z(1.2),yk],[Z(0.7),yk+0.06],[Z(0.48),yk+0.24]].map(([z,y])=>new THREE.Vector3(sd*xk,y,z)));
+       const t=new THREE.Mesh(new THREE.TubeGeometry(c,40,0.045,8),skm);t.castShadow=true;body.add(t);
+       const step=new THREE.Mesh(new THREE.BoxGeometry(0.22,0.035,0.5),M.metal);step.position.set(sd*0.97,-1.0,Z(3.3));body.add(step);}}
     parts.gear.push({g:new THREE.Group(),fixed:true});
-    // Hauptrotor (4 Blätter) mit Unschärfescheibe
-    const mast=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.16,0.6,10),M.metal);mast.position.set(0,1.85,-0.6);body.add(mast);
-    const rot=new THREE.Group();rot.position.set(0,2.15,-0.6);const bm=new THREE.MeshStandardMaterial({color:0x2b2f35,roughness:0.5});
-    const rbG=loft([0.42,1.4,3.0,4.85,5.2,5.48].map((x,i)=>({x,y:0,z:-0.12+(i>=4?(x-4.85)*0.35:0),c:i===5?0.17:i===4?0.3:0.34,t:0.12})));rbG.rotateY(-Math.PI/2);
-    const rbM=new THREE.MeshStandardMaterial({map:canvasTex(128,8,(x,w,h)=>{x.fillStyle='#2a2d33';x.fillRect(0,0,w,h);x.fillStyle=red;x.fillRect(w*0.8,0,w*0.2,h);x.fillStyle='#d8dadc';x.fillRect(w*0.62,0,w*0.04,h);}),roughness:0.45,metalness:0.25,side:THREE.DoubleSide});
-    const blades=new THREE.Group();for(let i=0;i<4;i++){const b=new THREE.Mesh(rbG,rbM);b.rotation.y=i*Math.PI/2;b.rotation.z=0.02;blades.add(b);
-      // Blattanschluss (Grip) und Steuerstange
-      const gp=new THREE.Mesh(new THREE.BoxGeometry(0.16,0.14,0.55).translate(0,0,0.5),M.metal);gp.rotation.y=i*Math.PI/2;blades.add(gp);
-      const pl=new THREE.Mesh(new THREE.CylinderGeometry(0.018,0.018,0.32,6),M.metal);const a=i*Math.PI/2;pl.position.set(Math.sin(a)*0.28+Math.cos(a)*0.12,-0.18,Math.cos(a)*0.28-Math.sin(a)*0.12);blades.add(pl);}
-    const hub=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.34,0.2,16),M.metal);const cap=new THREE.Mesh(new THREE.SphereGeometry(0.16,14,8,0,Math.PI*2,0,Math.PI/2),M.metal);cap.position.y=0.1;rot.add(blades,hub,cap);
-    // Taumelscheibe (stehend) am Mast
-    {const sw=new THREE.Mesh(new THREE.CylinderGeometry(0.3,0.3,0.06,18),M.dark);sw.position.set(0,1.82,-0.6);body.add(sw);const sw2=new THREE.Mesh(new THREE.CylinderGeometry(0.26,0.26,0.05,18),M.metal);sw2.position.set(0,1.88,-0.6);body.add(sw2);}
+    // Hauptrotor: lagerloser Fünfblatt-Rotor, Blätter mit gepfeilter Spitze, grosser Rotorkopf-Deckel
+    const mast=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.16,0.5,12),M.metal);mast.position.set(0,1.78,-0.6);body.add(mast);
+    const rot=new THREE.Group();rot.position.set(0,2.1,-0.6);
+    const rbG=loft([0.55,1.4,3.0,4.7,5.15,5.5].map((x,i)=>({x,y:0,z:-0.14+(i>=4?(x-4.7)*0.42:0),c:i===5?0.16:i===4?0.28:0.33,t:0.11})));rbG.rotateY(-Math.PI/2);
+    const rbM=new THREE.MeshStandardMaterial({map:canvasTex(128,8,(x,w,h)=>{x.fillStyle='#2a2d33';x.fillRect(0,0,w,h);x.fillStyle='#f2c200';x.fillRect(w*0.84,0,w*0.16,h);x.fillStyle='#d8dadc';x.fillRect(w*0.66,0,w*0.03,h);}),roughness:0.45,metalness:0.25,side:THREE.DoubleSide});
+    const blades=new THREE.Group();for(let i=0;i<5;i++){const a=i*Math.PI*2/5;const b=new THREE.Mesh(rbG,rbM);b.rotation.y=a;b.rotation.z=0.02;blades.add(b);
+      // Steuermanschette über dem Biegebalken
+      const cf=new THREE.Mesh(new THREE.BoxGeometry(0.15,0.09,0.62).translate(0,0,0.55),rdm);cf.rotation.y=a;blades.add(cf);}
+    const hub=new THREE.Mesh(new THREE.CylinderGeometry(0.34,0.38,0.14,20),M.metal);const cap=new THREE.Mesh(new THREE.SphereGeometry(0.36,20,10,0,Math.PI*2,0,Math.PI/2),rdm);cap.scale.y=0.55;cap.position.y=0.07;rot.add(blades,hub,cap);
+    {const sw=new THREE.Mesh(new THREE.CylinderGeometry(0.28,0.28,0.06,18),M.dark);sw.position.set(0,1.66,-0.6);body.add(sw);}
     const disc=new THREE.Mesh(new THREE.CircleGeometry(5.55,48).rotateX(-Math.PI/2),new THREE.MeshBasicMaterial({color:0x1a1c20,transparent:true,opacity:0.16,depthWrite:false,side:THREE.DoubleSide}));disc.visible=false;rot.add(disc);
     body.add(rot);parts.rotor={g:rot,bl:blades,disc};
-    // Rettungswinde rechts über der Schiebetür, Suchscheinwerfer unter dem Bug, Antennen, Pitotrohre, Trittstufen
+    // Rettungswinde rechts über der Schiebetür, Suchscheinwerfer unter dem Bug, Antennen, Pitotrohre, Drahtschneider
     {const hm=new THREE.MeshStandardMaterial({color:0x2a2c30,roughness:0.5,metalness:0.4});
-     const arm=new THREE.Mesh(new THREE.BoxGeometry(0.75,0.09,0.12),hm);arm.position.set(0.95,1.08,Z(4.0));arm.rotation.z=-0.12;body.add(arm);
-     const drum=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,0.42,14).rotateX(Math.PI/2),rdm);drum.position.set(1.32,1.0,Z(4.0));body.add(drum);
-     const cab=new THREE.Mesh(new THREE.CylinderGeometry(0.008,0.008,0.5,4),hm);cab.position.set(1.32,0.72,Z(4.0));body.add(cab);
-     const hook=new THREE.Mesh(new THREE.TorusGeometry(0.05,0.015,6,12),M.metal);hook.position.set(1.32,0.44,Z(4.0));body.add(hook);
-     const sl=new THREE.Mesh(new THREE.CylinderGeometry(0.13,0.1,0.2,14).rotateX(Math.PI/2-0.4),M.dark);sl.position.set(0.22,-0.84,Z(2.6));body.add(sl);
-     const sg=new THREE.Mesh(new THREE.CircleGeometry(0.11,14),new THREE.MeshStandardMaterial({color:0xfff6e0,emissive:0x887a60,emissiveIntensity:0.4,roughness:0.1}));sg.position.set(0.22,-0.88,Z(2.5));sg.rotation.x=Math.PI-0.4+Math.PI/2;body.add(sg);
-     for(const [x,y,z,r] of [[0,0.8,Z(8.2),0],[0,-0.9,Z(4.0),Math.PI],[0,0.83,Z(9.3),0]]){const an=new THREE.Mesh(new THREE.BoxGeometry(0.03,0.22,0.16),hm);an.position.set(x,y,z);an.rotation.z=r;an.rotation.x=0.25;body.add(an);}
-     for(const sd of [1,-1]){const pt=new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.02,0.4,6).rotateX(Math.PI/2),M.metal);pt.position.set(sd*0.18,0.38,Z(0.75));body.add(pt);
-       const step=new THREE.Mesh(new THREE.BoxGeometry(0.06,0.04,0.36),M.metal);step.position.set(sd*1.03,-0.62,Z(3.95));body.add(step);}
-     const wc=new THREE.Mesh(new THREE.BoxGeometry(0.04,0.35,0.06),hm);wc.position.set(0,1.2,Z(2.55));wc.rotation.x=-0.5;body.add(wc);}
-    parts.eye=new THREE.Vector3(-0.38,0.45,-2.55);
-    parts.lights=navLights(body,[{p:[-1.0,-0.3,-0.4],c:[1,0.05,0.05],s:0.6},{p:[1.0,-0.3,-0.4],c:[0.05,1,0.2],s:0.6},{p:[0,2.45,Z(11.05)],c:[1,1,1],s:0.6},{p:[0,1.55,Z(6.1)],c:[1,0.1,0.05],beacon:1,s:0.7},{p:[0,-0.85,Z(3.4)],c:[1,0.1,0.05],beacon:1,s:0.7},{p:[0,2.5,Z(11.0)],c:[0,0,0],strobe:1,s:1.1}]);
-    parts.landing=new THREE.Vector3(0,-1,-2.6);root.userData.cgShift=0;
+     const arm=new THREE.Mesh(new THREE.BoxGeometry(0.75,0.09,0.12),hm);arm.position.set(1.0,1.12,Z(2.9));arm.rotation.z=-0.12;body.add(arm);
+     const drum=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.12,0.42,14).rotateX(Math.PI/2),rdm);drum.position.set(1.37,1.04,Z(2.9));body.add(drum);
+     const cab=new THREE.Mesh(new THREE.CylinderGeometry(0.008,0.008,0.5,4),hm);cab.position.set(1.37,0.76,Z(2.9));body.add(cab);
+     const hook=new THREE.Mesh(new THREE.TorusGeometry(0.05,0.015,6,12),M.metal);hook.position.set(1.37,0.48,Z(2.9));body.add(hook);
+     const sl=new THREE.Mesh(new THREE.CylinderGeometry(0.13,0.1,0.2,14).rotateX(Math.PI/2-0.4),M.dark);sl.position.set(0.25,-0.92,Z(1.5));body.add(sl);
+     const sg=new THREE.Mesh(new THREE.CircleGeometry(0.11,14),new THREE.MeshStandardMaterial({color:0xfff6e0,emissive:0x887a60,emissiveIntensity:0.4,roughness:0.1}));sg.position.set(0.25,-0.96,Z(1.4));sg.rotation.x=Math.PI-0.4+Math.PI/2;body.add(sg);
+     for(const [x,y,z,r] of [[0,0.96,Z(7.6),0],[0,-0.92,Z(3.6),Math.PI],[0.25,-0.93,Z(2.9),Math.PI]]){const an=new THREE.Mesh(new THREE.BoxGeometry(0.03,0.22,0.16),hm);an.position.set(x,y,z);an.rotation.z=r;an.rotation.x=0.25;body.add(an);}
+     for(const sd of [1,-1]){const pt=new THREE.Mesh(new THREE.CylinderGeometry(0.012,0.02,0.4,6).rotateX(Math.PI/2),M.metal);pt.position.set(sd*0.2,0.78,Z(0.95));body.add(pt);}
+     const wc=new THREE.Mesh(new THREE.BoxGeometry(0.04,0.4,0.06),hm);wc.position.set(0,1.32,Z(1.45));wc.rotation.x=-0.5;body.add(wc);
+     const wc2=new THREE.Mesh(new THREE.BoxGeometry(0.04,0.35,0.06),hm);wc2.position.set(0,-0.98,Z(0.9));wc2.rotation.x=0.5;body.add(wc2);}
+    parts.eye=new THREE.Vector3(-0.4,0.4,Z(1.72));
+    parts.lights=navLights(body,[{p:[-1.24,0.98,Z(9.05)],c:[1,0.05,0.05],s:0.6},{p:[1.24,0.98,Z(9.05)],c:[0.05,1,0.2],s:0.6},{p:[0,2.45,Z(11.15)],c:[1,1,1],s:0.6},{p:[0,1.6,Z(5.95)],c:[1,0.1,0.05],beacon:1,s:0.7},{p:[0,-0.92,Z(4.2)],c:[1,0.1,0.05],beacon:1,s:0.7},{p:[0,2.48,Z(11.1)],c:[0,0,0],strobe:1,s:1.1}]);
+    parts.landing=new THREE.Vector3(0,-0.98,Z(1.3));root.userData.cgShift=0;
   }
   if(AIRLINER[id])buildAirliner(AIRLINER[id],body,parts,root,P);
   body.traverse(o=>{if(o.isMesh&&!o.material.transparent)o.castShadow=true;});

@@ -69,7 +69,7 @@ const LESSONS_ZS=[
  {id:'l8',name:'Airliner-Landung Zürich',plane:'l320',ap:'ZRH14',rev:false,air:true,hour:16,weather:'fair',
   brief:'Grosse Flugzeuge reagieren träge: früh stabilisieren, Fahrwerk und Klappen rechtzeitig, maximal ca. 25° Querneigung.',
   steps:[
-   {t:'Du fliegst die LUIS L-320. Fahrwerk ausfahren (G).',ok:c=>c.F.gear},
+   {t:'Du fliegst die LUIS L-321neo. Fahrwerk ausfahren (G).',ok:c=>c.F.gear},
    {t:'Klappen auf Stufe 3 (F) – Stufe für Stufe, Tempo unter 300 km/h halten.',ok:c=>c.F.flaps>=3,info:c=>`${kmh(c.V)} km/h · Klappen ${c.F.flaps}`},
    {t:'Stabil auf dem Gleitpfad bleiben (6 s). Tipp: Autopilot U hilft beim Ausrichten – vor der Landung ausschalten!',hold:6,ok:c=>c.glide&&c.glide.ok,info:c=>c.glide?c.glide.txt:''},
    {t:'Lande auf Piste 14. Bremse mit B – grosse Jets nutzen dabei Schubumkehr.',land:true,ok:c=>c.F.onGround&&c.V<2.5&&c.G.lastTouch,info:c=>c.glide?c.glide.txt:`${kmh(c.V)} km/h`},
