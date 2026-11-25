@@ -56,7 +56,8 @@ export function stepFlight(F,ctl,dt,W){
     F.groundTime+=dt;
     _e.setFromQuaternion(F.q,'YXZ');let pitch=_e.x,yaw=_e.y;
     const vl0=F.vel.x*-Math.sin(yaw)+F.vel.z*-Math.cos(yaw);
-    const sr=P.steer*clamp(Math.abs(vl0)/2.5,0,1)/(1+Math.abs(vl0)/16);
+    // Bugradsteuerung: beim Rollen kräftig (enge Kurven auf dem Vorfeld), bei Startgeschwindigkeit nur noch fein
+    const sr=P.steer*1.9*clamp(Math.abs(vl0)/2,0,1)/(1+Math.abs(vl0)/9+(vl0/25)*(vl0/25));
     yaw+=(F.rud+F.ail*0.4)*sr*dt*(vl0<0?-1:1);
     const rotOK=Vs>P.Vr*0.82;
     if(F.elev>0.12&&rotOK)pitch+=F.elev*P.rotRate*dt;
@@ -72,7 +73,12 @@ export function stepFlight(F,ctl,dt,W){
     const N=Math.max(0,P.mass*G-Math.max(0,lift*Math.cos(pitch)));
     const rw=W.runwayAt(F.pos.x,F.pos.z),mu=F.water?0.045+Math.min(0.06,Math.abs(F.vel.length())*0.0016):rw?0.015:0.06;
     const rev=F.brake&&P.reverse&&Math.abs(vl)>12?P.Tmax*P.reverse:0;F.reversing=rev>0;
-    const a=(_F.dot(ff)-Math.sign(vl)*rev)/P.mass,fr=(mu*N+(F.brake&&!F.water?P.brakeMu*N:0))/P.mass;
+    const a=(_F.dot(ff)-Math.sign(vl)*rev)/P.mass;let fr=(mu*N+(F.brake&&!F.water?P.brakeMu*N:0))/P.mass;
+    // Autobrake nach dem Aufsetzen: bremst auf die gewählte Verzögerung (LO 1,7 / MED 3 / MAX 6 m/s²); aus bei Bremse, Schub oder Rollgeschwindigkeit
+    if(F.abOn){if(F.brake||F.thr>0.3||Math.abs(vl)<7||F.water)F.abOn=false;else{const dec=[0,1.7,3,6][F.autobrake|0],have=mu*N/P.mass+rev/P.mass-a*Math.sign(vl);fr+=clamp(dec-have,0,P.brakeMu*G);F.abAct=true;}}
+    if(!F.abOn)F.abAct=false;
+    // Rollhilfe: mit Flughilfe abseits der Piste höchstens etwa 30 Knoten
+    if(F.assist&&!rw&&!F.water&&Math.abs(vl)>15&&F.thr<0.5)fr+=Math.min(2,(Math.abs(vl)-15)*0.8);
     if(Math.abs(vl)<0.05&&Math.abs(a)<=fr)vl=0;else{vl+=a*dt;const dv=fr*dt;if(Math.abs(vl)<=dv)vl=0;else vl-=Math.sign(vl)*dv;}
     const ay=_F.y/P.mass;
     F.vel.copy(ff).multiplyScalar(vl);
@@ -150,7 +156,7 @@ export function stepFlight(F,ctl,dt,W){
     if(pitch<-5)return crash(F,'Mit der Nase voran aufgeschlagen.');
     const rw=W.runwayAt(F.pos.x,F.pos.z),zone=W.airportZone(F.pos.x,F.pos.z);
     if(!rw&&!zone){if(W.slopeAt(F.pos.x,F.pos.z)<0.09&&sink<P.ldgSink*1.2&&Vs<P.Vr*1.4)F.events.push({type:'outlanding'});else return crash(F,'Bodenberührung im Gelände.');}
-    F.onGround=true;F.pos.y=gh+P.gearH;F.vel.y=0;F.susp={y:0,v:-Math.min(sink,4.5),r:clamp(_e.z,-0.2,0.2)};
+    F.onGround=true;F.pos.y=gh+P.gearH;F.vel.y=0;F.susp={y:0,v:-Math.min(sink,4.5),r:clamp(_e.z,-0.2,0.2)};if(F.autobrake)F.abOn=true;
     _e.set(clamp(_e.x,0,P.tailStrike*DEG),_e.y,F.susp.r,'YXZ');F.q.setFromEuler(_e);F.w.set(0,0,0);
     if(F.airTime>4)F.events.push({type:'touchdown',sink,pitch,bank,x:F.pos.x,z:F.pos.z,rw:rw||zone,grass:!rw});
   }

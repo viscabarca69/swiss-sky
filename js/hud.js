@@ -30,6 +30,13 @@ export function createHUD(){
     // Flugzeugsymbol
     c.fillStyle='#111';c.strokeStyle='#ffd23f';c.lineWidth=3;c.beginPath();c.moveTo(cx-90,cy);c.lineTo(cx-38,cy);c.lineTo(cx-38,cy+10);c.moveTo(cx+90,cy);c.lineTo(cx+38,cy);c.lineTo(cx+38,cy+10);c.stroke();
     c.fillStyle='#ffd23f';c.fillRect(cx-4,cy-4,8,8);
+    // ILS: Gleitpfad rechts, Landekurs unten (magenta Raute)
+    if(d.ils){const I=d.ils;c.save();c.strokeStyle='#fff';c.fillStyle='#fff';c.lineWidth=1.5;
+      for(let k=-2;k<=2;k++){if(!k)continue;c.beginPath();c.arc(404,cy+k*28,3,0,7);c.stroke();c.beginPath();c.arc(cx+k*28,294,3,0,7);c.stroke();}
+      c.fillRect(398,cy-1,12,2);c.fillRect(cx-1,288,2,12);
+      const dia=(x,y)=>{c.beginPath();c.moveTo(x,y-7);c.lineTo(x+6,y);c.lineTo(x,y+7);c.lineTo(x-6,y);c.closePath();c.fill();};c.fillStyle='#ff4fd8';
+      dia(404,cy+clampN(I.gs,-2.5,2.5)*28);dia(cx+clampN(I.loc,-2.5,2.5)*28,294);
+      c.font='700 10px Inter,sans-serif';c.textAlign='left';c.fillStyle='#ff4fd8';c.fillText('ILS '+I.rwy,100,286);c.restore();}
     // Modus
     c.font='700 11px Inter,sans-serif';c.textAlign='center';c.fillStyle=d.assist?'#3dff8a':'#9aa4b0';c.fillText(d.assist?(d.prot?'FLUGHILFE · SCHUTZ':'FLUGHILFE'):'MANUELL',cx,22);
     if(d.stall&&(Date.now()%600<380)){c.fillStyle='#ff3030';c.font='900 26px Inter,sans-serif';c.fillText('STALL',cx,cy+70);}

@@ -4,6 +4,10 @@ const TWR={LSZH:{n:'Zürich Turm',c:true},LSME:{n:'Emmen Turm',c:true},LSZC:{n:'
 const DIG=['null','eins','zwo','drei','vier','fünf','sechs','sieben','acht','neun'];
 const spell=s=>String(s).split('').map(c=>/[0-9]/.test(c)?DIG[+c]:c==='-'?'':({H:'Hotel',B:'Bravo',K:'Kilo',A:'Alpha',L:'Lima',S:'Sierra',E:'Echo',F:'Foxtrot',T:'Tango',I:'India',U:'Uniform',P:'Papa',C:'Charlie'}[c]||c)).join(' ');
 export const CALLSIGN={alpina:'HB-KAL',saentis:'HB-SAE',titlis:'HB-FTI',foehn:'LUIS 42',l320:'LUIS 320',l330:'LUIS 330',l340:'LUIS 340',l346:'LUIS 346',l350:'LUIS 350',l380:'LUIS 380',l32n:'LUIS 324',l747:'LUIS 747'};
+// Frequenzen: aus dem Platzkürzel abgeleitet (Turm 118–119, Rollkontrolle 121, Abflug/Anflug 119–127), fest pro Platz
+const hsh=s=>{let h=7;for(const c of String(s))h=(h*31+c.charCodeAt(0))>>>0;return h;};
+const FQ=(icao,kind)=>{const h=hsh(icao+kind),b={twr:[118.0,1.9],gnd:[121.6,0.4],dep:[125.0,2.9],app:[119.0,1.9],atis:[128.0,1.9]}[kind];return(b[0]+(h%Math.round(b[1]/0.025))*0.025).toFixed(3);};
+const fqSpeak=f=>f.replace('.',' Komma ').split('').map(c=>/[0-9]/.test(c)?DIG[+c]:c).join(' ').replace(/\s+/g,' ');
 const csSpeak=cs=>cs.startsWith('LUIS')?'Luis '+spell(cs.slice(5)):spell(cs);
 
 const ZONE_V=128;// m/s ≈ 460 km/h ≈ 250 Knoten
@@ -16,10 +20,10 @@ export function createATC(audio,opts){
   try{pickVoice();speechSynthesis.onvoiceschanged=pickVoice;}catch(e){}
   const el=()=>document.getElementById('radio');
   function render(){const r=el();if(!r)return;if(!A.on){r.style.display='none';return;}r.style.display='';
-    r.innerHTML=A.log.slice(-3).map(m=>`<div class="rl ${m.who}"><b>${m.who==='twr'?(m.nm||A.twrName).toUpperCase():'DU'}</b><span>${m.txt}</span></div>`).join('')+(A.prompt?`<div class="rp">${A.prompt}</div>`:'');}
+    r.innerHTML=A.log.slice(-3).map(m=>`<div class="rl ${m.who}"><b>${m.who!=='me'?(m.nm||A.twrName).toUpperCase():'DU'}</b><span>${m.txt}</span></div>`).join('')+(A.prompt?`<div class="rp">${A.prompt}</div>`:'');}
   function say(who,txt,spk,delay){A.queue.push({at:A.t+(delay||0),who,txt,spk,nm:A.twrName});}
   function flush(){while(A.queue.length&&A.queue[0].at<=A.t){const m=A.queue.shift();A.log.push(m);if(A.log.length>12)A.log.shift();audio.radio&&audio.radio();
-      if(opts.voice()&&m.spk){try{const u=new SpeechSynthesisUtterance(m.spk);u.lang=voice?voice.lang:'de-DE';if(voice)u.voice=voice;u.rate=m.who==='twr'?1.12:1.05;u.pitch=m.who==='twr'?0.85:1.15;u.volume=0.9;speechSynthesis.speak(u);}catch(e){}}
+      if(opts.voice()&&m.spk){try{const u=new SpeechSynthesisUtterance(m.spk);u.lang=voice?voice.lang:'de-DE';if(voice)u.voice=voice;u.rate=m.who!=='me'?1.12:1.05;u.pitch=m.who!=='me'?0.85:1.15;u.volume=0.9;speechSynthesis.speak(u);}catch(e){}}
       render();}}
   function windTxt(W,metric){const d=Math.round(W.dir/10)*10||360,s=W.base??W.spd;if(s<1.5)return['Wind ruhig','Wind ruhig'];
     const v=metric?Math.round(s*3.6):Math.round(s*1.944),u=metric?'km/h':'Knoten';const g=W.gustTxt?' Böen':'';
@@ -27,7 +31,7 @@ export function createATC(audio,opts){
   A.start=c=>{A.on=c.enabled!==false;A.log=[];A.pen=[];A.queue=[];A.t=0;A.c=c;A.cs=c.callsign;A.csS=csSpeak(c.callsign);
     A.phase=c.onGround?'ground':'enroute';A.clrTO=false;A.clrLdg=false;A.reqTO=false;A.reqLdg=false;A.home=c.startAP;A.dest=c.dest;A.warned={};A.prompt='';A.depCall=false;A.leftHome=false;A.zone=null;A.fast={};
     A.twrA=c.onGround?c.startAP:c.dest;A.twrName=A.twrA?(TWR[A.twrA.icao]||{n:A.twrA.name+' Turm'}).n:'Funk';render();
-    if(A.on&&c.onGround){const T=TWR[A.home.icao];if(T&&!T.c)A.clrTO=true;}};
+    if(A.on&&c.onGround){const T=TWR[A.home.icao];if(T&&!T.c)A.clrTO=true;if(T&&T.c)A.atisAt=1.5;}};
   A.stop=()=>{A.on=false;render();try{speechSynthesis.cancel();}catch(e){}};
   const ctrl=Ap=>Ap&&(TWR[Ap.icao]||{}).c;
   // Ziel-Flugplatz: Missionsziel oder nächster Platz
@@ -35,6 +39,10 @@ export function createATC(audio,opts){
   function rwyFor(Ap,F){let best=null,bd=1e9;for(const R of AIRPORTS.filter(x=>x.icao===Ap.icao)){const l=toLocal(R,F.pos.x,F.pos.z);const sd=l.along<0?1:-1;
       const hd=Math.atan2(F.vel.x,-F.vel.z),rh=Math.atan2(R.sin*sd,R.cos*sd);let dh=Math.abs(((hd-rh)*180/Math.PI+540)%360-180);const sc=Math.abs(l.across)/1000+dh/30;if(sc<bd){bd=sc;best={R,sd,name:sd>0?R.rwyA:R.rwyB};}}return best;}
   A.press=(ctx)=>{if(!A.on)return;const F=ctx.F;const metric=ctx.metric;
+    // Rollfreigabe: wer abseits der Piste steht (Gate, Vorfeld), bekommt zuerst die Freigabe zum Rollhalt
+    if(A.phase==='ground'&&!A.reqTO&&!A.taxiClr&&ctrl(A.home)&&!ctx.onRwy){A.taxiClr=true;const Ap=A.home,rw=ctx.startRwy,gn=(TWR[Ap.icao]||{n:Ap.name}).n.replace(/ Turm$/,' Rollkontrolle');
+      say('me',`${gn}, ${A.cs}, rollbereit, Information ${A.atisL||'Alpha'}.`,`${gn}, ${A.csS}, rollbereit, Information ${A.atisL||'Alpha'}`);
+      say('twr',`${A.cs}, rollen Sie zum Rollhalt Piste ${rw}, folgen Sie den grünen Rollweglichtern, halten Sie vor der Piste. Am Rollhalt Turm ${FQ(Ap.icao,'twr')}.`,`${A.csS}, rollen Sie zum Rollhalt Piste ${spell(rw)}, halten Sie vor der Piste, am Rollhalt Turm ${fqSpeak(FQ(Ap.icao,'twr'))}`,1.6);return;}
     if(A.phase==='ground'&&!A.reqTO){A.reqTO=true;const Ap=A.home,rw=ctx.startRwy;A.twrA=Ap;A.twrName=(TWR[Ap.icao]||{n:Ap.name}).n;
       say('me',`${A.twrName}, ${A.cs}, bereit zum Abflug Piste ${rw}.`,`${A.twrName}, ${A.csS}, bereit zum Abflug Piste ${spell(rw)}`);
       const [wt,ws]=windTxt(ctx.wind,metric);
@@ -69,11 +77,16 @@ export function createATC(audio,opts){
     if(ev==='touchdown'){const Ap=ctx.ap;if(Ap&&A.phase!=='ground'){if(ctrl(Ap)&&!(A.clrLdg&&A.ldgAP&&A.ldgAP.icao===Ap.icao))penalty('Landung ohne Freigabe');A.phase='landed';A.twrA=Ap;A.twrName=(TWR[Ap.icao]||{n:Ap.name}).n;}}
     if(ev==='stopped'&&A.phase==='landed'&&!A.warned.wel){A.warned.wel=1;say('twr',`${A.cs}, willkommen in ${A.twrA.name}! Verlassen Sie die Piste und rollen Sie zum Vorfeld.`,`${A.csS}, willkommen in ${A.twrA.name}`,1.2);}};
   A.update=(dt,ctx)=>{if(!A.on)return;A.t+=dt;flush();const F=ctx.F;let p='';A.zone=null;
+    // ATIS: Wetter und Piste vor dem Start (Buchstabe wechselt stündlich)
+    if(A.atisAt!=null&&A.t>=A.atisAt){A.atisAt=null;const Ap=A.home,L='ABCDEFGHIKLMNOPQRSTUVWXYZ'[(new Date().getHours()+hsh(Ap.icao))%24],LN={A:'Alpha',B:'Bravo',C:'Charlie',D:'Delta',E:'Echo',F:'Foxtrot',G:'Golf',H:'Hotel',I:'India',K:'Kilo',L:'Lima',M:'Mike',N:'November',O:'Oscar',P:'Papa',Q:'Quebec',R:'Romeo',S:'Sierra',T:'Tango',U:'Uniform',V:'Victor',W:'Whiskey',X:'X-Ray',Y:'Yankee',Z:'Zulu'}[L];
+      A.atisL=LN;const [wt,ws]=windTxt(ctx.wind,ctx.metric),T=Math.round(ctx.temp??14),q=1007+hsh(Ap.icao+new Date().toDateString())%17,vis=ctx.vis||'über 10 km';
+      A.twrName=Ap.name+' ATIS';say('atis',`${Ap.name} Information ${LN}: Piste ${ctx.startRwy} in Betrieb, ${wt}, Sicht ${vis}, Temperatur ${T}°, QNH ${q}. Turm ${FQ(Ap.icao,'twr')}, Rollkontrolle ${FQ(Ap.icao,'gnd')}.`,
+        `${Ap.name} Information ${LN}, Piste ${spell(ctx.startRwy)} in Betrieb, ${ws}, Temperatur ${T} Grad, Q N H ${spell(String(q))}`);A.twrName=(TWR[Ap.icao]||{n:Ap.name}).n;}
     const key=ctx.pad?'L3 / Create':'T';
     if(A.phase==='ground'){if(!A.reqTO)p=`Funk: ${key} drücken – Startfreigabe anfordern`;else if(!A.clrTO)p='Warte auf Startfreigabe …';
       if(A.waitTO&&!A.clrTO&&!(ctx.traffic&&ctx.traffic.busy(A.home,ctx.startRwyObj,'dep'))){A.waitTO=false;A.clrTO=true;const [wt,ws]=windTxt(ctx.wind,ctx.metric);say('twr',`${A.cs}, ${wt}, Piste ${ctx.startRwy}, Start frei.`,`${A.csS}, ${ws}, Piste ${spell(ctx.startRwy)}, Start frei`,0.5);}}
     else if(!F.onGround){
-      if(A.phase==='departure'&&ctx.agl>450&&!A.warned.dep){A.warned.dep=1;A.phase='enroute';if(ctrl(A.home)){A.depCall=true;say('twr',`${A.cs}, kontaktieren Sie die Abflugkontrolle. Auf Wiederhören!`,`${A.csS}, kontaktieren Sie die Abflugkontrolle, auf Wiederhören`);}}
+      if(A.phase==='departure'&&ctx.agl>450&&!A.warned.dep){A.warned.dep=1;A.phase='enroute';if(ctrl(A.home)){A.depCall=true;say('twr',`${A.cs}, kontaktieren Sie die Abflugkontrolle auf ${FQ(A.home.icao,'dep')}. Auf Wiederhören!`,`${A.csS}, kontaktieren Sie die Abflugkontrolle auf ${fqSpeak(FQ(A.home.icao,'dep'))}, auf Wiederhören`);}}
       if(A.depCall)p=`Funk: ${key} drücken – Abflugkontrolle rufen`;
       if(A.home&&!A.leftHome&&Math.hypot(F.pos.x-A.home.x,F.pos.z-A.home.z)>16000)A.leftHome=true;
       const Ap=target(F);

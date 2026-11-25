@@ -13,13 +13,35 @@ export function createWeather(scene){
   let lastCam=null;const off=new Float32Array(N*3);
   Wx.set=(cfg,rainAmt,snow)=>{Wx.cfg={dir:cfg.dir??240,spd:cfg.spd||0,gust:cfg.gust||0,turb:cfg.turb||0};Wx.rain=rainAmt||0;Wx.snow=!!snow;rain.visible=Wx.rain>0;rain.material.color.set(Wx.snow?0xffffff:0xb8c6d4);rain.material.opacity=Wx.snow?0.85:0.18+0.22*Wx.rain;lastCam=null;};
   // Wind am Ort (agl: Höhe über Grund) – mit Böen und Grenzschicht
+  // Bergwind aus dem Gelände (alle 0,3 s neu): Lee-Rotor und Abwind hinter Graten, Hangaufwind auf der Luvseite,
+  // Talwind am Nachmittag (warme Luft strömt talaufwärts), Föhn verstärkt alles
+  Wx.mtn={lee:0,lift:0,vx:0,vz:0,t:0,txt:''};
+  Wx.terrain=(dt,pos,S,hour)=>{const M=Wx.mtn;M.t-=dt;if(M.t>0)return;M.t=0.3;const c=Wx.cfg,d=c.dir*DEG,sp=c.spd;
+    const ux=Math.sin(d),uz=-Math.cos(d);// Richtung, aus der der Wind kommt
+    const g0=S.heightAt(pos.x,pos.z);let lee=0,lift=0;
+    if(sp>3.5){let ridge=-1e9,rd=0;for(const r of [500,1000,1600,2400,3200]){const h=S.heightAt(pos.x+ux*r,pos.z+uz*r);if(h>ridge){ridge=h;rd=r;}}
+      const over=ridge-g0,below=ridge+350-pos.y;
+      if(over>250&&below>0)lee=Math.min(1,(over-250)/600)*Math.min(1,below/350)*Math.min(1,1.6-rd/3200)*Math.min(1.5,sp/10);
+      // Luv: Gelände steigt in Windrichtung an → Hangaufwind
+      const hd=S.heightAt(pos.x-ux*700,pos.z-uz*700);const rise=hd-g0,agl=pos.y-g0;
+      if(rise>120&&agl<rise+400)lift=Math.min(3.5,(rise/700)*sp*0.9)*Math.max(0,1-Math.max(0,agl-rise)/400);}
+    M.lee=lee;M.lift=lift;
+    // Talwind: 11–18 Uhr in Bergtälern, talaufwärts (zum höheren Gelände), bis 600 m über Grund
+    const day=hour==null?0:Math.max(0,Math.sin((hour-10.5)/8*Math.PI));let vx=0,vz=0;
+    if(day>0&&g0>350){const e=S.heightAt(pos.x+1500,pos.z),w=S.heightAt(pos.x-1500,pos.z),n=S.heightAt(pos.x,pos.z-1500),so=S.heightAt(pos.x,pos.z+1500);
+      const relief=Math.max(e,w,n,so)-g0;if(relief>300){const gx=(e-w),gz=(so-n),gl=Math.hypot(gx,gz)||1,k=3.5*day*Math.min(1,relief/900)*Math.max(0,1-(pos.y-g0)/600);vx=gx/gl*k;vz=gz/gl*k;}}
+    M.vx=vx;M.vz=vz;M.txt=lee>0.35?'Lee-Turbulenz':lift>1.2?'Hangaufwind':Math.hypot(vx,vz)>1.5?'Talwind':'';};
   Wx.update=(dt,agl)=>{Wx.t+=dt;const t=Wx.t,c=Wx.cfg;
     const gu=c.gust*(0.55*Math.max(0,Math.sin(t*0.53+ph[0]))+0.3*Math.sin(t*1.37+ph[1])+0.15*Math.sin(t*3.1+ph[2]));
     const dirv=c.dir+(c.turb*14)*Math.sin(t*0.23+ph[3]);const bl=agl==null?1:Math.min(1,0.55+0.45*Math.max(0,agl)/300);
     const sp=Math.max(0,(c.spd+gu))*bl;const d=dirv*DEG;
-    Wx.wind.set(-Math.sin(d)*sp,c.turb*1.6*Math.sin(t*0.9+ph[4])*Math.sin(t*2.3),Math.cos(d)*sp);Wx.cur={dir:(dirv+360)%360,spd:sp,base:c.spd*bl};return Wx.wind;};
+    const M=Wx.mtn,le=M.lee,fo=c.spd>=14?1.5:1;
+    // im Lee: Abwind bis 4 m/s mit kräftigen Wirbeln; Föhn macht die Böen härter
+    const leeV=le*(-2.2*fo+1.8*Math.sin(t*1.7+ph[2])*Math.sin(t*0.6))*Math.min(1,c.spd/8),leeH=le*c.spd*0.45*fo*Math.sin(t*1.3+ph[0]);
+    Wx.wind.set(-Math.sin(d)*sp+M.vx+leeH*Math.cos(d),c.turb*1.6*Math.sin(t*0.9+ph[4])*Math.sin(t*2.3)+leeV+M.lift,Math.cos(d)*sp+M.vz+leeH*Math.sin(d));
+    Wx.cur={dir:(dirv+360)%360,spd:sp,base:c.spd*bl};return Wx.wind;};
   // Turbulenz-Stösse auf die Drehraten
-  Wx.kick=(F,dt)=>{const k=Wx.cfg.turb;if(!k||F.onGround)return;const s=Math.min(1,F.vel.length()/60);
+  Wx.kick=(F,dt)=>{const k=Wx.cfg.turb+Wx.mtn.lee*(Wx.cfg.spd>=14?1.6:1.1);if(!k||F.onGround)return;const s=Math.min(1,F.vel.length()/60);
     F.w.x+=(Math.random()-0.5)*k*0.9*dt*s+Math.sin(Wx.t*2.7+ph[1])*k*0.25*dt;F.w.z+=(Math.random()-0.5)*k*1.4*dt*s+Math.sin(Wx.t*1.9+ph[2])*k*0.4*dt;};
   Wx.updateRain=(dt,cam)=>{if(!rain.visible)return;const cp=cam.position;let cv=new THREE.Vector3();if(lastCam&&dt>0)cv.copy(cp).sub(lastCam).divideScalar(dt);lastCam=cp.clone();
     const fall=new THREE.Vector3(Wx.wind.x,Wx.snow?-1.7:-11,Wx.wind.z),rel=fall.clone().sub(cv),sl=Wx.snow?Math.min(0.012,0.12/Math.max(rel.length(),1)):Math.min(0.06,3/Math.max(rel.length(),1));

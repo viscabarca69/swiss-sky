@@ -309,7 +309,7 @@ export function buildAirports(scene,S,addParked){
         const fl=[];for(let d=60;d<=420;d+=30){for(let k=-1;k<=1;k++)L(fromLocal(A,-sg*(A.len/2+d),k*1.6),A.elev+1+d*0.003,[1,0.95,0.8],1.8);if(d===300)for(let k=-5;k<=5;k++)L(fromLocal(A,-sg*(A.len/2+d),k*2.2),A.elev+1.8,[1,0.95,0.8],1.8);fl.push(fromLocal(A,-sg*(A.len/2+d),0));}
         const fp=[],fc=[],fs=[];fl.reverse().forEach(p=>{fp.push(p.x,A.elev+3,p.z);fc.push(0,0,0);fs.push(4);});const F=makeGlow(fp,fc,fs);scene.add(F);out.flashers.push(F);
         const pm=new THREE.MeshStandardMaterial({color:0x8d939a,roughness:0.5,metalness:0.5});for(let d=60;d<=420;d+=60){const pl=new THREE.Mesh(new THREE.CylinderGeometry(0.12,0.15,1+d*0.003,5),pm);place(A,pl,-sg*(A.len/2+d),0,A.elev+(1+d*0.003)/2);}}
-      if(A.small)continue;
+      // PAPI an jeder Piste, auch an kleinen Plätzen
       const pu={uI:{value:2.4},uScale:{value:500},uFogD:{value:0.00003}};const pp=[],pc=[],ps=[],units=[];
       for(let k=0;k<4;k++){const p=fromLocal(A,-sg*(A.len/2-aim),-sg*(A.w/2+14+k*9));pp.push(p.x,A.elev+1,p.z);pc.push(1,1,1);ps.push(4.5);units.push(new THREE.Vector3(p.x,A.elev+1,p.z));}
       const P=makeGlow(pp,pc,ps,pu);scene.add(P);out.papi.push({P,units,thr:[3.5,3.17,2.83,2.5],u:pu});
