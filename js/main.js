@@ -26,6 +26,7 @@ import {createWeather,WIND_PRESETS} from './weather.js';
 import {createATC,CALLSIGN} from './atc.js';
 import {createTraffic} from './traffic.js';
 import {createAttractions} from './attractions.js';
+import {buildHelipads} from './helipads.js';
 import {EffectComposer} from 'three/addons/postprocessing/EffectComposer.js';
 import {Lensflare,LensflareElement} from 'three/addons/objects/Lensflare.js';
 import {RenderPass} from 'three/addons/postprocessing/RenderPass.js';
@@ -70,7 +71,7 @@ const wx=createWeather(scene);
 const atc=createATC(audio,{voice:()=>save.settings.voice!==false,onPenalty:t=>{toast('Regelverstoss: '+t,5000);pad.rumble(0.3,0.6,250);},onInfo:t=>toast(t,6500)});
 const nav=createMenuNav();
 const pad=createGamepad((on,P)=>{toast(on?`Controller verbunden${P.isPS?' (PlayStation)':''} – los geht's!`:'Controller getrennt',3500);document.body.classList.toggle('haspad',on);if(state==='menu')renderSettings();});
-let S,world,env,airports,WF,cityGlow,traffic,attr,groundT=null;const cityU={uI:{value:0},uScale:{value:500},uFogD:{value:0.00003}};
+let S,world,env,airports,WF,cityGlow,traffic,attr,groundT=null,helipads=null;const cityU={uI:{value:0},uScale:{value:500},uFogD:{value:0.00003}};
 const prog=(p,t)=>{$('lbar').style.width=(p*100).toFixed(1)+'%';if(t)$('lstep').textContent=t;if(window.__desk)window.__desk.progress(Math.min(1,p),t);};
 let deskOn=!!document.getElementById('desk');
 window.__deskPlay=()=>{deskOn=false;audio.init();last=performance.now();};
@@ -90,11 +91,13 @@ async function boot(){
     composer.addPass(new RenderPass(scene,cam));bloom=new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),0.3,0.5,2.2);composer.addPass(bloom);composer.addPass(new OutputPass());}
   prog(0.9,'Flughäfen werden gebaut');await new Promise(r=>setTimeout(r,0));
   airports=buildAirports(scene,S,addParked);
-  traffic=createTraffic(scene,S,buildModel,animateModel,PLANES);traffic.prewarm();
+  try{helipads=buildHelipads(scene,S,world.heavy);}catch(e){console.warn('Landeplätze',e);}
+  traffic=createTraffic(scene,S,buildModel,animateModel,PLANES,helipads);traffic.prewarm();
   attr=createAttractions(scene,S,{collected:ewIds(),area:AREA_ID,realCover:world.inReal});
   try{groundT=createGround(scene,S,Q);}catch(e){console.warn('Bodenverkehr',e);}
   {const cl=world.cityLights,n=cl.length/3,col=[],sz=[];for(let i=0;i<n;i++){const r=Math.random();col.push(1,0.72+r*0.2,0.38+r*0.25);sz.push(4+r*4);}cityGlow=makeGlow(cl,col,sz,cityU);scene.add(cityGlow);}
-  WF={heightAt:S.heightAt,slopeAt:S.slopeAt,isLake:S.isLake,waterLevel:S.waterLevel,groundAt:S.groundAt,
+  // Landeplattformen (Spitaldach, Hütte) zählen als Boden
+  WF={heightAt:(x,z)=>{const h=S.heightAt(x,z),d=helipads&&helipads.deckAt(x,z);return d!=null&&d>h?d:h;},slopeAt:S.slopeAt,isLake:S.isLake,waterLevel:S.waterLevel,groundAt:S.groundAt,
     runwayAt:(x,z)=>{for(const A of AIRPORTS){const l=toLocal(A,x,z);if(Math.abs(l.across)<A.w/2+3&&Math.abs(l.along)<A.len/2+6)return A;}return null;},
     airportZone:(x,z)=>{for(const A of AIRPORTS){const l=toLocal(A,x,z);if(Math.abs(l.across)<A.flatW-8&&Math.abs(l.along)<A.flatL-8)return A;}return null;}};
   env.setTime(20.0,'fair');
@@ -1354,11 +1357,25 @@ function regaSetup(o){
     const pp=new THREE.Mesh(new THREE.CapsuleGeometry(0.25,1,4,8),new THREE.MeshStandardMaterial({color:0xff7a1a}));pp.position.set(0,1.5,2.4);g.add(pp);g.add(makeGlow([0,3,2.4],[1,0.4,0.1],[9]));
     scene.add(g);G.dyn.push(g);o.mesh=g;}}
 const M_POLE=new THREE.MeshStandardMaterial({color:0xd0d4d8,roughness:0.4,metalness:0.6});
-function regaTick(F,dt){const o=G.obj[G.oi];if(!o)return;
+function regaTick(F,dt){
+  if(helipads&&F.onGround){const P=helipads.near(F.pos.x,F.pos.z,12);if(P&&G.padDone!==P.n){G.padDone=P.n;audio.chime();toast(`Gelandet: ${P.n}${P.k==='huette'?' ('+Math.round(P.y)+' m ü. M.)':P.roof?' – Dachlandeplatz':''}`,3200);if(G.flog)G.flog.pads=(G.flog.pads||0)+1;}}
+  else if(helipads&&!F.onGround&&G.padDone&&F.pos.y-S.groundAt(F.pos.x,F.pos.z)>40)G.padDone=null;
+  winchTick(F,dt);
+  const o=G.obj[G.oi];if(!o)return;
   for(const q of G.obj){if(q.sm){const a=q.sm.geometry.attributes.position.array;for(let i=0;i<a.length;i+=3){a[i+1]+=dt*(6+i%5);a[i]+=dt*((WF.wind?WF.wind.x:0)*0.5);a[i+2]+=dt*((WF.wind?WF.wind.z:0)*0.5);if(a[i+1]>160){a[i+1]=0;a[i]=(Math.random()-0.5)*5;a[i+2]=(Math.random()-0.5)*5;}}q.sm.geometry.attributes.position.needsUpdate=true;}}
   const d=Math.hypot(F.pos.x-o.x,F.pos.z-o.z);
   if(o.type==='hland'){if(F.onGround&&d<o.r){G.hw=(G.hw||0)+dt;if(G.hw>=o.wait){G.hw=0;G.oi++;audio.chime();pad.rumble(0.2,0.4,200);toast(o.kind==='pad'?'Patient übergeben – Einsatz erfolgreich!':'Patient versorgt und an Bord – jetzt ab ins Spital!',3500);}}else if(!F.onGround)G.hw=0;}
   if(o.type==='hover'){const agl=F.pos.y-F.P.gearH-o.y;if(!F.onGround&&d<o.r&&agl<o.h&&F.vel.length()<4){G.hw=(G.hw||0)+dt;if(G.hw>=o.wait){G.hw=0;G.oi++;audio.chime();toast('Person mit der Seilwinde geborgen – ab ins Unispital!',3500);}}else G.hw=Math.max(0,(G.hw||0)-dt*0.5);}}
+// Seilwinde: beim Schweben über dem Bergungsort fährt der Retter am Seil hinunter und kommt mit der Person wieder hoch
+function winchTick(F,dt){const o=G.obj[G.oi],on=o&&o.type==='hover'&&G.model&&G.model.userData.parts;
+  if(!on){if(G.winch){G.winch.g.visible=false;}return;}
+  if(!G.winch){const g=new THREE.Group(),rope=new THREE.Mesh(new THREE.CylinderGeometry(0.02,0.02,1,5).translate(0,-0.5,0),new THREE.MeshStandardMaterial({color:0x222222}));
+    const man=()=>{const m=new THREE.Group(),b=new THREE.Mesh(new THREE.CapsuleGeometry(0.22,0.9,4,8),new THREE.MeshStandardMaterial({color:0xd7263d,roughness:0.6}));b.position.y=-0.75;m.add(b);
+      const h=new THREE.Mesh(new THREE.SphereGeometry(0.16,10,8),new THREE.MeshStandardMaterial({color:0xf2f2f2}));h.position.y=-0.1;m.add(h);return m;};
+    const m1=man(),m2=man();m2.children[0].material=new THREE.MeshStandardMaterial({color:0x2a5ea8});m2.position.x=0.4;g.add(rope,m1,m2);scene.add(g);G.dyn.push(g);G.winch={g,rope,m1,m2};}
+  const W=G.winch,hp=new THREE.Vector3(1.37,0.95,-1.6);G.model.localToWorld(hp);const gy=o.y,L0=Math.max(2,hp.y-gy-1.6);
+  const f=clamp((G.hw||0)/o.wait,0,1),down=f<0.5?f*2:2-f*2,L=Math.max(0.6,L0*down);W.g.visible=true;W.g.position.copy(hp);
+  W.rope.scale.y=L;W.m1.position.y=-L;W.m2.visible=f>0.5;W.m2.position.y=-L-0.1;}
 // ---------- Gate, Pushback, Rollen ----------
 function setupGate(){const F=G.F;G.tug=new THREE.Group();const tb=new THREE.Mesh(new THREE.BoxGeometry(2.6,1.3,5.2),new THREE.MeshStandardMaterial({color:0xf2c200,roughness:0.5}));tb.position.y=0.95;G.tug.add(tb);
   const cb=new THREE.Mesh(new THREE.BoxGeometry(2.2,1.0,1.6),new THREE.MeshStandardMaterial({color:0x22262c,roughness:0.3,metalness:0.4}));cb.position.set(0,2.0,1.4);G.tug.add(cb);
@@ -1632,7 +1649,7 @@ function loop(now){
   if(T-(parkT||0)>0.5){parkT=T;for(const p of PARKED){p.m.visible=!p.gate&&p.m.position.distanceToSquared(cam.position)<81e6;}}
   world.updateTrees(cam.position);if(orthoUp)orthoUp(cam.position,cam.position.y-S.groundAt(cam.position.x,cam.position.z));
   airports.update(G&&G.cam!==1?G.F.pos:cam.position,T,glowU.uScale.value,glowU.uFogD.value);
-  cityU.uI.value=env.night*1.25;cityU.uScale.value=glowU.uScale.value;cityU.uFogD.value=glowU.uFogD.value;
+  cityU.uI.value=env.night*1.25;if(helipads){helipads.setNight(env.night);if(G&&G.F)helipads.update(G.F.pos,1/30);}cityU.uScale.value=glowU.uScale.value;cityU.uFogD.value=glowU.uFogD.value;
   world.waterTex.offset.x=T*0.006;world.waterTex.offset.y=T*0.004;
   nightU.value=env.night;airports.setNight(env.night);world.water.material.envMapIntensity=1.15*(1-0.8*env.night);const X=world.extras;if(X){if(X.updateWater)X.updateWater(cam,T,env);X.updateBoats(dt,T);}
   if(window.__camHold){const h=window.__camHold;cam.position.set(h[0],h[1],h[2]);cam.up.set(0,1,0);cam.lookAt(h[3],h[4],h[5]);cam.fov=h[6]||50;cam.near=1;cam.updateProjectionMatrix();}
@@ -1641,7 +1658,7 @@ function loop(now){
 }
 const P_shadow=P=>P.shadow;
 boot().then(()=>requestAnimationFrame(loop)).catch(e=>{console.error(e);$('lstep').textContent='Fehler: '+e.message;});
-window.__af={get taxiDbg(){return planTaxi.dbg;},apEngage,get taxiPath(){return G.taxiPath;},get taxiMs(){return G.taxiMs;},startPushback,animateModel,AIRLINER,get attr(){return attr;},buildObjectives,AIRPORTS,fromLocal,get airports(){return airports;},apprTest:(icao,i)=>{setAppr(approachOptions(icao)[i]);return G.appr;},apprMenu,mapXf,get groundT(){return groundT;},MSH,THUMB,TH,thumbTick,setWp,clearWp,MV,mapZoom,mapCenter,__jm:jobMission,career,showMenu,setSub,renderCareer,openCareer,getDaily,showBrief,finish,award,toXZ,get S(){return S;},MISSIONS,get traffic(){return traffic;},atc,keyAction,startReplay,get env(){return env;},renderer,get world(){return world;},get composer(){return composer;},set noComp(v){window.__noComp=v;},buildModel,PLANES,THREE,get G(){return G;},startFlight,K,get state(){return state;},MISSIONS,cam,scene,simAP:(sec)=>{for(let t=0;t<sec;t+=1/30){const F=G.F;K.clear();const A=G.obj.find(o=>o.type==='land')?.ap||(G.lesson&&AP[G.lesson.ap]);if(!A)break;const l=toLocal(A,F.pos.x,F.pos.z);const sgn0=(F.vel.x*A.sin-F.vel.z*A.cos)>=0?1:-1;const d=(-sgn0*A.len/2-l.along)*sgn0;const ideal=A.elev+F.P.gearH+Math.max(0,d+150)*0.0524;const agl=F.pos.y-F.P.gearH-S.heightAt(F.pos.x,F.pos.z);
+window.__af={get helipads(){return helipads;},get taxiDbg(){return planTaxi.dbg;},apEngage,get taxiPath(){return G.taxiPath;},get taxiMs(){return G.taxiMs;},startPushback,animateModel,AIRLINER,get attr(){return attr;},buildObjectives,AIRPORTS,fromLocal,get airports(){return airports;},apprTest:(icao,i)=>{setAppr(approachOptions(icao)[i]);return G.appr;},apprMenu,mapXf,get groundT(){return groundT;},MSH,THUMB,TH,thumbTick,setWp,clearWp,MV,mapZoom,mapCenter,__jm:jobMission,career,showMenu,setSub,renderCareer,openCareer,getDaily,showBrief,finish,award,toXZ,get S(){return S;},MISSIONS,get traffic(){return traffic;},atc,keyAction,startReplay,get env(){return env;},renderer,get world(){return world;},get composer(){return composer;},set noComp(v){window.__noComp=v;},buildModel,PLANES,THREE,get G(){return G;},startFlight,K,get state(){return state;},MISSIONS,cam,scene,simAP:(sec)=>{for(let t=0;t<sec;t+=1/30){const F=G.F;K.clear();const A=G.obj.find(o=>o.type==='land')?.ap||(G.lesson&&AP[G.lesson.ap]);if(!A)break;const l=toLocal(A,F.pos.x,F.pos.z);const sgn0=(F.vel.x*A.sin-F.vel.z*A.cos)>=0?1:-1;const d=(-sgn0*A.len/2-l.along)*sgn0;const ideal=A.elev+F.P.gearH+Math.max(0,d+150)*0.0524;const agl=F.pos.y-F.P.gearH-S.heightAt(F.pos.x,F.pos.z);
   const wantVs=F.onGround?0:agl>6?clamp((ideal-F.pos.y)*0.15-0.0524*F.vel.length(),-6,2):-0.5;const vs=F.vel.y;if(!F.onGround){if(vs<wantVs-0.3)K.add('ArrowDown');else if(vs>wantVs+0.3)K.add('ArrowUp');}
   {const sgn=(F.vel.x*A.sin-F.vel.z*A.cos)>=0?1:-1;const ac=l.across*sgn;const vlat=(F.vel.x*A.cos+F.vel.z*A.sin)*sgn;const want=clamp(-ac*0.05,-25,25);const err=want-vlat;const bk=(F.bank||0)/DEG;const wb=clamp(-err*3,-20,20);if(F.onGround){if(ac>2)K.add('KeyA');else if(ac<-2)K.add('KeyD');}else if(bk<wb-3)K.add('KeyA');else if(bk>wb+3)K.add('KeyD');}const V=F.vel.length();if(!F.onGround){if(V<F.P.Vref*1.05)K.add('KeyW');else if(V>F.P.Vref*1.15)K.add('KeyS');}else{K.add('KeyS');K.add('KeyB');}
   step(1/30);if(G.done||F.crashed)break;}K.clear();const F=G.F;return{v:F.vel.length(),y:F.pos.y,gnd:F.onGround,done:G.done,crashed:F.crashed,lt:G.lastTouch&&G.lastTouch.letter,oi:G.oi,n:G.obj.length};},

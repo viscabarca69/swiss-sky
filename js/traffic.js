@@ -17,7 +17,7 @@ const HUBS=[
 const GA_TYPES=['alpina','saentis','alpina','titlis'];
 const CRUISE_TYPES=['l32n','l350','l330','l320','l747','l380','l346'];
 const rnd=(a,b)=>a+Math.random()*(b-a);
-export function createTraffic(scene,S,buildModel,animateModel,PLANES){
+export function createTraffic(scene,S,buildModel,animateModel,PLANES,HP){
   const T={list:[],pool:{},on:true,n:0,hubs:[],ga:{},timer:{ga:20,gl:15,rega:60,cruise:4}};
   const DUMMY={on:false,list:[],prewarm(){},reset(){},update(){},hit(){return null},dots(){return[]},busy(){return null}};
   for(const H of HUBS){const C=APM[H.c];if(!C)continue;const arr=H.arr.filter(([id])=>APM[id]),dep=H.dep.filter(([id])=>APM[id]);if(!arr.length&&!dep.length)continue;
@@ -100,7 +100,13 @@ export function createTraffic(scene,S,buildModel,animateModel,PLANES){
       base:g+rnd(700,1100),climb:rnd(0.8,2.2),t:0,life:rnd(240,420),cs:'HB-1'+Math.floor(rnd(100,999)),drift:new THREE.Vector2(rnd(-2,2),rnd(-2,2))};
     a.pos=new THREE.Vector3();T.list.push(a);}
   // Rega: Überflug auf ~250 m über Grund an der Spielerin / am Spieler vorbei
-  function spawnRega(F){if(!PLANES.rega)return;const ang=Math.random()*Math.PI*2,off=rnd(-3000,3000),L=rnd(14000,20000);
+  function spawnRega(F){if(!PLANES.rega)return;
+    // bevorzugt: Einsatzflug zu einem Spital in der Nähe, Landung auf dem Landeplatz
+    const sp=HP&&HP.pads.filter(P=>P.k==='spital'&&Math.hypot(P.x-F.pos.x,P.z-F.pos.z)<18000);
+    if(sp&&sp.length){const P=sp[Math.floor(Math.random()*sp.length)],ang=Math.random()*Math.PI*2,L=rnd(9000,14000),dx=Math.cos(ang),dz=Math.sin(ang),pts=[];
+      for(let s=L;s>=900;s-=500){const x=P.x+dx*s,z=P.z+dz*s;let h=0;for(const q of [-500,0,500])h=Math.max(h,S.heightAt(x+dx*q,z+dz*q));pts.push({x,z,y:Math.max(h+260,P.y+200),v:68,g:0});}
+      const gh=PLANES.rega.gearH;pts.push({x:P.x+dx*450,z:P.z+dz*450,y:P.y+90,v:30,g:0},{x:P.x+dx*120,z:P.z+dz*120,y:P.y+25,v:12,g:0},{x:P.x+dx*25,z:P.z+dz*25,y:P.y+gh+3,v:4,g:0},{x:P.x,z:P.z,y:P.y+gh,v:1,g:1});
+      const path=mkPath(pts,false);const a={kind:'rega',id:'rega',P:PLANES.rega,m:getModel('rega'),path,u:0,v:68,t:0,cs:'Rega '+(1+Math.floor(Math.random()*15)),pad:P};a.pos=new THREE.Vector3();pathPose(a,0);T.list.push(a);return;}const ang=Math.random()*Math.PI*2,off=rnd(-3000,3000),L=rnd(14000,20000);
     const dx=Math.cos(ang),dz=Math.sin(ang),ox=F.pos.x-dz*off,oz=F.pos.z+dx*off,pts=[];
     for(let s=-L/2;s<=L/2;s+=500){const x=ox+dx*s,z=oz+dz*s;let h=0;for(const q of [-500,0,500])h=Math.max(h,S.heightAt(x+dx*q,z+dz*q));pts.push({x,z,y:h+260,v:68,g:0});}
     const path=mkPath(pts,false);const a={kind:'rega',id:'rega',P:PLANES.rega,m:getModel('rega'),path,u:0,v:68,t:0,cs:'Rega '+(1+Math.floor(Math.random()*15))};a.pos=new THREE.Vector3();pathPose(a,0);T.list.push(a);}
@@ -158,17 +164,17 @@ export function createTraffic(scene,S,buildModel,animateModel,PLANES){
         const p=fromLocal(A,a.sd*a.s,a.sd*(a.off||0));a.pos.set(p.x,a.y,p.z);
         a.m.position.copy(a.pos);a.m.rotation.set(0,0,0);a.m.rotation.order='YXZ';a.m.rotation.y=yawOf(A,a.sd)-(a.yawOff||0)*a.sd;a.m.rotation.x=a.pitch;
         animateModel(a.m,{flapPos:a.flap,gearPos:a.gear,rpm:0.6,groundSpeed:(a.phase==='roll'||a.phase==='rollout'||a.phase==='exit')?a.v:0,landingLight:night>0.2,night},t,dt);}
-      else if(a.kind==='ga'||a.kind==='rega'){const Pt=a.path,vT=a.kind==='rega'?68:Pt.at(a.u,'v');a.v+=(vT-a.v)*Math.min(1,dt*0.8);
+      else if(a.kind==='ga'||a.kind==='rega'){const Pt=a.path,vT=a.kind==='rega'&&!a.pad?68:Pt.at(a.u,'v');a.v+=(vT-a.v)*Math.min(1,dt*0.8);if(a.landT!=null){a.landT+=dt;a.v=0;}
         a.u+=a.v*dt/Pt.L;
         if(a.kind==='ga'){if(a.u>=1)a.u-=1;
           // Platzrunden, solange der Spieler in der Nähe ist; steht der Spieler auf der Piste, macht das Kleinflugzeug Platz
           const far=Math.hypot(F.pos.x-A.x,F.pos.z-A.z)>26000,blocked=playerOn(A,F)&&F.onGround&&(a.u>0.8||a.u<0.05)&&a.pos.distanceTo(F.pos)>1500;
           if(far||blocked){drop(i);delete T.ga[A.id];continue;}
           const g=Pt.at(a.u,'g')>0.5;a.leg=a.u>0.82||a.u<0.02?'final':'circuit';a.gear=1;a.flap=a.leg==='final'||g?0.6:0.2;}
-        else if(a.u>=1){drop(i);continue;}
+        else if(a.u>=1){if(a.pad){a.u=0.99999;if(a.landT==null)a.landT=0;if(a.landT>40){drop(i);continue;}}else{drop(i);continue;}}
         pathPose(a,dt);if(a.kind==='ga'&&a.air===false)a.pos.y=Math.max(a.pos.y,S.heightAt(a.pos.x,a.pos.z)+P.gearH);
         a.m.position.copy(a.pos);a.m.rotation.order='YXZ';a.m.rotation.set(a.pitch,a.yaw,a.bank);
-        animateModel(a.m,{flapPos:a.flap||0,gearPos:a.gear??1,rpm:a.kind==='rega'?0.85:0.7,groundSpeed:a.air?0:a.v,landingLight:night>0.2,night},t,dt);}
+        animateModel(a.m,{flapPos:a.flap||0,gearPos:a.gear??1,rpm:a.kind==='rega'?(a.landT>8?0.25:0.85):0.7,groundSpeed:a.air?0:a.v,landingLight:night>0.2,night},t,dt);}
       else if(a.kind==='glider'){if(a.t>a.life||Math.hypot(F.pos.x-a.cx,F.pos.z-a.cz)>26000){drop(i);continue;}
         const w=24/a.R;a.ph+=a.dir*w*dt;a.cx+=a.drift.x*dt;a.cz+=a.drift.y*dt;const y=a.base+Math.min(900,a.t*a.climb);
         a.pos.set(a.cx+Math.cos(a.ph)*a.R,y,a.cz+Math.sin(a.ph)*a.R);
