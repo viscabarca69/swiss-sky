@@ -278,6 +278,8 @@ export const BADGES=[
   ['kapitaen','Kapitän','30 Sterne sammeln','👨‍✈️'],['gross','Grossraum','Mit dem L-380 landen','🐋'],['auftrag','Auftragsprofi','10 Aufträge erledigen','📦'],
   ['notfall','Notfallprofi','Alle drei Notfall-Missionen bestehen','🚨'],['loesch','Feuerwehr','Den Waldbrand am Bürgenstock löschen','🔥'],['segel','Thermikkönig','Mit dem Segler zum Pilatus und zurück','🦅'],['ziel','Punktlandung','Ziellandungen im Schnitt unter 10 m','📍'],
   ['rega','Lebensretter','Alle drei Rega-Einsätze erfüllen','🚁'],
+  ['plaetze','Alle Plätze','Auf allen Flugplätzen der Schweiz gelandet','🗺️'],['spital','Spitalflieger','Auf 5 Spital-Landeplätzen gelandet','🏥'],['gletscher','Gletscherflieger','Auf dem Aletschgletscher gelandet','🏔️'],
+  ['formation','Staffelpilot','Die Airshow-Formation geflogen','🛩'],['heimat','Heimatrunde','Die Heimatrunde Zofingen geflogen','🏡'],['autobahn','Strassenlandung','Die Notlandung auf der A2 geschafft','🛣️'],['logbuch','Vielflieger','50 Flüge im Logbuch','📒'],
   ['unter','Unternehmer','Insgesamt CHF 1 Mio. verdienen','💰'],['flotte','Flottenchef','Alle Flugzeuge besitzen','🛩️'],['tages','Tagesheld','Eine Tagesaufgabe erfüllen','📅']];
 
 // ---------- Teilen-Code ----------

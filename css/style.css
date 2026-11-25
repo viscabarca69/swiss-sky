@@ -43,6 +43,7 @@ h4{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--mut)
 .chip{background:rgba(255,255,255,.06);color:var(--txt);border:1px solid var(--line);padding:8px 12px;font-size:13px;font-weight:600;border-radius:9px;text-align:left}
 .chip small{display:block;color:var(--mut);font-size:11px;font-weight:500}
 .chip.sel{background:rgba(255,210,63,.14);border-color:var(--acc);color:#fff}
+.chip.locked{opacity:.5;cursor:not-allowed}
 .wide{width:100%;margin-top:22px;padding:15px;font-size:16px}
 .keys{display:grid;grid-template-columns:auto 1fr;gap:8px 14px;align-items:center;font-size:13.5px}
 .keys kbd{font-family:inherit;font-weight:700;background:rgba(255,255,255,.09);border:1px solid var(--line);border-radius:7px;padding:6px 10px;text-align:center;min-width:104px;font-size:12.5px}

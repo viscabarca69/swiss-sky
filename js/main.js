@@ -172,7 +172,7 @@ const ringMat=(fin)=>new THREE.MeshBasicMaterial({color:0xffffff,map:fin?RING_TE
 const ringHalo=(r,col)=>{const h=new THREE.Mesh(new THREE.TorusGeometry(r,3.0,8,48),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:0.1,blending:THREE.AdditiveBlending,depthWrite:false,fog:true,toneMapped:false}));h.name='halo';return h;};
 const crateGeo=new THREE.BoxGeometry(1.4,1.4,1.4),crateMat=new THREE.MeshStandardMaterial({color:0x9a6a36,roughness:0.85});
 const chuteGeo=new THREE.SphereGeometry(4,16,8,0,Math.PI*2,0,Math.PI/2),chuteMat=new THREE.MeshStandardMaterial({color:0xff6a1a,roughness:0.7,side:THREE.DoubleSide});
-function cleanup(){{const b=$('tdb');if(b)b.className='';}if(G&&G.cshadow){try{G.cshadow.userData.rt.dispose();}catch(e){}}atc.stop();PARKED.forEach(p=>{p.gate=false;p.m.visible=true;});wx.set({dir:240},0);audio.setRain&&audio.setRain(0);if(!G)return;for(const o of G.dyn){scene.remove(o);}if(G.rfx)G.rfx.forEach(f=>scene.remove(f.m));G=null;}
+function cleanup(){try{logCommit();}catch(e){console.warn('Logbuch',e);}{const b=$('tdb');if(b)b.className='';}if(G&&G.cshadow){try{G.cshadow.userData.rt.dispose();}catch(e){}}atc.stop();PARKED.forEach(p=>{p.gate=false;p.m.visible=true;});wx.set({dir:240},0);audio.setRain&&audio.setRain(0);if(!G)return;for(const o of G.dyn){scene.remove(o);}if(G.rfx)G.rfx.forEach(f=>scene.remove(f.m));G=null;}
 function startFlight(cfg){
   perf.hold=3;cleanup();audio.init();
   const mission=cfg.dyn||(cfg.mission?MISSIONS.find(m=>m.id===cfg.mission):null);
@@ -513,7 +513,7 @@ function step(dt){
   for(const ev of F.events){
     if(ev.type==='liftoff'&&!G.liftMsg){G.liftMsg=true;toast(F.P.fixedGear?'Abgehoben! Klappen einfahren mit V':'Abgehoben! Fahrwerk einfahren mit G');}
     if(ev.type==='liftoff')atc.event('liftoff');
-    if(ev.type==='touchdown'){pad.rumble(Math.min(1,0.25+ev.sink*0.18),0.5,180+ev.sink*60);atc.event('touchdown',{ap:ev.rw||WF.airportZone(F.pos.x,F.pos.z)});if(G.mission&&G.mission.comfort&&ev.sink>2.2)G.comfort-=Math.min(30,(ev.sink-2.2)*15);audio.touch(ev.sink);if(ev.heli){const gr=heliGrade(ev);G.lastTouch=gr;toast(`Landung ${gr.letter} · Sinkrate ${ev.sink.toFixed(1)} m/s`,2600);}else if(ev.rw){const gr=gradeLanding(ev,F);G.lastTouch=gr;G.tdLetter=gr.letter;}}
+    if(ev.type==='touchdown'){pad.rumble(Math.min(1,0.25+ev.sink*0.18),0.5,180+ev.sink*60);if(!G.lesson){const ap0=ev.rw||WF.airportZone(F.pos.x,F.pos.z);if(ap0)markVisit(ap0);}atc.event('touchdown',{ap:ev.rw||WF.airportZone(F.pos.x,F.pos.z)});if(G.mission&&G.mission.comfort&&ev.sink>2.2)G.comfort-=Math.min(30,(ev.sink-2.2)*15);audio.touch(ev.sink);if(ev.heli){const gr=heliGrade(ev);G.lastTouch=gr;toast(`Landung ${gr.letter} · Sinkrate ${ev.sink.toFixed(1)} m/s`,2600);}else if(ev.rw){const gr=gradeLanding(ev,F);G.lastTouch=gr;G.tdLetter=gr.letter;}}
     if(ev.type==='touchdown'&&!ev.water)touchFx(F,ev);
     if(ev.type==='touchdown'&&ev.water){audio.splash(1.5);G.waterTouch=ev.sink;}
     if(ev.type==='touchdown'){const so=G.obj[G.oi];if(so&&so.type==='spot'&&(ev.rw===so.ap)){const al=toLocal(so.ap,ev.x,ev.z).along,d=Math.abs(al-(-so.ap.len/2+so.tgt));(G.spots=G.spots||[]).push(d);G.oi++;audio.chime();toast(`Ziellandung ${so.k}/${so.n}: ${d.toFixed(1)} m neben der Linie${so.k<so.n?' – Vollgas und durchstarten!':''}`,3200);}}
@@ -756,7 +756,7 @@ let CSUB='cMis',HSEL=null,DJ=null;const esc=t=>String(t??'').replace(/[&<>"]/g,c
 function getDaily(){const k=todayKey();if(!DJ||DJ.daily!==k){DJ=dailyJob(S,k);if(DJ)DJ.mis=jobMission(DJ,'daily');}return DJ;}
 function openCareer(sub){document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('sel',x.dataset.t==='tCareer'));document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('hidden',t.id!=='tCareer'));setSub(sub);}
 function setSub(sub){CSUB=sub;document.querySelectorAll('#cTabs button').forEach(b=>b.classList.toggle('sel',b.dataset.s===sub));document.querySelectorAll('#tCareer .sub').forEach(d=>d.classList.toggle('hidden',d.id!==sub));
-  if(sub==='cHang')renderHangar();if(sub==='cRec')renderRecords();if(sub==='cBad')renderBadges();if(sub==='cJobs')renderJobs();}
+  if(sub==='cHang')renderHangar();if(sub==='cRec')renderRecords();if(sub==='cBad')renderBadges();if(sub==='cJobs')renderJobs();if(sub==='cLog')renderLog();}
 document.querySelectorAll('#cTabs button').forEach(b=>b.onclick=()=>{audio.init();setSub(b.dataset.s);});
 function renderCareer(){const C=career.C;career.refill(S);
   $('cHead').innerHTML=`<div class="money"><small>Kontostand</small><b>${fmtCHF(C.money)}</b></div><div class="cstat"><span>${Object.keys(C.badges).length} / ${BADGES.length} Abzeichen</span><span>${C.owned.length} / ${ORDER.length} Flugzeuge</span></div>`;
@@ -779,9 +779,11 @@ function livHTML(id){const C=career.C,L=livSpec(id,C.liv[id]),named=!['alpina','
       <h4>Hauptfarbe</h4><div class="sws">${sw('c1',L.c1)}</div><h4>Akzentfarbe</h4><div class="sws">${sw('c2',L.c2)}</div>
       <h4>Rumpf</h4><div class="chips">${LIV_BASE.map(([c,n])=>`<button class="chip ${L.base===c?'sel':''}" data-k="base" data-v="${c}"><i class="dot" style="background:${c}"></i>${n}</button>`).join('')}</div>
       ${named?`<h4>Schriftzug</h4><input type="text" class="lvN" maxlength="16" value="${esc(L.name)}" placeholder="z. B. LUIS AIRLINES">`:''}
+      <h4>Sonderlackierungen</h4><div class="chips">${SPECIAL_LIV.map((q,i)=>{const ok=(C.visited||{})[q.icao];const ap=AIRPORTS.find(a=>a.icao===q.icao);return`<button class="chip ${ok?'':'locked'}" ${ok?`data-pre="${i}"`:'disabled'} title="${ok?'':'Freischalten: in '+(ap?ap.name:q.icao)+' landen'}"><i class="dot" style="background:${q.c1}"></i>${q.n}<small>${ok?'':'🔒 '+(ap?ap.name:q.icao)}</small></button>`;}).join('')}</div>
       <div class="btnrow"><button class="ghost small lvAll">Auf alle Flugzeuge übertragen</button><button class="ghost small lvReset">Standard</button></div>`;}
 function livBind(root,id,rerender,fleet){const C=career.C;const setL=(k,v)=>{C.liv[id]={...livSpec(id,C.liv[id]),[k]:v};persist();rerender();};
   root.querySelectorAll('[data-k]').forEach(el=>el.onclick=()=>setL(el.dataset.k,el.dataset.v));
+  root.querySelectorAll('[data-pre]').forEach(el=>el.onclick=()=>{const q=SPECIAL_LIV[+el.dataset.pre];C.liv[id]={...livSpec(id,C.liv[id]),tpl:q.tpl,c1:q.c1,c2:q.c2,base:q.base};persist();rerender();});
   const n=root.querySelector('.lvN');if(n)n.onchange=e=>setL('name',e.target.value.toUpperCase());
   const a=root.querySelector('.lvAll');if(a)a.onclick=()=>{const L=livSpec(id,C.liv[id]);for(const k of (fleet||Object.keys(PLANES))){const o={...livSpec(k,C.liv[k]),tpl:L.tpl,c1:L.c1,c2:L.c2,base:L.base};if(!['alpina','saentis'].includes(k)&&!['alpina','saentis'].includes(id))o.name=L.name;C.liv[k]=o;}persist();toast('Lackierung auf die ganze Flotte übertragen.');rerender();};
   const r=root.querySelector('.lvReset');if(r)r.onclick=()=>{delete C.liv[id];persist();rerender();};}
@@ -1187,7 +1189,7 @@ function finish(ok,reason){
       if(atc.pen.length)earn.push(['Busse der Flugsicherung',-Math.round(job.pay*0.1*atc.pen.length/50)*50]);
       career.jobDone(job.n);career.refill(S);}
     career.add(earn.reduce((a,e)=>a+e[1],0));persist();
-    checkBadges({ok:true,m,letter,st});
+    checkBadges({ok:true,m,letter,st});try{logCommit({ok:true,letter});}catch(e){}
     const next=!m.dyn&&MISSIONS[MISSIONS.indexOf(m)+1];
     h=`<div class="reshead"><div><div class="eyebrow">${job?(job.daily?'TAGESAUFGABE ERFÜLLT':'AUFTRAG ERLEDIGT'):'MISSION ERFÜLLT'}</div><h2>${m.name}</h2><div class="sub">${sub}${rec?' · neuer Bestwert':''}</div>${starsHtml(st)}</div><div class="grade">${letter}</div></div>
       <div class="res">${parts}</div><canvas id="rMap" width="760" height="220"></canvas>${earnHtml()}
@@ -1360,7 +1362,7 @@ function regaSetup(o){
     scene.add(g);G.dyn.push(g);o.mesh=g;}}
 const M_POLE=new THREE.MeshStandardMaterial({color:0xd0d4d8,roughness:0.4,metalness:0.6});
 function regaTick(F,dt){
-  if(helipads&&F.onGround){const P=helipads.near(F.pos.x,F.pos.z,12);if(P&&G.padDone!==P.n){G.padDone=P.n;audio.chime();toast(`Gelandet: ${P.n}${P.k==='huette'?' ('+Math.round(P.y)+' m ü. M.)':P.roof?' – Dachlandeplatz':''}`,3200);if(G.flog)G.flog.pads=(G.flog.pads||0)+1;}}
+  if(helipads&&F.onGround){const P=helipads.near(F.pos.x,F.pos.z,12);if(P&&G.padDone!==P.n){G.padDone=P.n;audio.chime();toast(`Gelandet: ${P.n}${P.k==='huette'?' ('+Math.round(P.y)+' m ü. M.)':P.roof?' – Dachlandeplatz':''}`,3200);if(G.flog)G.flog.pads=(G.flog.pads||0)+1;if(P.k==='spital'){const C=career.C;C.spitals=C.spitals||{};C.spitals[P.n]=1;persist();if(Object.keys(C.spitals).length>=5)award('spital');}}}
   else if(helipads&&!F.onGround&&G.padDone&&F.pos.y-S.groundAt(F.pos.x,F.pos.z)>40)G.padDone=null;
   winchTick(F,dt);
   const o=G.obj[G.oi];if(!o)return;
@@ -1529,8 +1531,44 @@ function showBadge(b){badgeQ.push(b);if(!badgeBusy)nextBadge();}
 function nextBadge(){const b=badgeQ.shift();if(!b){badgeBusy=false;return;}badgeBusy=true;const el=$('badgePop');
   el.innerHTML=`<div class="bm">${b[3]}</div><div class="bt"><small>ABZEICHEN ERHALTEN</small><b>${b[1]}</b><span>${b[2]}</span></div>`;el.classList.add('show');audio.chime();pad.rumble(0.2,0.5,180);
   setTimeout(()=>{el.classList.remove('show');setTimeout(nextBadge,500);},3400);}
+// Logbuch-Seite: Karte mit allen Strecken, Kennzahlen, letzte Flüge
+function renderLog(){const L=logGet(),C=career.C,vis=C.visited||{},all=[...new Set(AIRPORTS.map(a=>a.icao))],nv=all.filter(i=>vis[i]).length;
+  const hrs=L.reduce((a,e)=>a+e.t,0)/3600,km=L.reduce((a,e)=>a+e.km,0);
+  const fmtDate=d=>{const x=new Date(d);return`${x.getDate()}.${x.getMonth()+1}. ${String(x.getHours()).padStart(2,'0')}:${String(x.getMinutes()).padStart(2,'0')}`;};
+  $('cLog').innerHTML=`<div class="cstat" style="display:flex;gap:18px;flex-wrap:wrap;margin:4px 0 10px"><span><b>${L.length}</b> Flüge</span><span><b>${hrs.toFixed(1)}</b> Stunden</span><span><b>${Math.round(km)}</b> km</span><span><b>${nv} / ${all.length}</b> Flugplätze besucht</span><span><b>${Object.keys(C.spitals||{}).length}</b> Spital-Landeplätze</span></div>
+    <canvas id="logMap" width="900" height="520" style="width:100%;max-width:900px;border-radius:12px;background:#0f1a24"></canvas>
+    <div class="loglist" style="margin-top:10px">${L.length?L.slice(0,40).map(e=>`<div style="display:grid;grid-template-columns:92px 1fr auto;gap:8px;padding:6px 2px;border-bottom:1px solid rgba(255,255,255,0.07);font-size:13px"><span style="opacity:.7">${fmtDate(e.d)}</span><span><b>${esc(e.n)}</b> · ${esc((PLANES[e.p]||{}).name||e.p)}<br><small style="opacity:.75">${esc(e.from||'')}${e.to?' → '+esc(e.to):''} · ${fmtT(e.t)} · ${e.km} km · max. ${e.alt} m</small></span><span style="font-weight:800">${e.crash?'✕':e.g||(e.ok?'✓':'')}</span></div>`).join(''):'<p class="hint">Noch keine Flüge. Jeder Flug ab einer halben Minute landet hier, mit Strecke auf der Karte.</p>'}</div>`;
+  const cv=$('logMap'),x=cv.getContext('2d'),W=cv.width,H=cv.height;let mnx=1e9,mxx=-1e9,mnz=1e9,mxz=-1e9;for(const A of AIRPORTS){mnx=Math.min(mnx,A.x);mxx=Math.max(mxx,A.x);mnz=Math.min(mnz,A.z);mxz=Math.max(mxz,A.z);}
+  mnx-=15000;mxx+=15000;mnz-=15000;mxz+=15000;const k=Math.min(W/(mxx-mnx),H/(mxz-mnz)),ox=(W-(mxx-mnx)*k)/2,oz=(H-(mxz-mnz)*k)/2,X=v=>ox+(v-mnx)*k,Y=v=>oz+(v-mnz)*k;
+  x.fillStyle='#0f1a24';x.fillRect(0,0,W,H);
+  x.fillStyle='#1d4f7a';for(const lk of LAKES||[]){if(lk.cx==null)continue;const r=Math.sqrt((lk.cells||1)*6724/Math.PI)*k;x.beginPath();x.arc(X(lk.cx),Y(lk.cz),Math.max(1.5,r),0,7);x.fill();}
+  const col=['#ffd23f','#41d2ff','#ff6b6b','#7dff9b','#c79bff','#ffa24f'];L.slice(0,60).reverse().forEach((e,i)=>{x.strokeStyle=col[i%col.length];x.globalAlpha=0.75;x.lineWidth=2;x.beginPath();e.pts.forEach(([a,b],j)=>j?x.lineTo(X(a*10),Y(b*10)):x.moveTo(X(a*10),Y(b*10)));x.stroke();});
+  x.globalAlpha=1;for(const A of AIRPORTS){const v=vis[A.icao];x.fillStyle=v?'#3dff8a':'#8a939e';x.beginPath();x.arc(X(A.x),Y(A.z),v?4.5:3,0,7);x.fill();}
+  x.fillStyle='#cfd6de';x.font='600 12px Inter,sans-serif';const done=new Set();for(const A of AIRPORTS){if(done.has(A.icao))continue;done.add(A.icao);x.fillText(A.name,X(A.x)+6,Y(A.z)-6);}}
 function award(id){const b=career.award(id);if(b)showBadge(b);}
+// ---------- Logbuch: jeder Flug mit Strecke (eigener Speicher, höchstens 120 Flüge) ----------
+const LOGK='alpenflug-log1';function logGet(){try{return JSON.parse(localStorage.getItem(LOGK)||'[]');}catch(e){return[];}}
+function logCommit(res){if(!G||G.logged||G.lesson||!G.rec||G.rec.length<200)return;G.logged=true;const R=G.rec,step=Math.max(1,Math.ceil(R.length/150)),pts=[];let km=0,maxA=0;
+  for(let i=0;i<R.length;i+=step){pts.push([Math.round(R[i][0]/10),Math.round(R[i][2]/10)]);maxA=Math.max(maxA,R[i][1]);}
+  for(let i=10;i<R.length;i+=10)km+=Math.hypot(R[i][0]-R[i-10][0],R[i][2]-R[i-10][2])/1000;
+  const lt=G.lastTouch,to=lt&&(lt.ap||nearestAP(new THREE.Vector3(R[R.length-1][0],0,R[R.length-1][2])));
+  logAdd({d:Date.now(),p:G.P.id,n:G.mission?G.mission.name:'Freier Flug',from:G.startAP?G.startAP.name:'',to:lt&&to?to.name:'',t:Math.round(G.t),km:Math.round(km*10)/10,alt:Math.round(maxA),
+    g:res&&res.letter||(lt&&lt.grade)||'',ok:res?res.ok:undefined,crash:!!(G.F&&G.F.crashed),pts});
+  if(logGet().length>=50)award('logbuch');}
+function logAdd(e){try{const L=logGet();L.unshift(e);while(L.length>120)L.pop();localStorage.setItem(LOGK,JSON.stringify(L));}catch(e2){}}
+// besuchte Flugplätze (für Abzeichen und Sonderlackierungen)
+function markVisit(ap){if(!ap||!ap.icao)return;const C=career.C;C.visited=C.visited||{};const first=!C.visited[ap.icao];C.visited[ap.icao]=(C.visited[ap.icao]||0)+1;persist();
+  if(first){const sp=SPECIAL_LIV.find(q=>q.icao===ap.icao);if(sp)setTimeout(()=>toast(`Neue Sonderlackierung freigeschaltet: «${sp.n}» (im Hangar wählbar)`,4500),2500);}
+  const all=[...new Set(AIRPORTS.map(a=>a.icao))];if(all.every(i=>C.visited[i]))award('plaetze');}
+// Sonderlackierungen: werden mit der ersten Landung auf dem jeweiligen Platz freigeschaltet
+const SPECIAL_LIV=[{icao:'LSZH',n:'Züri',tpl:'klassisch',c1:'#1d4ed8',c2:'#38a3e8',base:'#f8f8f7'},{icao:'LSGG',n:'Léman',tpl:'swoosh',c1:'#d7263d',c2:'#e8b330',base:'#f8f8f7'},
+  {icao:'LSZB',n:'Bärn',tpl:'bauch',c1:'#15171b',c2:'#d7263d',base:'#efe6d2'},{icao:'LFSB',n:'Rhy',tpl:'voll',c1:'#15171b',c2:'#f8f8f7',base:'#dfe3e8'},
+  {icao:'LSZA',n:'Ticino',tpl:'swoosh',c1:'#d7263d',c2:'#1d4ed8',base:'#f8f8f7'},{icao:'LSGS',n:'Valais',tpl:'voll',c1:'#d7263d',c2:'#f8f8f7',base:'#f8f8f7'},
+  {icao:'LSZS',n:'Engadin',tpl:'retro',c1:'#38a3e8',c2:'#e8b330',base:'#2a2e35'},{icao:'LSZR',n:'Bodensee',tpl:'bauch',c1:'#1f8a5b',c2:'#38a3e8',base:'#f8f8f7'},
+  {icao:'LSXZ',n:'Wiggertal',tpl:'retro',c1:'#d7263d',c2:'#f8f8f7',base:'#efe6d2'},{icao:'LSMP',n:'Patrouille',tpl:'schweiz',c1:'#d7263d',c2:'#f8f8f7',base:'#f8f8f7'},
+  {icao:'LSZC',n:'Pilatus',tpl:'klassisch',c1:'#0f4d36',c2:'#e8b330',base:'#f8f8f7'},{icao:'LSTA',n:'Raron',tpl:'swoosh',c1:'#9b1c2c',c2:'#e8b330',base:'#efe6d2'}];
 function checkBadges(r){
+  if(r&&r.ok&&r.m){const id=r.m.id;if(id==='n2')award('gletscher');if(id==='n4')award('formation');if(id==='c8')award('heimat');if(id==='n3')award('autobahn');}
   if(r&&r.ok){award('erster');const lt=G.lastTouch;if(lt&&r.letter==='S')award('butter');if(lt&&env.night>0.6)award('nacht');
     if(r.m.id==='m14')award('nebel');if(r.m.id==='m13')award('foehn');if(r.m.race&&r.st===3)award('renn');if(r.m.comfort&&G.comfort>=95)award('pax');
     if(atc.c&&atc.c.enabled!==false&&!atc.pen.length&&career.stat('noPen')>=5)award('funk');
