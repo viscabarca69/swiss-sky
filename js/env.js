@@ -39,7 +39,8 @@ export function createEnv(renderer,scene,Q){
   const envScene=new THREE.Scene(),sky2=new Sky();sky2.material=sky.material;sky2.scale.setScalar(900);envScene.add(sky2);
   const pmrem=new THREE.PMREMGenerator(renderer);let envRT=null;
   const sun=new THREE.DirectionalLight(0xffffff,3);scene.add(sun,sun.target);
-  if(Q.shadows){sun.castShadow=true;sun.shadow.mapSize.set(2048,2048);const c=sun.shadow.camera;c.left=c.bottom=-80;c.right=c.top=80;c.near=1;c.far=4000;sun.shadow.bias=-0.0003;sun.shadow.normalBias=0.4;}
+  if(Q.shadows){sun.castShadow=true;const big=renderer.capabilities.maxTextureSize>=16384&&!/Mobi|Android|iPhone|iPad/.test(navigator.userAgent);sun.shadow.mapSize.set(big?4096:2048,big?4096:2048);// schärfere Schatten auf dem Desktop
+    const c=sun.shadow.camera;c.left=c.bottom=-80;c.right=c.top=80;c.near=1;c.far=4000;sun.shadow.bias=-0.0003;sun.shadow.normalBias=0.4;}
   const moon=new THREE.DirectionalLight(0x8fa8d8,0);moon.position.set(3000,6000,-2000);scene.add(moon);
   const hemi=new THREE.HemisphereLight(0xbcd4ff,0x4b5a3a,0.6);scene.add(hemi);
   scene.fog=new THREE.FogExp2(0xbfd3e6,0.00003);

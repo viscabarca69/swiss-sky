@@ -1535,7 +1535,7 @@ function loop(now){
     if(state==='fly'||state==='map'){step(dt);if(env.weather==='storm')lightning(dt);}
     G.model.position.copy(F.pos);G.model.quaternion.copy(F.q);
     const Vg=F.onGround?F.vel.length():0;
-    animateModel(G.model,{flapPos:F.flapPos,ail:F.ail,elev:F.elev,rud:F.rud,gearPos:F.gearPos,rpm:F.crashed?0:F.P.heli?F.rotor:0.2+0.8*F.eng,groundSpeed:Vg,landingLight:env.night>0.2&&F.gearPos>0.5,night:env.night},T,state==='fly'||state==='map'?dt:0);
+    animateModel(G.model,{susp:F.susp?F.susp.y:0,flapPos:F.flapPos,ail:F.ail,elev:F.elev,rud:F.rud,gearPos:F.gearPos,rpm:F.crashed?0:F.P.heli?F.rotor:0.2+0.8*F.eng,groundSpeed:Vg,landingLight:env.night>0.2&&F.gearPos>0.5,night:env.night},T,state==='fly'||state==='map'?dt:0);
     if(G.deadProp!=null){const pr=G.model.userData.parts.props[G.deadProp];if(pr){pr.bl.visible=true;pr.disc.visible=false;pr.g.rotation.z+=(state==='fly'?dt:0)*(F.onGround?0:1.2);}}
     const pl=G.model.userData.parts.lights;if(pl){pl.u.uScale.value=glowU.uScale.value;pl.u.uFogD.value=glowU.uFogD.value;pl.u.uI.value=0.6+1.6*env.night;}
     puffTick(state==='fly'||state==='map'?dt:0);vaporTick(state==='fly'||state==='map'?dt:0);
