@@ -80,6 +80,12 @@ export function orthoTree(x,z){const R=orthoAt(x,z);if(!R||!R.pix)return 0;const
   let s1=0,s2=0,m=0;for(let dy=-2;dy<=2;dy++)for(let dx=-2;dx<=2;dx++){const X=px+dx,Y=py+dy;if(X<0||Y<0||X>=R.pw||Y>=R.ph)continue;const o=(Y*R.pw+X)*4,v=(R.pix[o]+R.pix[o+1]+R.pix[o+2])/3;s1+=v;s2+=v*v;m++;}
   const sd=Math.sqrt(Math.max(0,s2/m-(s1/m)*(s1/m)));if(sd<11)return 0;
   return l<62?2:1;}
+// Befestigte Fläche im Luftbild (Asphalt, Beton): grau, wenig Farbe, nicht grün. -1 = kein Luftbild
+export function orthoPaved(x,z){const R=orthoAt(x,z);if(!R||!R.pix)return -1;const [E,N]=toEN(R,x,z);
+  const px=Math.floor((E/1000-R.e0)*512),py=Math.floor((R.n1-N/1000)*512);let r=0,g=0,b=0,n=0;
+  for(let dy=0;dy<=1;dy++)for(let dx=0;dx<=1;dx++){const X=px+dx,Y=py+dy;if(X<0||Y<0||X>=R.pw||Y>=R.ph)continue;const o=(Y*R.pw+X)*4;r+=R.pix[o];g+=R.pix[o+1];b+=R.pix[o+2];n++;}
+  if(!n)return -1;r/=n;g/=n;b/=n;const l=(r+g+b)/3,sat=Math.max(r,g,b)-Math.min(r,g,b);
+  return(sat<24&&l>50&&l<225&&!(g>r+5&&g>b+3))?1:0;}
 // Laden: Übersichtsbilder sofort (Atlas je Gebiet), scharfe Kacheln je nach Kameraposition
 export function initOrtho(renderer){
   const aniso=renderer.capabilities.getMaxAnisotropy();
