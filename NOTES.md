@@ -16,6 +16,7 @@ Testen: /tmp/run.sh test/<x>.py (Playwright, SwiftShader) · node test/jobs.mjs 
 - AO: GTAOPass-Unterklasse AOPass (ohne transparente Objekte, Normalen flach + beidseitig), Clip-Box 700 m um die Kamera; Einstellung ao auto/on/off (auto = Ultra, Desktop)
 - Logbuch: localStorage alpenflug-log1 (max. 120), career.C.visited, Abzeichen plaetze/spital/gletscher/formation/heimat/autobahn/logbuch
 - approach.js: fly() hakt Wegpunkte nur in der Nähe ab (sonst IF/FAF übersprungen, Bahn von der falschen Seite durch den Berg); judge() prüft Endanflug auch per Abstand zur Schwelle und verlangt ≥80 % der FAF-Länge. Test: test/approach.py
+- Hangar-Ausstellungsplatz: SPOT [1660,-310] (frei im Umkreis 130 m, befestigt; vorher steckten Grossraumjets im Terminal-Dock), Höhe aus S.heightAt
 - Wahrzeichen neu: Grossmünster, Fraumünster, St. Peter, Stadtkirche Zofingen
 - Missionen n1–n5 (ZL = Aussenlandezone, FM = Formation), Helipads (helipads.js), Pilotenfunktionen (Autobrake, ILS, Callouts, ATIS), Bergwind (weather.js Wx.terrain)
 

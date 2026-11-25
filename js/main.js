@@ -695,9 +695,9 @@ function thumbFill(id){const u=THUMB[thumbKey(id)];if(!u)return;document.querySe
 const SHOW={key:'',m:null,r:10,on:false};
 function showroomSet(id){const spec=myLivery(id),key=id+'|'+JSON.stringify(spec||{});if(SHOW.key===key&&SHOW.m)return;
   if(SHOW.m)scene.remove(SHOW.m);SHOW.key=key;const m=buildModel(id,{livery:spec});const A=ZS?AP.ZRH16:MAIN_AP,p=fromLocal(A,SPOT[0],SPOT[1]);
-  m.position.set(p.x,A.elev+PLANES[id].gearH,p.z);m.rotation.y=-A.a+2.3;m.updateMatrixWorld(true);const b=new THREE.Box3().setFromObject(m);SHOW.r=b.getSize(new THREE.Vector3()).length()/2;SHOW.c=b.getCenter(new THREE.Vector3());
+  m.position.set(p.x,(S?S.heightAt(p.x,p.z):A.elev)+PLANES[id].gearH,p.z);m.rotation.y=-A.a+2.3;m.updateMatrixWorld(true);const b=new THREE.Box3().setFromObject(m);SHOW.r=b.getSize(new THREE.Vector3()).length()/2;SHOW.c=b.getCenter(new THREE.Vector3());
   animateModel(m,{flapPos:0,gearPos:1,rpm:0,groundSpeed:0,ail:0,elev:0,rud:0,night:0},0,0.016);scene.add(m);SHOW.m=m;}
-const SPOT=ZS?[1720,-560]:[-MAIN_AP.len*0.3,MAIN_AP.side*110];
+const SPOT=ZS?[1660,-310]:[-MAIN_AP.len*0.3,MAIN_AP.side*110];
 function showroomOn(){return state==='menu'&&CSUB==='cHang'&&!$('menu').classList.contains('hidden')&&!$('tCareer').classList.contains('hidden')&&$('brief').classList.contains('hidden');}
 // ---------- Flughafenplan für die Pistenwahl ----------
 // Startrichtung einer Piste (Grad, 0 = Nord): rev=false startet am Ende rwyA in Richtung +along
