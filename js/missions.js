@@ -18,8 +18,12 @@ export function buildObjectives(mission,S,opt){
   const SP=(id,k,n,tgt)=>{const A=APM[id],p=fromLocal(A,-A.len/2+tgt,0);return{type:'spot',ap:A,k,n,tgt,x:p.x,z:p.z,y:A.elev+3};};
   const TX=()=>{const A=APM.ZRH16,p=fromLocal(A,A.len/2-45,-95);return{type:'taxi',x:p.x,z:p.z,y:A.elev+4,r:38};};
   const HL=(lat,lon,name,wait,kind)=>{const p=toXZ(lat,lon);return{type:'hland',x:p.x,z:p.z,y:gnd(p.x,p.z),r:kind==='pad'?16:30,wait,name,kind};};
-  const HO=(lat,lon,name,wait)=>{const p=toXZ(lat,lon);return{type:'hover',x:p.x,z:p.z,y:S.waterLevel&&S.isLake(p.x,p.z)?S.waterLevel(p.x,p.z):gnd(p.x,p.z),r:24,h:18,wait,name};};
-  const list0=mission.obj({R,RL,F,L,D,DL,P,SC,FI,W,SP,TX,HL,HO});
+  const HO=(lat,lon,name,wait,txt)=>{const p=toXZ(lat,lon);return{type:'hover',x:p.x,z:p.z,y:S.waterLevel&&S.isLake(p.x,p.z)?S.waterLevel(p.x,p.z):gnd(p.x,p.z),r:24,h:18,wait,name,txt};};
+  // Aussenlandung für Flugzeuge (Gletscher, gesperrte Autobahn): aufsetzen und im Kreis anhalten
+  const ZL=(lat,lon,name,wait,r,msg,hint)=>{const p=toXZ(lat,lon);return{type:'hland',kind:'site',zone:true,x:p.x,z:p.z,y:gnd(p.x,p.z),r:r||70,wait,name,msg,hint};};
+  // Formationsflug: einer KI-Maschine auf ihrer Runde folgen und die Position rechts hinten halten
+  const FM=(pts,dur,lead,v)=>{const q=pts.map(([la,lo,agl])=>{const p=toXZ(la,lo);return{x:p.x,z:p.z,y:Math.max(gnd(p.x,p.z),S.waterLevel&&S.isLake(p.x,p.z)?S.waterLevel(p.x,p.z):0)+agl};});return{type:'form',pts:q,x:q[0].x,z:q[0].z,y:q[0].y,dur,lead,v,r:40};};
+  const list0=mission.obj({R,RL,F,L,D,DL,P,SC,FI,W,SP,TX,HL,HO,ZL,FM});
   // doppelte Ringe (gleicher Ort direkt hintereinander) entfernen – sonst entsteht eine Schleife in der Bahn
   const list=list0.filter((o,i)=>{const q=list0[i-1];return!(o.type==='ring'&&q&&q.type==='ring'&&Math.hypot(o.x-q.x,o.y-q.y,o.z-q.z)<60);});
   // Ringe gut ein Drittel grösser (leichter zu treffen)
@@ -286,5 +290,25 @@ export const MISSIONS=[
   {id:'c8',name:'Heimatrunde Zofingen',plane:'alpina',start:['ZOF',false],hour:17.8,weather:'fair',wind:'light',
    brief:'Der neue Flugplatz Zofingen–Strengelbach liegt zwischen den beiden Orten direkt an der Autobahn A2. Start auf Piste 17, Runde über Strengelbach, die Zofinger Altstadt mit der Stadtkirche und den Heitern, dann Landung wieder auf Piste 17.',
    tip:'Die Piste ist nur 620 m lang: im Endanflug Klappen 30° (F), langsam fliegen und gleich nach der Schwelle aufsetzen.',
-   obj:({R,RL,F,L})=>[RL('ZOF',1000,0,150),R(47.2770,7.9230,220),R(47.2860,7.9470,230),R(47.2925,7.9360,250),R(47.3050,7.9380,260),...F('ZOF',false,[1300,600],0.06),L('ZOF')]}
+   obj:({R,RL,F,L})=>[RL('ZOF',1000,0,150),R(47.2770,7.9230,220),R(47.2860,7.9470,230),R(47.2925,7.9360,250),R(47.3050,7.9380,260),...F('ZOF',false,[1300,600],0.06),L('ZOF')]},
+  {id:'n1',name:'Rega-Nachteinsatz am Pilatus',plane:'rega',start:['BUO',false],hour:22.6,weather:'clear',wind:'light',
+   brief:'Nachts um halb elf: Ein Wanderer hat sich am Pilatus-Nordhang verirrt und verletzt. Flieg mit dem Suchscheinwerfer hin, hol ihn mit der Seilwinde und bring ihn ins Luzerner Kantonsspital – Landeplatz auf dem Dach.',
+   tip:'Langsam und mit Abstand zum Hang anfliegen, über der roten Rauchfackel schweben. Der Landeplatz auf dem Spitaldach leuchtet gelb.',
+   obj:({HO,HL})=>[HO(46.9786,8.2530,'Wanderer am Pilatus',12,'Über der Rauchfackel schweben – tiefer als 18 m, ruhig halten'),HL(47.0600,8.2955,'Luzerner Kantonsspital',5,'pad')]},
+  {id:'n2',name:'Gletscherlandung Konkordiaplatz',plane:'alpina',air:{lat:46.5250,lon:7.9600,alt:3350,hdg:112},hour:10.5,weather:'clear',wind:'calm',
+   brief:'Hochalpin: Lande mit der Alpina auf dem Aletschgletscher am Konkordiaplatz (2770 m), wo die Gletscherflieger ihre Gäste absetzen. Danach startest du wieder und fliegst nach Raron.',
+   tip:'Anflug in Richtung Ostsüdost, langsam und mit Klappen. Auf dem Schnee rollt man kurz – ruhig ausrollen lassen und im orangen Kreis anhalten. Zum Start bergab beschleunigen.',
+   obj:({ZL,R,L})=>[ZL(46.5040,8.0450,'Konkordiaplatz',4,90,'Gelandet auf dem Aletschgletscher – Gäste steigen aus.','Auf dem flachen Gletscher aufsetzen und im orangen Kreis anhalten'),R(46.4600,8.0000,250),L('RAR')]},
+  {id:'n3',name:'Notlandung auf der A2',plane:'alpina',air:{lat:47.3135,lon:7.9175,alt:830,hdg:152},hour:16.4,weather:'fair',wind:'light',emerg:{type:'engine',at:4,txt:'Kein Schub mehr! Die Polizei sperrt die A2 vor dir – auf der Autobahn landen.'},
+   brief:'Rundflug über dem Wiggertal bei Zofingen, als der Motor aussetzt. Die A2 zwischen Rothrist und Zofingen ist gesperrt worden – lande auf der Autobahn neben dem neuen Flugplatz.',
+   tip:'Sofort Nase leicht senken und rund 110 km/h halten. Der Autobahn folgen und auf der geraden Strecke aufsetzen. Bremsen und im Kreis anhalten.',
+   obj:({ZL})=>[ZL(47.28944,7.93082,'A2 bei Zofingen',3,70,'Sicher auf der Autobahn gelandet – die Polizei ist schon da.','Auf der gesperrten Autobahn aufsetzen und anhalten')]},
+  {id:'n4',name:'Airshow-Formation Zürichsee',plane:'saentis',air:{lat:47.30095,lon:8.57776,alt:856,hdg:122},hour:14.0,weather:'clear',wind:'calm',
+   brief:'Airshow über dem Zürichsee: Fliege mit dem Leader der Kunstflugstaffel in Formation. Halte deine Position rechts hinten (etwa 30 m hinter und 20 m neben ihm), bis die Vorführung vorbei ist. Danach Landung in Hausen am Albis.',
+   tip:'Mit dem Schub die Distanz halten, nicht mit der Nase. Kleine Korrekturen! Wenn du zurückfällst, wartet der Leader etwas.',
+   obj:({FM,L})=>[FM([[47.300,8.580,450],[47.270,8.650,450],[47.240,8.745,450],[47.225,8.800,480],[47.240,8.815,500],[47.262,8.760,480],[47.290,8.680,450],[47.312,8.610,450],[47.318,8.575,470],[47.308,8.560,460]],45,'saentis',50),L('HAU')]},
+  {id:'n5',name:'Rennen durchs Lauterbrunnental',plane:'saentis',air:{lat:46.6700,lon:7.8850,alt:1000,hdg:165},hour:11.5,weather:'clear',wind:'calm',race:[170,220],
+   brief:'Zeitrennen im Tal der 72 Wasserfälle: von Interlaken tief durchs Lauterbrunnental bis Stechelberg, wenden und über Wengen zurück. Unter 2:50 gibt es drei Sterne.',
+   tip:'Das Tal ist eng: vor Stechelberg rechtzeitig mit 45° Querlage wenden. Nach der Wende steigen, Wengen liegt 400 m höher.',
+   obj:({R})=>[R(46.6295,7.9010,180),R(46.5935,7.9085,130),R(46.5650,7.9050,150),R(46.5480,7.9070,220),R(46.5720,7.9150,300),R(46.6060,7.9220,220),R(46.6420,7.8960,260),R(46.6720,7.8730,260)]}
 ];

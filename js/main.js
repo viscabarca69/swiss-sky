@@ -538,7 +538,7 @@ function step(dt){
   G.recT+=dt;if(G.recT>=0.1&&G.rec.length<9000){G.recT=0;G.rec.push([F.pos.x,F.pos.y,F.pos.z,F.q.x,F.q.y,F.q.z,F.q.w,F.flapPos,F.gearPos,F.eng,F.onGround?F.vel.length():0,F.ail,F.elev,F.rud]);}
   if(G.lesson&&!G.done){const r=tutorTick(G.lesson,G.tut,tutCtx(F),dt);if(r.stepDone&&!r.done){audio.chime();toast('✓ Gut gemacht!',1600);}if(r.done){audio.chime();return finishLesson();}}
   if(G.P.glider){F.thr=0;F.eng=0;if(!F.onGround&&G.t-(G.varT||0)>0.45){G.varT=G.t;audio.vario(F.vel.y);}}
-  emergTick(F);stage3Tick(F,dt);calloutTick(F,dt);if(F.P.heli)regaTick(F,dt);
+  emergTick(F);stage3Tick(F,dt);calloutTick(F,dt);if(F.P.heli||(G.obj[G.oi]&&G.obj[G.oi].type==='hland'))regaTick(F,dt);formTick(F,dt);
   // Ziele
   if(o){
     if(o.type==='ring'){const d=Math.hypot(F.pos.x-o.x,F.pos.y-o.y,F.pos.z-o.z);if(d<o.r*1.2+12){audio.chime();ringPop(o);G.oi++;refreshRings();const left=G.obj.slice(G.oi).filter(x=>x.type==='ring').length;toast(left?`Ring geschafft – noch ${left}`:'Alle Ringe geschafft!');}}
@@ -661,8 +661,10 @@ function updateHUD(dt){
     else if(o.type==='fire'){title=`FEUER · ${o.name.toUpperCase()}`;txt=G.tank?'Tief anfliegen (unter 150 m über Grund) und mit Leertaste / ▼ abwerfen.':'Tank leer – zuerst Wasser schöpfen.';}
     else if(o.type==='wland'){title=`WASSERLANDUNG · ${o.name.toUpperCase()}`;txt='Fahrwerk EINGEFAHREN lassen, sanft auf dem See aufsetzen und ausgleiten.';}
     else if(o.type==='taxi'){title=G.atGate||G.push?'PUSHBACK':'ROLLEN ZUR PISTE 34';txt=G.atGate?'Taste J bzw. ◀ drücken – der Schlepper stösst dich zurück.':G.push?'Der Schlepper stösst dich zurück …':'Bremse lösen (B), wenig Schub, den grünen Lichtern folgen. Lenken mit A/D bzw. Stick.';}
+    else if(o.type==='hland'&&o.zone){title='AUSSENLANDUNG · '+o.name.toUpperCase();txt=G.F.onGround&&G.hw?`Angehalten … ${Math.round(Math.min(1,G.hw/o.wait)*100)} %`:(o.hint||'Aufsetzen und im orangen Kreis anhalten');}
+    else if(o.type==='form'){const fm=G.form;title='FORMATION · '+Math.round(fm?fm.t:0)+' / '+o.dur+' s';txt=fm?(fm.d<35?'Position halten – gut so!':fm.d<120?`Zur Position rechts hinter dem Leader: noch ${Math.round(fm.d)} m`:`Den Leader einholen: ${fmtD(fm.d)}`):'';}
     else if(o.type==='hland'){title=(o.kind==='pad'?'LANDEN · ':'EINSATZORT · ')+o.name.toUpperCase();txt=G.F.onGround&&G.hw?`${o.kind==='pad'?'Patient wird übergeben':'Patient wird versorgt und eingeladen'} … ${Math.round(Math.min(1,G.hw/o.wait)*100)} %`:o.kind==='pad'?'Auf dem H landen: langsam anfliegen, schweben, sanft absetzen.':'Beim weissen Kreuz landen (Hang flach genug, sanft aufsetzen).';}
-    else if(o.type==='hover'){title='SEILWINDE · '+o.name.toUpperCase();txt=`Über dem Boot schweben – tiefer als ${o.h} m, ruhig halten`+(G.hw?` … ${Math.round(Math.min(1,G.hw/o.wait)*100)} %`:'');}
+    else if(o.type==='hover'){title='SEILWINDE · '+o.name.toUpperCase();txt=(o.txt||`Über dem Boot schweben – tiefer als ${o.h} m, ruhig halten`)+(G.hw?` … ${Math.round(Math.min(1,G.hw/o.wait)*100)} %`:'');}
     else if(o.type==='spot'){title=`ZIELLANDUNG ${o.k} / ${o.n}`;txt='Möglichst genau auf der weiss-orangen Linie aufsetzen, dann durchstarten.'+(G.spots&&G.spots.length?` · bisher Ø ${(G.spots.reduce((a,b)=>a+b,0)/G.spots.length).toFixed(1)} m`:'');}
     else if(o.type==='drop'){title=`ABWURF: ${o.name}`;txt='Leertaste: Kiste am Fallschirm abwerfen. Der weisse Kreis zeigt den Landepunkt.';}
     else{title=`LANDUNG IN ${o.ap.name.toUpperCase()}`;txt='Aufsetzen und bis zum Stillstand bremsen (B).';}
@@ -1364,8 +1366,25 @@ function regaTick(F,dt){
   const o=G.obj[G.oi];if(!o)return;
   for(const q of G.obj){if(q.sm){const a=q.sm.geometry.attributes.position.array;for(let i=0;i<a.length;i+=3){a[i+1]+=dt*(6+i%5);a[i]+=dt*((WF.wind?WF.wind.x:0)*0.5);a[i+2]+=dt*((WF.wind?WF.wind.z:0)*0.5);if(a[i+1]>160){a[i+1]=0;a[i]=(Math.random()-0.5)*5;a[i+2]=(Math.random()-0.5)*5;}}q.sm.geometry.attributes.position.needsUpdate=true;}}
   const d=Math.hypot(F.pos.x-o.x,F.pos.z-o.z);
-  if(o.type==='hland'){if(F.onGround&&d<o.r){G.hw=(G.hw||0)+dt;if(G.hw>=o.wait){G.hw=0;G.oi++;audio.chime();pad.rumble(0.2,0.4,200);toast(o.kind==='pad'?'Patient übergeben – Einsatz erfolgreich!':'Patient versorgt und an Bord – jetzt ab ins Spital!',3500);}}else if(!F.onGround)G.hw=0;}
+  if(o.type==='hland'){if(F.onGround&&d<o.r&&(F.P.heli||F.vel.length()<6)){G.hw=(G.hw||0)+dt;if(G.hw>=o.wait){G.hw=0;G.oi++;audio.chime();pad.rumble(0.2,0.4,200);toast(o.msg||(o.kind==='pad'?'Patient übergeben – Einsatz erfolgreich!':'Patient versorgt und an Bord – jetzt ab ins Spital!'),3500);}}else if(!F.onGround)G.hw=0;}
   if(o.type==='hover'){const agl=F.pos.y-F.P.gearH-o.y;if(!F.onGround&&d<o.r&&agl<o.h&&F.vel.length()<4){G.hw=(G.hw||0)+dt;if(G.hw>=o.wait){G.hw=0;G.oi++;audio.chime();toast('Person mit der Seilwinde geborgen – ab ins Unispital!',3500);}}else G.hw=Math.max(0,(G.hw||0)-dt*0.5);}}
+// Formationsflug: der Leader fliegt seine Runde, gezählt wird die Zeit in der Position rechts hinten (30 m hinter, 20 m neben ihm)
+function formTick(F,dt){const o=G.obj[G.oi];
+  if(G.form&&(!o||o.type!=='form')){const fm=G.form;fm.after=(fm.after||0)+dt;fm.s+=fm.v*dt/fm.L;if(fm.after>25){scene.remove(fm.m);G.form=null;return;}formPose(fm,dt);return;}
+  if(!o||o.type!=='form')return;
+  if(!G.form){const pts=o.pts.map(p=>new THREE.Vector3(p.x,p.y,p.z)),cur=new THREE.CatmullRomCurve3(pts,true,'centripetal',0.5),L=cur.getLength(),sp=cur.getSpacedPoints(Math.round(L/10));
+    const m=buildModel(o.lead,{landingLight:false});scene.add(m);G.dyn.push(m);G.form={m,sp,n:sp.length-1,L,s:0,v:o.v,t:0,d:999,bank:0};formPose(G.form,0);}
+  const fm=G.form,q=fm.pos,fw=fm.fw,rt=new THREE.Vector3(-fw.z,0,fw.x).normalize();const slot=q.clone().addScaledVector(fw,-30).addScaledVector(rt,20);
+  fm.d=F.pos.distanceTo(slot);const behind=F.pos.distanceTo(q);
+  // wartet, wenn der Spieler zurückfällt
+  const v=fm.v*(behind>260?0.72:behind>140?0.88:1);fm.s=(fm.s+v*dt/fm.L)%1;formPose(fm,dt);
+  if(fm.d<35){fm.t+=dt;if(Math.floor(fm.t)%10===0&&Math.floor(fm.t-dt)%10!==0&&fm.t>1)audio.click();}
+  o.x=q.x;o.z=q.z;o.y=q.y;
+  if(fm.t>=o.dur){G.oi++;audio.chime();pad.rumble(0.2,0.4,200);toast('Formation gehalten – tolle Vorführung! Der Leader dreht ab.',3500);}}
+function formPose(fm,dt){const f=fm.s*fm.n,i=Math.floor(f)%fm.n,k=f-Math.floor(f),a=fm.sp[i],b=fm.sp[(i+1)%fm.n];fm.pos=(fm.pos||new THREE.Vector3()).lerpVectors(a,b,k);
+  const fw=b.clone().sub(a).normalize();const yaw=Math.atan2(-fw.x,-fw.z);let dy=yaw-(fm.yaw??yaw);dy=Math.atan2(Math.sin(dy),Math.cos(dy));const om=dt>0?dy/dt:0;fm.yaw=yaw;fm.fw=fw;
+  fm.bank+=(clamp(Math.atan(fm.v*om/9.81),-0.9,0.9)-fm.bank)*Math.min(1,dt*2);fm.m.position.copy(fm.pos);fm.m.rotation.order='YXZ';fm.m.rotation.set(Math.asin(clamp(fw.y,-1,1))+2*DEG,yaw,fm.bank);
+  animateModel(fm.m,{flapPos:0,gearPos:0,rpm:0.8,groundSpeed:0,landingLight:false,night:env.night},G.t,dt);}
 // Seilwinde: beim Schweben über dem Bergungsort fährt der Retter am Seil hinunter und kommt mit der Person wieder hoch
 function winchTick(F,dt){const o=G.obj[G.oi],on=o&&o.type==='hover'&&G.model&&G.model.userData.parts;
   if(!on){if(G.winch){G.winch.g.visible=false;}return;}
@@ -1473,7 +1492,7 @@ function thermalLift(x,y,z,agl){let w=0;for(const T of THERM){const d2=((x-T.x)*
 function showEmerg(t,x){const el=$('emerg');el.innerHTML=`<b>⚠ ${t}</b><span>${x}</span>`;el.classList.add('on');}
 function hideEmerg(){const el=$('emerg');if(el)el.classList.remove('on');}
 function emergTick(F){const E=G.mission&&G.mission.emerg;if(!E||G.emOn||F.crashed)return;const go=E.at!=null?G.t>=E.at:E.ring!=null?G.oi>=E.ring:false;if(!go)return;G.emOn=true;let t='',x='';
-  if(E.type==='engine'){F.thrMul=0;F.thr=0;G.deadProp=0;t='MOTORAUSFALL';x='Kein Schub mehr! Rund 145 km/h halten und nach Hausen am Albis gleiten.';}
+  if(E.type==='engine'){F.thrMul=0;F.thr=0;G.deadProp=0;t='MOTORAUSFALL';x=E.txt||'Kein Schub mehr! Rund 145 km/h halten und nach Hausen am Albis gleiten.';}
   if(E.type==='engine2'){F.thrMul=0.5;F.asym=-1;G.deadProp=0;t='TRIEBWERK 2 AUSGEFALLEN';x='Mit dem Seitenruder (Q bzw. L1) gegen das Gieren halten, Vollgas, flache Kurven.';}
   if(E.type==='gear'){G.gearStuck=true;G.pump=0;F.gear=false;t='HYDRAULIKFEHLER';x='Fahrwerk klemmt – Taste G bzw. ○ sechsmal drücken (Handpumpe).';}
   audio.alarm();pad.rumble(0.6,0.8,600);showEmerg(t,x);setTimeout(()=>{if(G&&G.emOn&&E.type!=='gear')hideEmerg();},14000);}
