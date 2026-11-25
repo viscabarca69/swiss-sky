@@ -39,7 +39,9 @@ export function planApproach(F,P,opt,S){
   // normale Kurven bei Reisetempo, dann enge Kurven bei Anfluggeschwindigkeit; Eindrehpunkt nah (auf Gleitpfadhöhe) oder weit draussen (höher);
   // Basisteil links/rechts, Volte im Tal, schräger Zwischenanflug durch das Tal.
   const marg=jet?150:120;let best=null,tries=0;
-  const judge=pl=>{let pre=1e9,fin=1e9;pl.pts.forEach((q,i)=>{const c=q.y-S.groundAt(q.x,q.z);if(i<pl.iFAF)pre=Math.min(pre,c);else if(pl.L-q.s>600)fin=Math.min(fin,c);});
+  // Endanflug muss wirklich über die ganze Länge FAF→Schwelle geflogen werden (sonst kam die Bahn von der falschen Seite und hat IF/FAF übersprungen)
+  const judge=pl=>{let pre=1e9,fin=1e9;pl.pts.forEach((q,i)=>{const c=q.y-S.groundAt(q.x,q.z);if(i<pl.iFAF)pre=Math.min(pre,c);else if(pl.L-q.s>600||Math.hypot(q.x-TH.x,q.z-TH.z)>600)fin=Math.min(fin,c);});
+    const finLen=pl.L-pl.sFAF;if(finLen<Dfaf*0.8)fin=Math.min(fin,-200-(Dfaf*0.8-finLen));
     pl.clear=Math.min(pre-marg,fin-20,(0.1-(pl.steep||0))*3000);pl.ok=pl.clear>=0;pl.score=pl.ok?1e7-pl.L:pl.clear*1000;return pl;};
   const routes=new Map(),route=T=>{const k=Math.round(T.x)+','+Math.round(T.z);if(routes.has(k))return routes.get(k);let w=[];try{w=wayPath({...P0,y:Math.max(P0.y,S.groundAt(P0.x,P0.z)+200)},{...T},S,jet)||[];}catch(e){}routes.set(k,w);return w;};
   const tryC=c=>{tries++;let pl;try{pl=fly(c);}catch(e){return false;}if(!pl)return false;pl.steep=c.steep;pl.ang=c.ang||0;judge(pl);if(!best||pl.score>best.score)best=pl;return pl.ok;};
@@ -75,9 +77,10 @@ export function planApproach(F,P,opt,S){
     for(let n=0;n<8000;n++){const a=W[cur-1],b=W[cur],lx=b.x-a.x,lz=b.z-a.z,ll=Math.hypot(lx,lz)||1,ux=lx/ll,uz=lz/ll,crs=Math.atan2(ux,uz);
       const dtg=(b.x-x)*ux+(b.z-z)*uz,xt=(x-a.x)*uz-(z-a.z)*ux;
       if(cur<W.length-1){const c2=W[cur+1],c2c=Math.atan2(c2.x-b.x,c2.z-b.z),dl=Math.abs(wrap(c2c-crs)),lead=Math.min(R*Math.tan(Math.min(dl,2.6)/2),Math.hypot(c2.x-b.x,c2.z-b.z)*0.9);
-        if(dtg<=lead||Math.hypot(b.x-x,b.z-z)<ds){if(W[cur]===IF)iIF=pts.length-1;if(W[cur]===FAF)iFAF=pts.length-1;cur++;continue;}}
+        // Wegpunkt erst abhaken, wenn man in seiner Nähe ist – sonst würde eine Bahn von der falschen Seite IF und FAF überspringen
+        const dB=Math.hypot(b.x-x,b.z-z);if((dtg<=lead&&dB<lead+2.5*R)||dB<ds){if(W[cur]===IF)iIF=pts.length-1;if(W[cur]===FAF)iFAF=pts.length-1;cur++;continue;}}
       else if(dtg<=0)break;
-      let des;if(cur===1)des=Math.atan2(b.x-x,b.z-z);else des=crs-clamp(xt/(R*0.9),-0.8,0.8);
+      let des;if(cur===1||dtg<0||Math.abs(xt)>3*R)des=Math.atan2(b.x-x,b.z-z);else des=crs-clamp(xt/(R*0.9),-0.8,0.8);
       const e=wrap(des-h),mx=ds/R;h+=clamp(e,-mx,mx);x+=Math.sin(h)*ds;z+=Math.cos(h)*ds;sum+=ds;pts.push({x,z,s:sum});}
     if(iIF<0)iIF=Math.max(0,pts.length-Math.ceil((Dif)/ds));if(iFAF<0)iFAF=Math.max(0,pts.length-Math.ceil(Dfaf/ds));
     const L=sum,sIF=pts[iIF].s,sFAF=pts[iFAF].s;

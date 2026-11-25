@@ -15,5 +15,11 @@ Mit Browser (Python + Playwright, lädt das ganze Spiel, im Ordner `test`):
 
 - `python3 missions.py` – startet jede Mission, meldet Fehler, Abstürze und Sofort-Abbrüche
 - `python3 traffic.py` – KI-Verkehr an mehreren Flughäfen, prüft den Abstand zum Gelände
+- `python3 approach.py [l32n|alpina]` – Anflugplaner an 9 Bergflugplätzen: tiefster Abstand zum Gelände, Anzahl «unsicher»
 
 Vor jeder Veröffentlichung sollten `missions.py` und `traffic.py` ohne «PRÜFEN» durchlaufen.
+
+Fehlende Namen finden (nach dem Aufteilen von main.js wichtig):
+
+    npm install --no-save eslint@8
+    npx eslint js/*.js

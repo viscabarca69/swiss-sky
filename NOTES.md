@@ -10,6 +10,15 @@ Artifact slug e3615a1f-7860-4277-b4c4-84ea1ba2abea · letzte veröffentlichte Ve
 Backup Etappe 1: /tmp/af_e1 (kann nach Neustart weg sein)
 Testen: /tmp/run.sh test/<x>.py (Playwright, SwiftShader) · node test/jobs.mjs (Routen) · node test/mis.mjs
 
+## Version 11.6 (25.11.2026)
+- main.js aufgeteilt: groundops.js (Gate, Pushback, Rollweg-A*), cockpit.js (3D-Cockpit), camera.js (Kameras, Menü-Fahrten), logbook.js (Logbuch, besuchte Plätze, SPECIAL_LIV). Gemeinsamer Zustand über CTX-Getter in main.js, je Funktion `const {G,...}=ctx`
+- Prüfung auf fehlende Namen: eslint (no-undef) mit .eslintrc wie in /home/claude/lint
+- AO: GTAOPass-Unterklasse AOPass (ohne transparente Objekte, Normalen flach + beidseitig), Clip-Box 700 m um die Kamera; Einstellung ao auto/on/off (auto = Ultra, Desktop)
+- Logbuch: localStorage alpenflug-log1 (max. 120), career.C.visited, Abzeichen plaetze/spital/gletscher/formation/heimat/autobahn/logbuch
+- approach.js: fly() hakt Wegpunkte nur in der Nähe ab (sonst IF/FAF übersprungen, Bahn von der falschen Seite durch den Berg); judge() prüft Endanflug auch per Abstand zur Schwelle und verlangt ≥80 % der FAF-Länge. Test: test/approach.py
+- Wahrzeichen neu: Grossmünster, Fraumünster, St. Peter, Stadtkirche Zofingen
+- Missionen n1–n5 (ZL = Aussenlandezone, FM = Formation), Helipads (helipads.js), Pilotenfunktionen (Autobrake, ILS, Callouts, ATIS), Bergwind (weather.js Wx.terrain)
+
 ## Version 11.4/11.5 (25.11.2026)
 - Flotte: l320 = A321neo (L-321neo), l330 = A330-900neo, l747 = 747-8 (Chevrons, raked tips), l380 geteiltes Winglet, Rega = H145 D3, Titlis NGX
 - traffic.js neu: HUBS (7 Plätze, Geländeprüfung arrDist/depDist), GA-Platzrunden (circuitFor), Segler, Rega-Transit, Reiseflug + Kondensstreifen, Autos auf ROADS w>=3

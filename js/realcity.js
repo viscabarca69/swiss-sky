@@ -13,7 +13,11 @@ const LANDMARKS=[
   {n:'Basler Münster',lat:47.55642,lon:7.59231,r:45,hMin:20,ty:6,tint:60},
   {n:'Kathedrale St. Gallen',lat:47.42335,lon:9.37730,r:45,hMin:20,ty:2,tint:30},
   {n:'Prime Tower',lat:47.38617,lon:8.51726,r:30,hMin:80,ty:7,tint:128},
-  {n:'Cathédrale Saint-Pierre',lat:46.20100,lon:6.14848,r:40,hMin:40,ty:2,tint:30}].map(L=>({...L,...toXZ(L.lat,L.lon)}));
+  {n:'Cathédrale Saint-Pierre',lat:46.20100,lon:6.14848,r:40,hMin:40,ty:2,tint:30},
+  {n:'Grossmünster',lat:47.37002,lon:8.54403,r:32,hMin:22,ty:2,tint:230},
+  {n:'Fraumünster',lat:47.36962,lon:8.54127,r:26,hMin:18,ty:2,tint:30},
+  {n:'St. Peter',lat:47.37105,lon:8.54062,r:16,hMin:22,ty:2,tint:230},
+  {n:'Stadtkirche Zofingen',lat:47.28862,lon:7.94492,r:30,hMin:14,ty:2,tint:230}].map(L=>({...L,...toXZ(L.lat,L.lon)}));
 
 export async function loadRealCity(){
   let u8;
