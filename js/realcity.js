@@ -4,6 +4,15 @@ import * as THREE from 'three';
 import {ORU,ORTHO_GLSL_HEAD,inAirportArea} from './ortho.js';
 import {BUILDINGS} from './swissdata.js';
 import {nightU} from './gfx.js';
+import {toXZ} from './worldgen.js';
+// Wahrzeichen: Gebäude im Umkreis bekommen ein eigenes Aussehen (Art 2 = Sandstein mit Kupfer- oder Schieferdach, 6 = roter Sandstein mit bunten Ziegeln)
+// tint < 128 → grünes Kupferdach, sonst dunkles Dach; nachts werden Kirchen und Wahrzeichen angestrahlt
+const LANDMARKS=[
+  {n:'Bundeshaus',lat:46.94680,lon:7.44425,r:55,hMin:30,ty:2,tint:30},
+  {n:'Zytglogge',lat:46.94797,lon:7.44781,r:9,hMin:25,ty:2,tint:230},
+  {n:'Basler Münster',lat:47.55642,lon:7.59231,r:45,hMin:20,ty:6,tint:60},
+  {n:'Kathedrale St. Gallen',lat:47.42335,lon:9.37730,r:45,hMin:20,ty:2,tint:30},
+  {n:'Cathédrale Saint-Pierre',lat:46.20100,lon:6.14848,r:40,hMin:40,ty:2,tint:30}].map(L=>({...L,...toXZ(L.lat,L.lon)}));
 
 export async function loadRealCity(){
   let u8;
@@ -37,12 +46,12 @@ function cityMaterial(){
     sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nattribute vec2 aInfo;varying vec2 vInfo;varying vec3 vWP;')
       .replace('#include <worldpos_vertex>','#include <worldpos_vertex>\nvInfo=aInfo;vWP=(modelMatrix*vec4(transformed,1.0)).xyz;');
     sh.fragmentShader=sh.fragmentShader.replace('#include <common>',`#include <common>
-uniform float uNight;varying vec2 vInfo;varying vec3 vWP;float winLit;float winMask;float farLit;float glassM;float metA;float cool;
+uniform float uNight;varying vec2 vInfo;varying vec3 vWP;float winLit;float winMask;float farLit;float glassM;float metA;float cool;float flood;
 ${ORTHO_GLSL_HEAD}
 float hh(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}`)
       .replace('#include <map_fragment>',`#include <map_fragment>
 vec3 nW=normalize(cross(dFdx(vWP),dFdy(vWP)));if(dot(nW,cameraPosition-vWP)<0.0)nW=-nW;
-float t=vInfo.x/255.0;float k=vInfo.y;winLit=0.0;winMask=0.0;farLit=0.0;glassM=0.0;metA=0.0;cool=0.0;
+float t=vInfo.x/255.0;float k=vInfo.y;winLit=0.0;winMask=0.0;farLit=0.0;glassM=0.0;metA=0.0;cool=0.0;flood=0.0;
 vec3 c;
 if(abs(nW.y)<0.4&&k>15.5){
   // Flughafengebäude: Glasfassaden, Metallpaneele, Fensterbänder
@@ -81,7 +90,10 @@ if(abs(nW.y)<0.4&&k>15.5){
   else if(k>1.5&&k<2.5)c=vec3(0.80,0.76,0.68);
   else if(k>2.5&&k<3.5)c=vec3(0.78,0.78,0.77);
   else if(k>3.5&&k<4.5)c=vec3(0.86,0.90,0.90);
+  else if(k>5.5&&k<6.5)c=vec3(0.60,0.33,0.27)*(0.92+0.08*hh(floor(vWP.xz*0.5)+floor(vWP.y)));
   else if(k>4.5)c=vec3(0.62,0.60,0.56);
+  // Kirchen und Wahrzeichen: nachts von unten angestrahlt
+  if((k>1.5&&k<2.5)||(k>5.5&&k<6.5))flood=0.5;
   if(k<1.5||(k>1.5&&k<2.5)){
     float u=abs(nW.x)>abs(nW.z)?vWP.z:vWP.x;float tall=step(0.5,k)*step(k,1.5);
     float fh=tall>0.5?3.4:2.9,cw=tall>0.5?2.4:3.3;vec2 g=vec2(u/cw,(vWP.y-0.8)/fh);vec2 f=fract(g);vec2 id=floor(g);
@@ -99,11 +111,13 @@ if(abs(nW.y)<0.4&&k>15.5){
   c=t<0.3?r0:t<0.5?r1:t<0.68?r3:t<0.85?r2:r4;
   if(k>1.5&&k<2.5)c=t<0.5?vec3(0.32,0.52,0.43):vec3(0.30,0.29,0.30);
   if(k>0.5&&k<1.5)c=vec3(0.42,0.43,0.44);
+  // Basler Münster: bunt glasierte Ziegel im Rautenmuster
+  if(k>5.5&&k<6.5){vec2 q=floor(vec2(vWP.x+vWP.z,vWP.x-vWP.z)/2.6);float h3=fract((q.x+q.y*2.0)/3.0);c=h3<0.3?vec3(0.52,0.24,0.17):h3<0.62?vec3(0.66,0.55,0.26):vec3(0.27,0.36,0.29);}
 }
 diffuseColor.rgb*=pow(c,vec3(2.2));
 // Dächer im Luftbild-Gebiet: echte Dachfarbe aus dem Luftbild
 if(nW.y>0.4){vec4 o4=orthoAt(vWP.xz);if(o4.a>0.0)diffuseColor.rgb=mix(diffuseColor.rgb,o4.rgb*0.82,o4.a*(nW.y>0.94?0.95:0.85));}`)
-      .replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\ntotalEmissiveRadiance+=mix(vec3(1.0,0.74,0.44),vec3(0.82,0.9,1.0),cool)*(winLit*1.5+farLit)*uNight;')
+      .replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\ntotalEmissiveRadiance+=mix(vec3(1.0,0.74,0.44),vec3(0.82,0.9,1.0),cool)*(winLit*1.5+farLit)*uNight+diffuseColor.rgb*vec3(1.0,0.86,0.62)*flood*uNight;')
       .replace('#include <roughnessmap_fragment>','#include <roughnessmap_fragment>\nroughnessFactor=mix(roughnessFactor,0.15,winMask);roughnessFactor=mix(roughnessFactor,0.05,glassM);if(metA>0.0)roughnessFactor=min(roughnessFactor,0.5);')
       .replace('#include <metalnessmap_fragment>','#include <metalnessmap_fragment>\nmetalnessFactor=max(metalnessFactor,max(glassM*0.92,metA));');
   };
@@ -134,6 +148,7 @@ export function buildRealCity(scene,RC,S,lights){
       if(inAirportArea(gx+(x0+x1)/2,gz+(z0+z1)/2)){const w=x1-x0,d=z1-z0,hb=y1-y0,asp=Math.max(w,d)/Math.max(1,Math.min(w,d)),ar=w*d;
         const sub=hb<7.5?3:asp>3.2?0:(ar>3500&&hb>13)?1:hb>17?0:2,at=16+sub*48+Math.min(47,Math.round(hb)),gt=Math.max(0,Math.min(255,Math.round(g+y0-380)));
         for(let j=v0;j<v;j++){info[j*2]=gt;info[j*2+1]=at;}}
+      {const wx=gx+(x0+x1)/2,wz=gz+(z0+z1)/2;for(const L of LANDMARKS)if(Math.abs(wx-L.x)<L.r&&Math.abs(wz-L.z)<L.r&&Math.hypot(wx-L.x,wz-L.z)<L.r&&y1-y0>=L.hMin){for(let j=v0;j<v;j++){info[j*2]=L.tint;info[j*2+1]=L.ty;}}}
       if(lights&&(nb%3===0)&&nv>14)lights.push(gx+(x0+x1)/2,g+3,gz+(z0+z1)/2);
       let hw=0;for(let j=0;j<nt*3;j++,ii++){const code=clo[ii]|(chi[ii]<<8);let l;if(code===0)l=hw++;else l=hw-code;idx[ii]=v0+l;}
       nb++;}
