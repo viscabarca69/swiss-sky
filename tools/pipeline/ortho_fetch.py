@@ -8,9 +8,6 @@ from PIL import Image
 
 REGIONS = {'gva': (2495, 2500, 1119, 1124), 'brn': (2603, 2606, 1194, 1198), 'lug': (2712, 2716, 1094, 1098), 'sio': (2589, 2594, 1117, 1120)}
 STAC = 'https://data.geo.admin.ch/api/stac/v0.9/collections/ch.swisstopo.swissimage-dop10/items/'
-out = os.path.join(sys.argv[1] if len(sys.argv) > 1 else 'out', 'ortho')
-ids = sys.argv[2:] or list(REGIONS)
-os.makedirs(out, exist_ok=True)
 CFG = ['--config', 'GDAL_DISABLE_READDIR_ON_OPEN', 'EMPTY_DIR', '--config', 'GDAL_HTTP_MULTIRANGE', 'YES', '--config', 'GDAL_HTTP_MAX_RETRY', '5', '--config', 'GDAL_HTTP_RETRY_DELAY', '3']
 
 def get_json(url):
@@ -36,23 +33,27 @@ def search(e, n):
                 return y, href
     return None
 
-done = {}
-for rid in ids:
-    e0, e1, n0, n1 = REGIONS[rid]
-    for e in range(e0, e1):
-        for n in range(n0, n1):
-            f = search(e, n)
-            if not f:
-                print(rid, e, n, 'keine Kachel', flush=True); continue
-            y, href = f
-            for k, size, q in (('h', 2048, 74), ('l', 512, 80)):
-                dst = os.path.join(out, f'{e}_{n}_{k}.webp')
-                with tempfile.TemporaryDirectory() as td:
-                    png = os.path.join(td, 't.png')
-                    # Pixelgitter genau auf die km-Kachel legen (-projwin), dann auf size verkleinern
-                    subprocess.run(['gdal_translate', '-q'] + CFG + ['-projwin', str(e * 1000), str((n + 1) * 1000), str((e + 1) * 1000), str(n * 1000),
-                                    '-outsize', str(size), str(size), '-r', 'average', '-b', '1', '-b', '2', '-b', '3', '-of', 'PNG', '/vsicurl/' + href, png], check=True)
-                    Image.open(png).convert('RGB').save(dst, 'WEBP', quality=q, method=6)
-            done[f'{e}_{n}'] = y
-            print(rid, e, n, y, os.path.getsize(os.path.join(out, f'{e}_{n}_h.webp')) // 1024, 'KB', flush=True)
-json.dump(done, open(os.path.join(out, 'ortho.json'), 'w'), indent=1)
+if __name__ == '__main__':
+    out = os.path.join(sys.argv[1] if len(sys.argv) > 1 else 'out', 'ortho')
+    ids = sys.argv[2:] or list(REGIONS)
+    os.makedirs(out, exist_ok=True)
+    done = {}
+    for rid in ids:
+        e0, e1, n0, n1 = REGIONS[rid]
+        for e in range(e0, e1):
+            for n in range(n0, n1):
+                f = search(e, n)
+                if not f:
+                    print(rid, e, n, 'keine Kachel', flush=True); continue
+                y, href = f
+                for k, size, q in (('h', 2048, 74), ('l', 512, 80)):
+                    dst = os.path.join(out, f'{e}_{n}_{k}.webp')
+                    with tempfile.TemporaryDirectory() as td:
+                        png = os.path.join(td, 't.png')
+                        # Pixelgitter genau auf die km-Kachel legen (-projwin), dann auf size verkleinern
+                        subprocess.run(['gdal_translate', '-q'] + CFG + ['-projwin', str(e * 1000), str((n + 1) * 1000), str((e + 1) * 1000), str(n * 1000),
+                                        '-outsize', str(size), str(size), '-r', 'average', '-b', '1', '-b', '2', '-b', '3', '-of', 'PNG', '/vsicurl/' + href, png], check=True)
+                        Image.open(png).convert('RGB').save(dst, 'WEBP', quality=q, method=6)
+                done[f'{e}_{n}'] = y
+                print(rid, e, n, y, os.path.getsize(os.path.join(out, f'{e}_{n}_h.webp')) // 1024, 'KB', flush=True)
+    json.dump(done, open(os.path.join(out, 'ortho.json'), 'w'), indent=1)

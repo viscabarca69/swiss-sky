@@ -29,20 +29,38 @@ if len(keep) != len(H['chunks']):
         o = c['o']; nd += data[o:o + c['l']]; c['o'] = len(nd) - c['l']
     data = nd; H['chunks'] = keep
     H['cover'] = [q for q in H['cover'] if not (len(q) > 8)]
-covers = [np.array(q[:8]).reshape(4, 2) for q in H['cover']]
+# vorhandene Gebäude (Grundriss-Rechtecke) – ein neues Gebäude, dessen Mitte in einem davon liegt, ist schon da
+def existing_boxes():
+    u8 = np.frombuffer(bytes(data), np.uint8); out = []
+    for c in H['chunks']:
+        o = c['o']; NB, NV = c['nb'], c['nv']
+        hd = np.frombuffer(bytes(data[o:o + NB * 6]), dtype=np.dtype([('nv', '<u2'), ('nt', '<u2'), ('t', 'u1'), ('y', 'u1')])); o += NB * 6
+        pl = [u8[o + k * NV:o + (k + 1) * NV].astype(np.int64) for k in range(6)]
+        P = np.stack([(pl[i] | (pl[3 + i] << 8)) for i in range(3)], 1)
+        P = np.where(P >= 32768, P - 65536, P)
+        A = np.cumsum(P, 0); A = ((A + 32768) % 65536) - 32768
+        x = A[:, 0] / SC + c['cx']; z = A[:, 2] / SC + c['cz']
+        s0 = 0
+        for nv in hd['nv']:
+            xs, zs = x[s0:s0 + nv], z[s0:s0 + nv]; s0 += nv
+            out.append((xs.min(), zs.min(), xs.max(), zs.max()))
+    return np.array(out)
+EB = existing_boxes()
+GRID = {}
+for k, (x0, z0, x1, z1) in enumerate(EB):
+    GRID.setdefault((int((x0 + x1) / 2 // 10), int((z0 + z1) / 2 // 10)), []).append(k)
+print('vorhandene Gebäude', len(EB), flush=True)
 
-def in_cover(x, z):
-    for q in covers:
-        if x < q[:, 0].min() or x > q[:, 0].max() or z < q[:, 1].min() or z > q[:, 1].max():
-            continue
-        s = 0; ok = True
-        for i in range(4):
-            p, r = q[i], q[(i + 1) & 3]; c = (r[0] - p[0]) * (z - p[1]) - (r[1] - p[1]) * (x - p[0])
-            if c == 0: continue
-            sg = 1 if c > 0 else -1
-            if not s: s = sg
-            elif sg != s: ok = False; break
-        if ok: return True
+def in_cover(x0, z0, x1, z1):
+    """gleiches Gebäude schon vorhanden? Mitte < 4 m daneben und ähnliche Ausdehnung (ein Rechteck-Test wäre bei
+    schräg stehenden Gebäuden zu grosszügig: der Genfer Terminal hätte den Pier daneben verschluckt)"""
+    cx, cz, w, d = (x0 + x1) / 2, (z0 + z1) / 2, x1 - x0, z1 - z0
+    for i in range(int(cx // 10) - 1, int(cx // 10) + 2):
+        for j in range(int(cz // 10) - 1, int(cz // 10) + 2):
+            for k in GRID.get((i, j), ()):
+                a0, b0, a1, b1 = EB[k]
+                if abs((a0 + a1) / 2 - cx) < 4 and abs((b0 + b1) / 2 - cz) < 4 and 0.7 < (a1 - a0 + 1) / (w + 1) < 1.43 and 0.7 < (b1 - b0 + 1) / (d + 1) < 1.43:
+                    return True
     return False
 
 SKIP = {'Unterirdisches Gebaeude', 'Gebaeude unsichtbar', 'Mauer gross', 'Mauer gross gedeckt'}
@@ -73,7 +91,7 @@ for fn in files:
         if name in SKIP: continue
         v = V[bv[i]:bv[i + 1]].copy(); t = (T[bt[i]:bt[i + 1]].astype(np.int64) - bv[i])
         cx, cz = v[:, 0].mean(), v[:, 2].mean()
-        if in_cover(cx, cz): continue
+        if in_cover(v[:, 0].min(), v[:, 2].min(), v[:, 0].max(), v[:, 2].max()): continue
         y0 = v[:, 1].min(); v[:, 1] -= y0
         x0, x1, z0, z1 = v[:, 0].min(), v[:, 0].max(), v[:, 2].min(), v[:, 2].max()
         if (x1 - x0) * (z1 - z0) < a.mina or v[:, 1].max() < 1.5: continue

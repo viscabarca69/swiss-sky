@@ -25,6 +25,8 @@ jobs:
         run: python3 tools/pipeline/sb3d_fetch.py out 2>&1 | tee -a out_log.txt
       - name: Luftbilder SWISSIMAGE (Flughäfen)
         run: python3 tools/pipeline/ortho_fetch.py out 2>&1 | tee -a out_log.txt
+      - name: Gebäude-Grundrisse OpenStreetMap (Luftbild-Gebiete)
+        run: python3 tools/pipeline/osm_buildings.py out 2>&1 | tee -a out_log.txt
       - name: Ergebnis auf Zweig daten-out
         if: always()
         run: |
