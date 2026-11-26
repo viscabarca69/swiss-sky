@@ -252,7 +252,11 @@ let drag=null,lastDrag=0;
 $('c').addEventListener('pointerdown',e=>{drag={x:e.clientX,y:e.clientY};audio.init();});
 addEventListener('pointerup',()=>{drag=null;lastDrag=performance.now();});
 addEventListener('pointermove',e=>{if(!drag||!G)return;G.look.x-=(e.clientX-drag.x)*0.006;G.look.y=clamp(G.look.y+(e.clientY-drag.y)*0.005,-1.2,1.3);drag={x:e.clientX,y:e.clientY};lastDrag=performance.now();});
-$('c').addEventListener('wheel',e=>{if(G){G.zoom=clamp(G.zoom*(1+Math.sign(e.deltaY)*0.1),0.45,4);}},{passive:true});
+// Zoomen (Mausrad, Trackpad-Pinch = Rad mit Strg) gehört dem Spiel – sonst zoomt der Browser die ganze Seite mit
+$('c').addEventListener('wheel',e=>{e.preventDefault();if(G){const d=clamp(e.deltaY,-60,60)*(e.ctrlKey?0.012:0.002);G.zoom=clamp(G.zoom*Math.exp(d),0.45,4);}},{passive:false});
+addEventListener('wheel',e=>{if(e.ctrlKey)e.preventDefault();},{passive:false});
+for(const ev of ['gesturestart','gesturechange','gestureend'])addEventListener(ev,e=>e.preventDefault(),{passive:false});
+addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&['+','-','=','0'].includes(e.key)&&state!=='menu')e.preventDefault();});
 
 // ---------- Flug starten ----------
 const ringTex=(a,b)=>{const c=document.createElement('canvas');c.width=512;c.height=16;const x=c.getContext('2d');for(let i=0;i<32;i++){x.fillStyle=i%2?a:b;x.fillRect(i*16,0,16,16);}x.fillStyle='rgba(255,255,255,.55)';x.fillRect(0,0,512,3);x.fillStyle='rgba(120,70,0,.35)';x.fillRect(0,13,512,3);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.wrapS=THREE.RepeatWrapping;return t;},RING_TEX=ringTex('#ffb21c','#fff3b0'),RING_TEX_B=ringTex('#22b4ff','#e4f7ff');
@@ -918,7 +922,7 @@ $('mini').addEventListener('click',()=>{if(state==='fly')toggleMap();});$('mini'
   mc.addEventListener('pointerup',e=>{if(state==='map'&&MV.drag&&!MV.drag.moved&&!MV.pinch){const[px,py]=mpos(e),w=mapXf().inv(px,py),r=mc.getBoundingClientRect();if(!apprMenu(w.x,w.z,e.clientX-r.left,e.clientY-r.top))setWp(w.x,w.z);}MV.drag=null;});
   mc.addEventListener('pointerleave',()=>{if(!MV.padCur)MV.cur=null;});
   mc.addEventListener('contextmenu',e=>{e.preventDefault();clearWp();clearAppr();});
-  mc.addEventListener('wheel',e=>{e.preventDefault();if(state!=='map')return;const[px,py]=mpos(e);mapZoom(e.deltaY<0?1.25:0.8,px,py);},{passive:false});
+  mc.addEventListener('wheel',e=>{e.preventDefault();if(state!=='map')return;const[px,py]=mpos(e);const d=clamp(e.deltaY,-60,60)*(e.ctrlKey?0.02:0.0037);mapZoom(Math.exp(-d),px,py);},{passive:false});
   $('mapZin').onclick=()=>mapZoom(1.5);$('mapZout').onclick=()=>mapZoom(1/1.5);$('mapCtr').onclick=()=>mapCenter();$('mapClr').onclick=()=>{clearWp();clearAppr();};$('mapClose').onclick=()=>{if(state==='map')toggleMap();};}
 function wpHud(F,cam){const el=$('wpmk'),info=$('wpInfo');if(!G.wp||F.crashed||G.lesson){el.style.display='none';info.style.display='none';return;}
   const dd=Math.hypot(F.pos.x-G.wp.x,F.pos.z-G.wp.z);
