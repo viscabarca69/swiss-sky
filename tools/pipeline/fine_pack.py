@@ -47,7 +47,11 @@ def pack(R, idx, TS, NT, dst):
     hdr = b'SSFT' + struct.pack('<HHHHfHfHH', 2, TS, NT, len(keep), STEP, LIM, STEP2, len(atl), COLS)
     hdr += b''.join(struct.pack('<HH', a, b) for a, b in keep) + b''.join(struct.pack('<I', len(x)) for x in atl)
     data = hdr + b''.join(atl)
-    open(dst, 'w').write(base64.b64encode(data).decode())
+    b64 = base64.b64encode(data).decode()
+    # Artifact-Server: höchstens 20 MB je Datei -> Teile name.txt, name_2.txt, …
+    PART = 18_000_000; parts = [b64[i:i + PART] for i in range(0, len(b64), PART)]
+    for k, ptxt in enumerate(parts):
+        open(dst if k == 0 else dst.replace('.txt', f'_{k + 1}.txt'), 'w').write(ptxt)
     return {'kacheln': len(keep), 'atlanten': len(atl), 'mb': len(data) / 1e6}
 
 if __name__ == '__main__':

@@ -7,7 +7,9 @@ const tick=()=>new Promise(r=>setTimeout(r,0));
 async function bytesOf(src){
   let txt;
   if(src.startsWith('data:'))txt=src.slice(src.indexOf(',')+1);
-  else{const r=await fetch(src);if(!r.ok)throw new Error(src+' fehlt ('+r.status+')');txt=(await r.text()).trim();}
+  else{const r=await fetch(src);if(!r.ok)throw new Error(src+' fehlt ('+r.status+')');txt=(await r.text()).trim();
+    // grosse Dateien sind in Teile geteilt (Artifact-Server: höchstens 20 MB je Datei): name_2.txt, name_3.txt …
+    for(let k=2;k<9;k++){const r2=await fetch(src.replace(/\.txt$/,'_'+k+'.txt'));if(!r2.ok)break;txt+=(await r2.text()).trim();}}
   const bin=atob(txt),u8=new Uint8Array(bin.length);for(let i=0;i<bin.length;i++)u8[i]=bin.charCodeAt(i);return u8;}
 async function gunzip(u8){if(typeof DecompressionStream==='undefined')throw new Error('Browser kann gzip nicht entpacken');
   return new Uint8Array(await new Response(new Blob([u8]).stream().pipeThrough(new DecompressionStream('gzip'))).arrayBuffer());}

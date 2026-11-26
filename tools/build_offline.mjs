@@ -18,7 +18,8 @@ try{const r=await esbuild.build({entryPoints:[entry],bundle:true,format:'esm',mi
 const blocks=[];const blk=(id,b)=>blocks.push(`<script type="text/plain" id="off-${id}">${b}</script>`);
 blk('terrain',b64(path.join(repo,'data/terrain_ch.png')));
 blk('buildings',fs.readFileSync(path.join(repo,'data/buildings.txt'),'utf8').trim());
-for(const [id,f] of [['tfine','terrain_fine.txt'],['ffine','forest_fine.txt']])if(fs.existsSync(path.join(repo,'data',f)))blk(id,fs.readFileSync(path.join(repo,'data',f),'utf8').trim());
+for(const [id,f] of [['tfine','terrain_fine'],['ffine','forest_fine']]){if(!fs.existsSync(path.join(repo,'data',f+'.txt')))continue;let t=fs.readFileSync(path.join(repo,'data',f+'.txt'),'utf8').trim();
+  for(let k=2;k<9;k++){const q=path.join(repo,'data',f+'_'+k+'.txt');if(!fs.existsSync(q))break;t+=fs.readFileSync(q,'utf8').trim();}blk(id,t);}
 let nOrtho=0;for(const f of fs.readdirSync(path.join(repo,'data/ortho')))if(f.endsWith('.webp')){blk('o-'+f.slice(0,-5),b64(path.join(repo,'data/ortho',f)));nOrtho++;}
 const offJs="(function(){var T=function(id){var e=document.getElementById(id);return e?e.textContent:null;};window.__OFF={get terrain(){return 'data:image/png;base64,'+T('off-terrain');},get buildings(){return 'data:application/gzip;base64,'+T('off-buildings');},get tfine(){var t=T('off-tfine');return t?'data:application/octet-stream;base64,'+t:null;},get ffine(){var t=T('off-ffine');return t?'data:application/octet-stream;base64,'+t:null;},ortho:new Proxy({},{get:function(o,k){var t=T('off-o-'+String(k));return t?'data:image/webp;base64,'+t:undefined;}})};})();";
 // 3) CSS mit Schriften
