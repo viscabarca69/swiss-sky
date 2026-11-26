@@ -11,8 +11,8 @@ const blank=new THREE.DataTexture(new Uint8Array([0,0,0,0]),1,1);blank.needsUpda
 // Uniforms für den Geländeshader: Texturen + je Ebene (Mitte x, Mitte z, Ausdehnung, an)
 export const STU={stT0:{value:blank},stT1:{value:blank},stT2:{value:blank},stT3:{value:blank},stL:{value:[0,1,2,3].map(()=>new THREE.Vector4(0,0,1,0))}};
 export const STREAM_GLSL=`uniform sampler2D stT0,stT1,stT2,stT3;uniform vec4 stL[4];
-vec4 stLvl(sampler2D T,vec4 L,vec2 wp){if(L.w<0.5)return vec4(0.0);vec2 d=abs(wp-L.xy);float h=L.z*0.5,ed=min(h-d.x,h-d.y);if(ed<=0.0)return vec4(0.0);
- vec2 u=wp/L.z;vec4 c=textureGrad(T,fract(u),dFdx(u),dFdy(u));c.a*=smoothstep(0.0,L.z*0.07,ed);return c;}
+vec4 stLvl(sampler2D T,vec4 L,vec2 wp){if(L.w<0.01)return vec4(0.0);vec2 d=abs(wp-L.xy);float h=L.z*0.5,ed=min(h-d.x,h-d.y);if(ed<=0.0)return vec4(0.0);
+ vec2 u=wp/L.z;vec4 c=textureGrad(T,fract(u),dFdx(u),dFdy(u));c.a*=smoothstep(0.0,L.z*0.07,ed)*L.w;return c;}
 // Luftbild aus dem Stream: grobe Ebene zuerst, feinere darüber (wo geladen)
 vec4 streamAt(vec2 wp){vec4 r=stLvl(stT3,stL[3],wp);
  vec4 c=stLvl(stT2,stL[2],wp);r.rgb=mix(r.rgb,c.rgb,c.a);r.a=max(r.a,c.a);
@@ -28,7 +28,7 @@ export function initStream(renderer,opt={}){
   const LV=[[1024,18,1500],[4096,16,7000],[16384,14,1e9],[65536,12,1e9]].map(([E,z,maxAgl],i)=>{const zz=LOWMEM?z-1:z;
     const zeros=new Uint8Array(S*S*4),tex=new THREE.DataTexture(zeros,S,S,THREE.RGBAFormat);tex.colorSpace=THREE.SRGBColorSpace;tex.flipY=false;
     tex.wrapS=tex.wrapT=THREE.RepeatWrapping;tex.magFilter=THREE.LinearFilter;tex.minFilter=THREE.LinearMipmapLinearFilter;tex.generateMipmaps=true;tex.anisotropy=aniso;tex.needsUpdate=true;
-    return{i,E,z:zz,maxAgl,tex,zeros,c:null,tiles:new Map(),on:false};});
+    return{i,E,z:zz,maxAgl,tex,zeros,c:null,tiles:new Map(),on:false,w:0};});
   const st={ok:0,fail:0,dead:false,inflight:0,queue:[],enabled:opt.enabled!==false,onDead:opt.onDead||null,loaded:0,bytes:0};
   const MAXQ=LOWMEM?4:8,px=(L,v)=>v/L.E*S;// Meter -> Texel
   const scratch=document.createElement('canvas'),sx=scratch.getContext('2d');const sTex=new THREE.Texture(scratch);sTex.flipY=false;
@@ -70,14 +70,20 @@ export function initStream(renderer,opt={}){
           const cur=L.tiles.get(t.k);if(cur&&cur.pending){L.tiles.delete(t.k);draw(t,bm);}bm.close&&bm.close();})
         .catch(()=>{st.fail++;L.tiles.delete(t.k);if(st.ok===0&&st.fail>=6&&!st.dead){st.dead=true;st.queue.length=0;LV.forEach(l=>{l.on=false;STU.stL.value[l.i].w=0;});if(st.onDead)st.onDead();}})
         .finally(()=>{st.inflight--;});}}
-  let last=0,firstTex=false;
-  function update(cam,agl){if(st.dead||!st.enabled)return;const now=performance.now();pump();if(now-last<250)return;last=now;LV.forEach(mips);
+  let last=0,firstTex=false,aglS=null,lastF=0;
+  // Gegen «wechselnde Bilder»: Mipmaps jedes Bild sofort nachziehen (sonst zeigen die kleinen Stufen kurz Bild von einer anderen Stelle
+  // der Ringtextur), Ebenen weich ein- und ausblenden statt hart umschalten, Höhe über Grund geglättet (Berge!), beim Ausblenden nichts löschen
+  function update(cam,agl){if(st.dead||!st.enabled)return;const now=performance.now(),dt=Math.min(0.2,(now-(lastF||now))/1000);lastF=now;pump();LV.forEach(mips);
+    for(const L of LV){const v=STU.stL.value[L.i];L.w+=((L.on&&L.c?1:0)-L.w)*Math.min(1,dt*1.5);if(L.w<0.003)L.w=0;v.w=L.w;}
+    aglS=aglS===null?agl:aglS+(agl-aglS)*Math.min(1,dt*0.25);
+    if(now-last<250)return;last=now;
     if(!firstTex){LV.forEach(L=>{STU['stT'+L.i].value=L.tex;});firstTex=true;}
     const cx=cam.x,cz=cam.z,q=[];
-    for(const L of LV){const on=L.on?agl<L.maxAgl*1.3:agl<L.maxAgl;if(on!==L.on){L.on=on;if(!on){L.c=null;L.tiles.clear();}}
-      if(!on){STU.stL.value[L.i].w=0;continue;}recenter(L,cx,cz);STU.stL.value[L.i].set(L.c[0],L.c[1],L.E,1);
+    for(const L of LV){const on=L.on?aglS<L.maxAgl*1.6:aglS<L.maxAgl;L.on=on;
+      if(!on){if(L.w===0&&L.c&&Math.hypot(L.c[0]-cx,L.c[1]-cz)>L.E)L.c=null;continue;}
+      recenter(L,cx,cz);const v=STU.stL.value[L.i];v.x=L.c[0];v.y=L.c[1];v.z=L.E;
       for(const t of want(L,cx,cz))q.push(t);}
     // nahe zuerst, feine Ebenen bevorzugt; nicht mehr gebrauchte Aufträge fallen weg
     q.sort((a,b)=>(a.d/a.L.E+a.L.i*0.15)-(b.d/b.L.E+b.L.i*0.15));st.queue=q.slice(0,400);}
-  function setEnabled(v){st.enabled=v;if(!v)LV.forEach(L=>{L.on=false;L.c=null;L.tiles.clear();STU.stL.value[L.i].w=0;});}
+  function setEnabled(v){st.enabled=v;if(!v)LV.forEach(L=>{L.on=false;L.c=null;L.w=0;L.tiles.clear();STU.stL.value[L.i].w=0;});}
   return{update,setEnabled,state:st,levels:LV};}

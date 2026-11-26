@@ -79,7 +79,7 @@ export function buildExtras(scene,S,Q,W,airportNear){
   // unter Luftbildern (mitgeliefert oder Stream) verschwinden erfundene Strassen und Flüsse – das Bild zeigt die echten
   const hideUnderPhoto=m=>{m.onBeforeCompile=sh=>{Object.assign(sh.uniforms,ORU);
     sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vWPs;').replace('#include <worldpos_vertex>','#include <worldpos_vertex>\nvWPs=(modelMatrix*vec4(transformed,1.0)).xyz;');
-    sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vWPs;\n'+ORTHO_GLSL_HEAD).replace('void main() {','void main() {\nif(orthoAt(vWPs.xz).a>0.55)discard;');};};
+    sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vWPs;\n'+ORTHO_GLSL_HEAD).replace('void main() {','void main() {\n{vec2 hq=floor(vWPs.xz*0.7);float hn=fract(sin(dot(hq,vec2(12.9898,78.233)))*43758.5453);if(orthoAt(vWPs.xz).a>0.4+0.35*hn)discard;}');};};
   hideUnderPhoto(rm);
   const road=new THREE.Mesh(ribbon(ROADS,S,R=>R.w>2?22:12,0.8,(x,z)=>S.isLake(x,z)||!!airportNear(x,z,0)),rm);road.receiveShadow=true;scene.add(road);
   const rvm=new THREE.MeshStandardMaterial({color:0x1d4148,roughness:0.12,metalness:0.1,envMapIntensity:1.0,normalMap:W.waterTex,normalScale:new THREE.Vector2(0.25,0.25),polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3});
