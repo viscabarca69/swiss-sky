@@ -19,6 +19,7 @@ Testen: /tmp/run.sh test/<x>.py (Playwright, SwiftShader) · node test/jobs.mjs 
 - AO: aoWanted() → 0 / 0.5 / 1 (Auflösung); AOPass.setSize skaliert
 - Turmuhren: LANDMARKS clock {d,dy,h}; towerTop() sucht den Turmschaft (grösste Fläche unter dem Helm), 4 Scheiben; setClockTime(G.hour, night) im Loop; St. Peter/Zofingen-Koordinaten auf den Turm korrigiert
 - Dachaufbauten: InstancedMesh (max 2500) auf Flughafen-Flachdächern, nur in Dach-Dreiecken; Bürofassaden: Fensterbänder in der Ferne (fadeY)
+- Bahnlinien unter Flughäfen im Tunnel (ground.js: inAirportArea oder nahe grosser Pisten → Höhe −30 m); vorher lag die Flughafenlinie als dunkles Band quer über dem Vorfeld in Zürich
 - Kirchen: senkrechte Flächen über 52 m und Flächen mit nW.y > 0.04 = Turmhelm
 
 ## Version 11.6 (25.11.2026)

@@ -1,7 +1,8 @@
 // Strassenverkehr und SBB-Züge
 import {RAILS_EXT} from './rails_ext.js';
 import * as THREE from 'three';
-import {ROADS,toXZ,AREA_ID} from './worldgen.js';
+import {ROADS,toXZ,AREA_ID,AIRPORTS,toLocal} from './worldgen.js';
+import {inAirportArea} from './ortho.js';
 import {makeGlow} from './env.js';
 import {smoothPts} from './gfx.js';
 
@@ -71,6 +72,9 @@ export function createGround(scene,S,Q){
     // auf 20 m abtasten, Höhe geglättet (Tunnel und Brücken ergeben sich von selbst)
     const n=Math.max(2,Math.ceil(P.len/20)),pts=[],hs=[];for(let k=0;k<=n;k++){at(P,P.len*k/n,0,tmp);pts.push([tmp.x,tmp.z]);hs.push(S.groundAt(tmp.x,tmp.z));}
     const hm=hs.map((_,k)=>{let a=0,c=0;for(let j=-12;j<=12;j++){const h=hs[Math.min(n,Math.max(0,k+j))];a+=h;c++;}return Math.min(a/c,hs[k]+14);});
+    // Flughafenbahnhöfe liegen unterirdisch (Zürich, Genf): unter Vorfeld und Pisten im Tunnel statt quer über den Asphalt
+    const under=(x,z)=>{if(inAirportArea(x,z))return true;for(const A of AIRPORTS){if(A.small||!(A.len>=2500)||A.sin==null)continue;const L=toLocal(A,x,z);if(Math.abs(L.along)<A.len/2+300&&Math.abs(L.across)<500)return true;}return false;};
+    for(let k=0;k<=n;k++)if(under(pts[k][0],pts[k][1]))hm[k]=hs[k]-30;
     const Q2=polyPath(pts);Q2.h=hm;return Q2;});
   // Gleise als dunkles Schotterband
   {const pos=[],idx=[];let vi=0;for(const P of RP){for(let k=0;k<P.pts.length;k++){const a=P.pts[Math.max(0,k-1)],b=P.pts[Math.min(P.pts.length-1,k+1)],dx=b[0]-a[0],dz=b[1]-a[1],L=Math.hypot(dx,dz)||1,nx=-dz/L*2.6,nz=dx/L*2.6,y=P.h[k]+0.35;
