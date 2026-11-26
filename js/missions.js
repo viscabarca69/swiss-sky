@@ -1,5 +1,6 @@
 // Karriere-Missionen in der Zentralschweiz
 import {APM,fromLocal,toXZ,alongV8} from './worldgen.js';
+import {taxiNet,holdFor} from './taxinet.js';
 
 export function buildObjectives(mission,S,opt){
   const gnd=(x,z)=>S.groundAt(x,z);
@@ -16,7 +17,8 @@ export function buildObjectives(mission,S,opt){
   const FI=(lat,lon,name)=>{const p=toXZ(lat,lon);return{type:'fire',x:p.x,z:p.z,y:gnd(p.x,p.z),r:75,name};};
   const W=(lat,lon,r,name)=>{const p=toXZ(lat,lon);return{type:'wland',x:p.x,z:p.z,y:S.waterLevel?S.waterLevel(p.x,p.z):434,r:r||700,name};};
   const SP=(id,k,n,tgt)=>{const A=APM[id],p=fromLocal(A,-A.len/2+tgt,0);return{type:'spot',ap:A,k,n,tgt,x:p.x,z:p.z,y:A.elev+3};};
-  const TX=()=>{const A=APM.ZRH16,p=fromLocal(A,A.len/2-45,-95);return{type:'taxi',x:p.x,z:p.z,y:A.elev+4,r:38};};
+  // Rollhalt Piste 34: echter Haltepunkt aus dem OSM-Rollwegnetz (falls vorhanden)
+  const TX=()=>{const A=APM.ZRH16,h=holdFor(taxiNet('LSZH'),A,-1),p=h||fromLocal(A,A.len/2-45,-95);return{type:'taxi',x:p.x,z:p.z,y:A.elev+4,r:h?30:38,hold:h?h.n:null,ref:h?h.ref:''};};
   const HL=(lat,lon,name,wait,kind)=>{const p=toXZ(lat,lon);return{type:'hland',x:p.x,z:p.z,y:gnd(p.x,p.z),r:kind==='pad'?16:30,wait,name,kind};};
   const HO=(lat,lon,name,wait,txt)=>{const p=toXZ(lat,lon);return{type:'hover',x:p.x,z:p.z,y:S.waterLevel&&S.isLake(p.x,p.z)?S.waterLevel(p.x,p.z):gnd(p.x,p.z),r:24,h:18,wait,name,txt};};
   // Aussenlandung für Flugzeuge (Gletscher, gesperrte Autobahn): aufsetzen und im Kreis anhalten

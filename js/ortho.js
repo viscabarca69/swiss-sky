@@ -3,6 +3,7 @@
 // ein Übersichtsbild je Gebiet (2 m/Pixel) und bis zu vier scharfe Kacheln (0,5 m/Pixel) in der Nähe der Kamera.
 import * as THREE from 'three';
 import {GEO} from './worldgen.js';
+import {LOWMEM} from './device.js';
 
 // Gebiete in Schweizer Landeskoordinaten (LV95), Kacheln 1 km × 1 km, benannt nach der Südwest-Ecke in km
 export const ORTHO_REGIONS=[
@@ -104,11 +105,11 @@ export function initOrtho(renderer){
     // die vier nächsten Kacheln (nur unterhalb ~3500 m über Grund – darüber reicht das Übersichtsbild)
     const want=[];if(agl<3500)ORTHO_REGIONS.forEach((R,ri)=>{const [E,N]=toEN(R,cp.x,cp.z);
       for(let e=R.e0;e<R.e1;e++)for(let n=R.n0;n<R.n1;n++){const dx=Math.max(0,e*1000-E,E-(e+1)*1000),dy=Math.max(0,n*1000-N,N-(n+1)*1000),d=Math.hypot(dx,dy);if(d<2200)want.push({ri,e,n,d});}});
-    want.sort((a,b)=>a.d-b.d);const sel=want.slice(0,4).map(w=>get(w.ri,w.e,w.n));
+    want.sort((a,b)=>a.d-b.d);const sel=want.slice(0,LOWMEM?2:4).map(w=>get(w.ri,w.e,w.n));
     // Plätze stabil halten: was schon geladen ist, bleibt im gleichen Platz
     const next=[null,null,null,null];sel.forEach(o=>{const i=slots.indexOf(o);if(i>=0&&o.tex)next[i]=o;});
     sel.forEach(o=>{if(next.includes(o)||!o.tex)return;const i=next.indexOf(null);if(i>=0)next[i]=o;});
     for(let i=0;i<4;i++){slots[i]=next[i];const o=next[i],H=ORU.orHT.value[i];ORU['orH'+i].value=o?o.tex:blank;if(o){const R=ORTHO_REGIONS[o.ri];H.set((o.e-R.e0)*1000,(o.n-R.n0)*1000,1,o.ri);}else H.set(0,0,0,0);}
     // Speicher: höchstens 8 scharfe Kacheln behalten
-    if(cache.size>8){const arr=[...cache.values()].filter(o=>!slots.includes(o)).sort((a,b)=>a.used-b.used);while(cache.size>8&&arr.length){const o=arr.shift();if(o.tex)o.tex.dispose();cache.delete(o.key);}}};
+    const KEEP=LOWMEM?3:8;if(cache.size>KEEP){const arr=[...cache.values()].filter(o=>!slots.includes(o)).sort((a,b)=>a.used-b.used);while(cache.size>KEEP&&arr.length){const o=arr.shift();if(o.tex)o.tex.dispose();cache.delete(o.key);}}};
 }

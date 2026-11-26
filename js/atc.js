@@ -2,7 +2,7 @@
 import {AIRPORTS,toLocal} from './worldgen.js';
 const TWR={LSZH:{n:'Zürich Turm',c:true},LSME:{n:'Emmen Turm',c:true},LSZC:{n:'Buochs Turm',c:true},LSMA:{n:'Alpnach Turm',c:true},LSZF:{n:'Birrfeld Info',c:false},LSXZ:{n:'Zofingen Info',c:false},LSZN:{n:'Hausen Info',c:false},LSZB:{n:'Bern Turm',c:true},LSMM:{n:'Meiringen Turm',c:true},LSMI:{n:'Interlaken Info',c:false},LSGR:{n:'Reichenbach Info',c:false},LSTA:{n:'Raron Info',c:false},LSGS:{n:'Sion Turm',c:true},LSZG:{n:'Grenchen Turm',c:true},LSGG:{n:'Genève Tour',c:true},LFSB:{n:'Basel Turm',c:true},LSZA:{n:'Lugano Torre',c:true},LSZR:{n:'Altenrhein Turm',c:true},LSZS:{n:'Samedan Turm',c:true},LSMP:{n:'Payerne Tour',c:true}};
 const DIG=['null','eins','zwo','drei','vier','fünf','sechs','sieben','acht','neun'];
-const spell=s=>String(s).split('').map(c=>/[0-9]/.test(c)?DIG[+c]:c==='-'?'':({H:'Hotel',B:'Bravo',K:'Kilo',A:'Alpha',L:'Lima',S:'Sierra',E:'Echo',F:'Foxtrot',T:'Tango',I:'India',U:'Uniform',P:'Papa',C:'Charlie'}[c]||c)).join(' ');
+const spell=s=>String(s).split('').map(c=>/[0-9]/.test(c)?DIG[+c]:c==='-'?'':({A:'Alpha',B:'Bravo',C:'Charlie',D:'Delta',E:'Echo',F:'Foxtrot',G:'Golf',H:'Hotel',I:'India',J:'Juliett',K:'Kilo',L:'Lima',M:'Mike',N:'November',O:'Oscar',P:'Papa',Q:'Quebec',R:'Romeo',S:'Sierra',T:'Tango',U:'Uniform',V:'Victor',W:'Whiskey',X:'X-Ray',Y:'Yankee',Z:'Zulu'}[c]||c)).join(' ');
 export const CALLSIGN={alpina:'HB-KAL',saentis:'HB-SAE',titlis:'HB-FTI',foehn:'LUIS 42',l320:'LUIS 320',l330:'LUIS 330',l340:'LUIS 340',l346:'LUIS 346',l350:'LUIS 350',l380:'LUIS 380',l32n:'LUIS 324',l747:'LUIS 747'};
 // Frequenzen: aus dem Platzkürzel abgeleitet (Turm 118–119, Rollkontrolle 121, Abflug/Anflug 119–127), fest pro Platz
 const hsh=s=>{let h=7;for(const c of String(s))h=(h*31+c.charCodeAt(0))>>>0;return h;};
@@ -42,6 +42,9 @@ export function createATC(audio,opts){
     // Rollfreigabe: wer abseits der Piste steht (Gate, Vorfeld), bekommt zuerst die Freigabe zum Rollhalt
     if(A.phase==='ground'&&!A.reqTO&&!A.taxiClr&&ctrl(A.home)&&!ctx.onRwy){A.taxiClr=true;const Ap=A.home,rw=ctx.startRwy,gn=(TWR[Ap.icao]||{n:Ap.name}).n.replace(/ Turm$/,' Rollkontrolle');
       say('me',`${gn}, ${A.cs}, rollbereit, Information ${A.atisL||'Alpha'}.`,`${gn}, ${A.csS}, rollbereit, Information ${A.atisL||'Alpha'}`);
+      // Rollweg-Namen aus dem echten Netz (OSM): «via D, F, E»; Namen wie «Link 1» bleiben ausgeschrieben
+      const via=(ctx.taxiVia||[]).slice(0,7),hp=ctx.taxiHold?` ${ctx.taxiHold}`:'',sp=n=>/^[A-Z]{1,2}\d*$/.test(n)?spell(n):n;
+      if(via.length){say('twr',`${A.cs}, rollen Sie zum Rollhalt${hp} Piste ${rw} via ${via.join(', ')}, halten Sie vor der Piste. Am Rollhalt Turm ${FQ(Ap.icao,'twr')}.`,`${A.csS}, rollen Sie zum Rollhalt${hp?' '+sp(hp.trim()):''} Piste ${spell(rw)} via ${via.map(sp).join(', ')}, halten Sie vor der Piste, am Rollhalt Turm ${fqSpeak(FQ(Ap.icao,'twr'))}`,1.6);return;}
       say('twr',`${A.cs}, rollen Sie zum Rollhalt Piste ${rw}, folgen Sie den grünen Rollweglichtern, halten Sie vor der Piste. Am Rollhalt Turm ${FQ(Ap.icao,'twr')}.`,`${A.csS}, rollen Sie zum Rollhalt Piste ${spell(rw)}, halten Sie vor der Piste, am Rollhalt Turm ${fqSpeak(FQ(Ap.icao,'twr'))}`,1.6);return;}
     if(A.phase==='ground'&&!A.reqTO){A.reqTO=true;const Ap=A.home,rw=ctx.startRwy;A.twrA=Ap;A.twrName=(TWR[Ap.icao]||{n:Ap.name}).n;
       say('me',`${A.twrName}, ${A.cs}, bereit zum Abflug Piste ${rw}.`,`${A.twrName}, ${A.csS}, bereit zum Abflug Piste ${spell(rw)}`);

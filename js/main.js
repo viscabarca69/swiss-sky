@@ -39,6 +39,7 @@ import {createLogbook,SPECIAL_LIV,logGet} from './logbook.js';
 import {createCamera} from './camera.js';
 import {createMenus} from './menus.js';
 import {setClockTime} from './realcity.js';
+import {LOWMEM,MOBILE,CRASHED} from './device.js';
 
 const _el={},$=id=>_el[id]&&_el[id].isConnected?_el[id]:(_el[id]=document.getElementById(id)),DEG=Math.PI/180;
 // gemeinsamer Zustand für die ausgelagerten Module (Getter liefern immer den aktuellen Wert, z. B. den laufenden Flug G)
@@ -66,12 +67,19 @@ const QUAL={ultra:{tex:4096,trees:50000,treeSpacing:18,treeRadius:4400,farms:220
   high:{tex:4096,trees:36000,treeSpacing:20,treeRadius:4000,farms:1900,house:1,shadows:true,aniso:8,pr:1.5,reflect:false,bloom:false},
   medium:{tex:4096,trees:20000,treeSpacing:25,treeRadius:3200,farms:1200,house:0.75,shadows:true,aniso:4,pr:1.25,reflect:false,bloom:false},
   low:{tex:2048,trees:7000,treeSpacing:36,treeRadius:2300,farms:500,house:0.45,shadows:false,aniso:2,pr:1,reflect:false,bloom:false}};
-const Q={...(QUAL[save.settings.quality]||QUAL.high),world:WORLD};
+// Sparmodus (Telefon/Tablet, wenig Speicher oder nach einem Absturz): höchstens «Niedrig», Gelände-Textur 2048
+const Q={...(LOWMEM?QUAL.low:QUAL[save.settings.quality]||QUAL.high),world:WORLD};
 const LEVEL={off:0,weak:0.35,mid:0.8,strong:1.7};
 if(!AP[save.free.ap]){save.free.ap=MAIN_AP.id;save.free.rev=false;}
 
 // ---------- Renderer ----------
 const renderer=new THREE.WebGLRenderer({canvas:$('c'),antialias:true,powerPreference:'high-performance'});
+// Grafikkarte verloren (meist Speicher voll): Hinweis statt eingefrorenem Bild, beim nächsten Start Sparmodus
+$('c').addEventListener('webglcontextlost',e=>{e.preventDefault();try{localStorage.setItem('swissSky-lite','1');}catch(_){}
+  if(document.getElementById('glLost'))return;const d=document.createElement('div');d.id='glLost';
+  d.style.cssText='position:fixed;inset:0;z-index:99;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:rgba(8,14,24,.92);color:#fff;font:16px system-ui;text-align:center;padding:24px';
+  d.innerHTML='<b style="font-size:20px">Grafikspeicher voll</b><span>Das Gerät hat die 3D-Grafik abgebrochen. Beim Neuladen startet Swiss Sky im Sparmodus (kleinere Texturen, weniger Objekte).</span><button style="font:inherit;padding:10px 22px;border-radius:10px;border:0;background:#2f80ed;color:#fff">Neu laden</button>';
+  d.querySelector('button').onclick=()=>location.reload();document.body.appendChild(d);},false);
 renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,Q.pr));
 renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.outputColorSpace=THREE.SRGBColorSpace;
 renderer.shadowMap.enabled=Q.shadows;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
@@ -84,7 +92,7 @@ class AOPass extends GTAOPass{constructor(sc,cm,w,h,res){super(sc,cm,Math.round(
   if(o.isPoints||o.isLine||o.isSprite||o.userData.noAO||(m&&!Array.isArray(m)&&(m.transparent||m.depthWrite===false)))o.visible=false;});}}
 const aoBox=new THREE.Box3();
 // Auflösung des Umgebungsschattens: 1 = voll (Ultra am Computer), 0.5 = halb (Hoch am Computer, Handy auf «An»), 0 = aus
-function aoWanted(){const v=save.settings.ao||'auto',mob=/Mobi|Android|iPhone|iPad/.test(navigator.userAgent),q=save.settings.quality;
+function aoWanted(){const v=save.settings.ao||'auto',mob=MOBILE||LOWMEM,q=LOWMEM?'low':save.settings.quality;
   if(v==='off')return 0;if(v==='on')return mob||q==='low'||q==='medium'?0.5:1;return mob?0:q==='ultra'?1:q==='high'?0.5:0;}
 function buildComposer(){composer=null;bloom=null;aoPass=null;const ao=aoWanted();if(!Q.bloom&&!ao)return;
   const rt=new THREE.WebGLRenderTarget(innerWidth,innerHeight,{type:THREE.HalfFloatType,samples:4});composer=new EffectComposer(renderer,rt);composer.setPixelRatio(renderer.getPixelRatio());composer.setSize(innerWidth,innerHeight);
@@ -136,6 +144,7 @@ async function boot(){
   prog(1,'Bereit');
   $('loading').classList.add('fade');setTimeout(()=>$('loading').remove(),900);
   showMenu();
+  if(CRASHED&&LOWMEM)setTimeout(()=>toast('Swiss Sky wurde beim letzten Mal unerwartet beendet – der Sparmodus ist jetzt eingeschaltet (Einstellungen → Grafik).',7000),1500);
 }
 function addParked(id,A,along,across,rot,nose,abs){const m=bakeModel(buildModel(id));let info=null;
   // echte Standplätze (Weltkoordinaten + Kurs in Grad)
@@ -1180,7 +1189,7 @@ function checkBadges(r){
     if(G.P.id==='l380'&&lt)award('gross');if(r.m.id==='m18')award('loesch');if(['m25','m26','m27'].every(id=>save.stars[id]))award('rega');if(r.m.id==='m21')award('segel');if(['m15','m16','m17'].every(id=>save.stars[id]))award('notfall');if(r.m.contest&&G.spots&&G.spots.length&&G.spots.reduce((a,b)=>a+b,0)/G.spots.length<10)award('ziel');const j=r.m.contract;if(j&&j.daily)award('tages');if(j&&!j.daily&&career.C.done>=10)award('auftrag');}
   if(totalStars()>=30)award('kapitaen');if(career.C.earned>=1e6)award('unter');if(ORDER.every(id=>career.owns(id)))award('flotte');}
 const fmtT=s=>`${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
-function atcCtx(){const F=G.F,A=G.startAP;return{F,metric:save.settings.units==='metric',wind:{...wx.cur,gustTxt:wx.cfg.gust>3},traffic,startRwy:A?(G.startRev?A.rwyB:A.rwyA):'',startRwyObj:A,pad:pad.connected,agl:F.pos.y-S.groundAt(F.pos.x,F.pos.z)-F.P.gearH,onRwy:!!WF.runwayAt(F.pos.x,F.pos.z),temp:G.live&&LIVE&&LIVE.T!=null?LIVE.T:null,vis:env&&env.fogVis?env.fogVis():null};}
+function atcCtx(){const F=G.F,A=G.startAP,tx=G.obj&&G.obj.find(o=>o.type==='taxi');return{F,taxiVia:G.taxiRoute?G.taxiRoute.names:null,taxiHold:tx&&tx.ref||'',metric:save.settings.units==='metric',wind:{...wx.cur,gustTxt:wx.cfg.gust>3},traffic,startRwy:A?(G.startRev?A.rwyB:A.rwyA):'',startRwyObj:A,pad:pad.connected,agl:F.pos.y-S.groundAt(F.pos.x,F.pos.z)-F.P.gearH,onRwy:!!WF.runwayAt(F.pos.x,F.pos.z),temp:G.live&&LIVE&&LIVE.T!=null?LIVE.T:null,vis:env&&env.fogVis?env.fogVis():null};}
 // ---------- Wiederholung ----------
 const RP={t:0,mode:0,camT:0,next:false,anchor:new THREE.Vector3(),speed:1,lock:false};
 const RPS=[0.25,0.5,1,2,4,8];
@@ -1320,7 +1329,7 @@ function loop(now){
 }
 const P_shadow=P=>P.shadow;
 boot().then(()=>requestAnimationFrame(loop)).catch(e=>{console.error(e);$('lstep').textContent='Fehler: '+e.message;});
-window.__af={__airportPlan:(i,f)=>airportPlan(i,f),setAO:v=>{save.settings.ao=v;buildComposer();return !!aoPass;},get helipads(){return helipads;},get taxiDbg(){return planTaxi.dbg;},apEngage,get taxiPath(){return G.taxiPath;},get taxiMs(){return G.taxiMs;},startPushback,animateModel,AIRLINER,get attr(){return attr;},buildObjectives,AIRPORTS,fromLocal,get airports(){return airports;},apprTest:(icao,i)=>{setAppr(approachOptions(icao)[i]);return G.appr;},apprMenu,mapXf,get groundT(){return groundT;},MSH,THUMB,TH,thumbTick,setWp,clearWp,MV,mapZoom,mapCenter,__jm:jobMission,career,showMenu,setSub,renderCareer,openCareer,getDaily,showBrief,finish,award,toXZ,get S(){return S;},MISSIONS,get traffic(){return traffic;},atc,keyAction,startReplay,get env(){return env;},renderer,get world(){return world;},get composer(){return composer;},set noComp(v){window.__noComp=v;},buildModel,PLANES,THREE,get G(){return G;},startFlight,K,get state(){return state;},cam,scene,simAP:(sec)=>{for(let t=0;t<sec;t+=1/30){const F=G.F;K.clear();const A=G.obj.find(o=>o.type==='land')?.ap||(G.lesson&&AP[G.lesson.ap]);if(!A)break;const l=toLocal(A,F.pos.x,F.pos.z);const sgn0=(F.vel.x*A.sin-F.vel.z*A.cos)>=0?1:-1;const d=(-sgn0*A.len/2-l.along)*sgn0;const ideal=A.elev+F.P.gearH+Math.max(0,d+150)*0.0524;const agl=F.pos.y-F.P.gearH-S.heightAt(F.pos.x,F.pos.z);
+window.__af={__airportPlan:(i,f)=>airportPlan(i,f),pushTick:(dt)=>{if(G.push)pushTick(G.F,dt);return !!G.push;},setAO:v=>{save.settings.ao=v;buildComposer();return !!aoPass;},get helipads(){return helipads;},get taxiDbg(){return planTaxi.dbg;},apEngage,get taxiPath(){return G.taxiPath;},get taxiMs(){return G.taxiMs;},startPushback,animateModel,AIRLINER,get attr(){return attr;},buildObjectives,AIRPORTS,fromLocal,get airports(){return airports;},apprTest:(icao,i)=>{setAppr(approachOptions(icao)[i]);return G.appr;},apprMenu,mapXf,get groundT(){return groundT;},MSH,THUMB,TH,thumbTick,setWp,clearWp,MV,mapZoom,mapCenter,__jm:jobMission,career,showMenu,setSub,renderCareer,openCareer,getDaily,showBrief,finish,award,toXZ,get S(){return S;},MISSIONS,get traffic(){return traffic;},atc,keyAction,startReplay,get env(){return env;},renderer,get world(){return world;},get composer(){return composer;},set noComp(v){window.__noComp=v;},buildModel,PLANES,THREE,get G(){return G;},startFlight,K,get state(){return state;},cam,scene,simAP:(sec)=>{for(let t=0;t<sec;t+=1/30){const F=G.F;K.clear();const A=G.obj.find(o=>o.type==='land')?.ap||(G.lesson&&AP[G.lesson.ap]);if(!A)break;const l=toLocal(A,F.pos.x,F.pos.z);const sgn0=(F.vel.x*A.sin-F.vel.z*A.cos)>=0?1:-1;const d=(-sgn0*A.len/2-l.along)*sgn0;const ideal=A.elev+F.P.gearH+Math.max(0,d+150)*0.0524;const agl=F.pos.y-F.P.gearH-S.heightAt(F.pos.x,F.pos.z);
   const wantVs=F.onGround?0:agl>6?clamp((ideal-F.pos.y)*0.15-0.0524*F.vel.length(),-6,2):-0.5;const vs=F.vel.y;if(!F.onGround){if(vs<wantVs-0.3)K.add('ArrowDown');else if(vs>wantVs+0.3)K.add('ArrowUp');}
   {const sgn=(F.vel.x*A.sin-F.vel.z*A.cos)>=0?1:-1;const ac=l.across*sgn;const vlat=(F.vel.x*A.cos+F.vel.z*A.sin)*sgn;const want=clamp(-ac*0.05,-25,25);const err=want-vlat;const bk=(F.bank||0)/DEG;const wb=clamp(-err*3,-20,20);if(F.onGround){if(ac>2)K.add('KeyA');else if(ac<-2)K.add('KeyD');}else if(bk<wb-3)K.add('KeyA');else if(bk>wb+3)K.add('KeyD');}const V=F.vel.length();if(!F.onGround){if(V<F.P.Vref*1.05)K.add('KeyW');else if(V>F.P.Vref*1.15)K.add('KeyS');}else{K.add('KeyS');K.add('KeyB');}
   step(1/30);if(G.done||F.crashed)break;}K.clear();const F=G.F;return{v:F.vel.length(),y:F.pos.y,gnd:F.onGround,done:G.done,crashed:F.crashed,lt:G.lastTouch&&G.lastTouch.letter,oi:G.oi,n:G.obj.length};},

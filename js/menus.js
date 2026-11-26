@@ -7,6 +7,7 @@ import {createCareer,PRICE,ORDER,fmtCHF,jobMission,dailyJob,freeJobs,BADGES,enco
 import {MISSIONS as ALL_MISSIONS,buildObjectives,objPath,turnRadius} from './missions.js';
 import {runwayAt,approachOptions,planApproach,approachGuide,finalSlope} from './approach.js';
 import {initOrtho,onOrthoReady,orthoPaved} from './ortho.js';
+import {LOWMEM,LOWMEM_WHY,setLite} from './device.js';
 import {createLogbook,SPECIAL_LIV,logGet} from './logbook.js';
 export function createMenus(ctx){const ZS=ctx.ZS;
 // ---------- Karriere-Menü ----------
@@ -166,7 +167,7 @@ function renderFree(){const {$,AP,fmtH,liveWeather,persist,save}=ctx;
 }
 function ewInfo(){const {$,attr,ewIds}=ctx;const n=ewIds().length;$('ewInfo').innerHTML=`<b>Goldene Edelweiss: ${n} / ${attr?attr.edelweissTotal:72}</b> – versteckt bei Wahrzeichen, auf Gipfeln und tief über Seen: von Genf und dem Matterhorn über Zürich, Luzern und die Jungfrau bis nach St. Moritz und Lugano. Flieg im freien Flug hindurch und sammle alle! Dazu: Kunstflugstaffel, Zeppelin über Zürich, Heissluftballone, Gleitschirme, Seilbahnen und nachts Feuerwerk.`;}
 function renderSettings(){const {$,audio,buildComposer,env,persist,save}=ctx;const st=save.settings;
-  const opt=(id,vals,key)=>{$(id).innerHTML=vals.map(([v,n])=>`<button class="chip ${st[key]===v?'sel':''}" data-v="${v}">${n}</button>`).join('');$(id).querySelectorAll('.chip').forEach(el=>el.onclick=()=>{let v=el.dataset.v;if(v==='true')v=true;if(v==='false')v=false;st[key]=v;persist();renderSettings();if(key==='quality')$('qHint').style.display='';if(key==='ao'&&env)buildComposer();});};
+  const opt=(id,vals,key)=>{$(id).innerHTML=vals.map(([v,n])=>`<button class="chip ${st[key]===v?'sel':''}" data-v="${v}">${n}</button>`).join('');$(id).querySelectorAll('.chip').forEach(el=>el.onclick=()=>{let v=el.dataset.v;if(v==='true')v=true;if(v==='false')v=false;st[key]=v;persist();renderSettings();if(key==='quality'||key==='lite')$('qHint').style.display='';if(key==='lite')setLite(v);if(key==='ao'&&env)buildComposer();});};
   opt('sUnits',[['metric','Metrisch (km/h, m)'],['aviation','Luftfahrt (kt, ft)']],'units');
   opt('sAssist',[[true,'Flughilfe an'],[false,'Manuell']],'assist');
   opt('sInvert',[[false,'↓ = Nase hoch'],[true,'↑ = Nase hoch']],'invert');
@@ -179,6 +180,8 @@ function renderSettings(){const {$,audio,buildComposer,env,persist,save}=ctx;con
   opt('sTraffic',[[true,'KI-Verkehr an'],[false,'Kein Verkehr']],'traffic');
   opt('sPad',[['0.7','Sanft'],['1','Normal'],['1.3','Direkt']],'padSensS');
   opt('sQual',[['ultra','Ultra'],['high','Hoch'],['medium','Mittel'],['low','Niedrig']],'quality');
+  if(!st.lite)st.lite='auto';opt('sLite',[['auto','Automatisch'],['on','Immer an'],['off','Aus']],'lite');
+  $('liteInfo').textContent=LOWMEM?`Sparmodus ist aktiv (${LOWMEM_WHY}): halb so grosse Texturen, Qualität «Niedrig», weniger abgestellte Flugzeuge und Luftbild-Kacheln.`:'Sparmodus ist aus. «Automatisch» schaltet ihn auf Handys, Tablets und nach einem Absturz ein.';
   opt('sAO',[['auto','Auto'],['on','An'],['off','Aus']],'ao');
   $('sVol').value=st.vol;$('sVol').oninput=e=>{st.vol=+e.target.value;audio.setVolume(st.vol);persist();};}
 return {getCSUB:()=>CSUB,esc,THUMB,TH,thumbKey,SHOW,SPOT,airportPlan,ewInfo,getDaily,hdgName,livBind,livHTML,openCareer,renderBadges,renderCareer,renderFree,renderHangar,renderJobs,renderRecords,renderSettings,rwyHdg,setSub,shareObj,showroomOn,showroomSet,thumbFill,thumbImg,thumbTick};}

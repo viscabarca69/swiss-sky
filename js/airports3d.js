@@ -4,6 +4,7 @@ import {inOrtho,lv95ToXZ} from './ortho.js';
 // [Typ, E, N, Kurs, Abstand Flugzeugmitte–Dockfassade in Kursrichtung (0 = Aussenposition ohne Brücke)]
 const ZRH_STANDS=[["l380",2683861.8,1257401.9,156,0],["l350",2683939.9,1257401.9,186,56.75],["l340",2684013.2,1257399.4,186,60.75],["l747",2684096.2,1257394.5,186,63.25],["l350",2684164.6,1257389.6,186,64.5],["l330",2684242.7,1257382.3,186,64.5],["l350",2684313.5,1257375.0,186,63.75],["l340",2684384.3,1257372.6,186,67.25],["l340",2683981.4,1257250.5,6,57.0],["l330",2684052.2,1257243.2,6,57.75],["l350",2684123.0,1257238.3,6,56.25],["l330",2684198.7,1257231.0,6,56.5],["l350",2684269.5,1257223.6,6,57.5],["l747",2684352.5,1257216.3,6,57.5],["l330",2684425.8,1257216.3,6,0],["l320",2684336.6,1256292.0,184.5,0],["l32n",2684377.6,1256285.5,184.5,46.25],["l320",2684419.9,1256279.0,184.5,56.5],["l32n",2684518.9,1256272.5,184.5,59.25],["l320",2684559.9,1256262.7,184.5,52.75],["l32n",2684296.2,1256458.0,4.5,35.75],["l320",2684337.2,1256458.0,4.5,32.25],["l32n",2684377.6,1256448.2,4.5,38.25],["l320",2684418.6,1256441.7,4.5,40.75],["l32n",2684459.0,1256454.8,4.5,24.25],["l320",2684518.9,1256435.2,4.5,38.25],["l330",2684462.2,1256103.2,4.5,66.25]];
 import {bakeStatic} from './bake.js';
+import {LOWMEM,TEXS} from './device.js';
 import {AIRPORTS,fromLocal} from './worldgen.js';
 import {mulberry} from './noise.js';
 import {makeGlow} from './env.js';
@@ -41,7 +42,7 @@ function regApron(A){const t=canvasT(256,768,(x,W,H)=>{x.fillStyle='#8a8b88';x.f
       x.save();x.translate(W*0.7,y-14);x.fillStyle='#fff';x.font='bold 18px Arial';x.textAlign='center';x.fillText(String(k+1),0,0);x.restore();}});
   return new THREE.MeshStandardMaterial({map:t,roughness:0.9,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});}
 function runwayTexture(A){
-  const Wp=256,ppA=Wp/A.w,Hp=A.len>2000?8192:4096,ppL=Hp/A.len;
+  const Wp=256*TEXS,ppA=Wp/A.w,Hp=(A.len>2000?8192:4096)*TEXS,ppL=Hp/A.len;
   const c=document.createElement('canvas');c.width=Wp;c.height=Hp;const x=c.getContext('2d'),r=mulberry(A.len);
   x.fillStyle='#2f3134';x.fillRect(0,0,Wp,Hp);
   for(let i=0;i<900;i++){const w=4+r()*60,h=10+r()*300;x.fillStyle=r()<0.5?`rgba(255,255,255,${r()*0.035})`:`rgba(0,0,0,${r()*0.06})`;x.fillRect(r()*Wp-w/2,r()*Hp,w,h);}
@@ -165,8 +166,9 @@ export function buildAirports(scene,S,addParked){
     if(A.id==='ZRH16'&&zO){
       // Flugzeuge an den echten Standplätzen (aus dem Luftbild abgelesen): Dock E (Grossraum), Dock A/B (L-320)
       const rq=mulberry(1607);let si=0;
-      for(const [id,E,N,h,F] of ZRH_STANDS){const p=lv95ToXZ(E,N);if(addParked)addParked(id,A,0,0,0,0,{x:p.x,z:p.z,h});
-        if(F)jetBridges(grpOf(A),id,p,h,F);groundCrew(grpOf(A),id,p,h,F,rq,si++);}
+      // Sparmodus: nur jeder zweite Standplatz belegt (jedes Flugzeug kostet Grafikspeicher)
+      for(const [id,E,N,h,F] of ZRH_STANDS){const p=lv95ToXZ(E,N),occ=!LOWMEM||si%2===0;if(addParked&&occ)addParked(id,A,0,0,0,0,{x:p.x,z:p.z,h});
+        if(F)jetBridges(grpOf(A),id,p,h,F);if(occ)groundCrew(grpOf(A),id,p,h,F,rq,si);si++;}
       // Vorfeld-Flutlicht an den Docks
       for(const [e0,e1,n] of [[2683800,2684460,1257470],[2683930,2684470,1257150],[2684270,2684600,1256215],[2684270,2684570,1256525]])
         for(let e=e0;e<=e1;e+=90){const p=lv95ToXZ(e,n),gy=S.heightAt(p.x,p.z);const ms=new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.6,28,8),metal);ms.position.set(p.x,gy+14,p.z);ms.castShadow=true;scene.add(ms);
@@ -274,7 +276,7 @@ export function buildAirports(scene,S,addParked){
       const veh=(al,ac,w,h,l,col)=>{const v=new THREE.Mesh(new THREE.BoxGeometry(w,h,l),new THREE.MeshStandardMaterial({color:col,roughness:0.6}));v.castShadow=true;place(A,v,al,ac,A.elev+h/2+0.3);};
       veh(aC-40,acA+s*30,2.6,2.8,8,0xf2c200);veh(aC+60,acA+s*35,2.4,2.2,6,0xe8e8e8);veh(aC+110,acA+s*20,2.2,1.4,4,0xf2c200);
       // geparkte Flugzeuge auf dem Vorfeld
-      if(addParked){const P2=(id,al,ac)=>{const r=addParked(id,A,al,ac,parkRot(s));if(r&&r.m)G0.add(r.m);};
+      if(addParked){let np=0;const P2=(id,al,ac)=>{if(LOWMEM&&np++>=2)return;const r=addParked(id,A,al,ac,parkRot(s));if(r&&r.m)G0.add(r.m);};
         if(big){P2('l320',aC-120,acA+s*30);P2('foehn',aC-20,acA+s*25);P2('titlis',aC+70,acA+s*20);}
         else{P2('foehn',aC-60,acA+s*25);P2('titlis',aC+30,acA+s*20);}
         P2('alpina',aC-200,acA+s*10);P2('saentis',aC-230,acA+s*10);}

@@ -1,4 +1,5 @@
 // Flugzeuge: Daten + detaillierte 3D-Modelle
+import {TEXS} from './device.js';
 import * as THREE from 'three';
 import {makeGlow} from './env.js';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
@@ -188,7 +189,7 @@ function wing(o,mat,smat,parent,parts,name){
   const R=new THREE.Mesh(main,mat),Lm=new THREE.Mesh(mirror(main),mat);R.castShadow=Lm.castShadow=true;parent.add(R,Lm);
   return {sec,chord};
 }
-function canvasTex(w,h,draw){const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=8;return t;}
+function canvasTex(w,h,draw){w=Math.max(32,Math.round(w*TEXS));h=Math.max(32,Math.round(h*TEXS));const c=document.createElement('canvas');c.width=w;c.height=h;draw(c.getContext('2d'),w,h);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=8;return t;}
 // Lackierung: x = Länge (Nase->Heck), y: 0 oben,0.25H links,0.5H Bauch,0.75H rechts
 const LIVC=new Map();
 const hexA=(c,a)=>{const n=parseInt(c.slice(1),16);return`rgba(${n>>16&255},${n>>8&255},${n&255},${a})`;};
@@ -386,7 +387,7 @@ function patchGeo(L,PR,ta,tb,p0,p1,NT,NP,lift,swap){const pos=[],uv=[],idx=[];
     for(let i=0;i<=NP;i++){const ph=q0+(q1-q0)*i/NP,cp=Math.cos(ph);pos.push(r*sx*Math.sin(ph)*(cp>0?sxW(PR,t,cp):1),r*syAt(PR,t,ph)*cp+yo,t*L-L/2);if(swap)uv.push(j/NT,i/NP);else uv.push(i/NP,1-j/NT);}}
   const inc=(typeof p1==='function'?p1(ta):p1)>(typeof p0==='function'?p0(ta):p0);for(let j=0;j<NT;j++)for(let i=0;i<NP;i++){const a=j*(NP+1)+i,b=a+1,c=a+NP+1,d=c+1;if(inc)idx.push(a,c,b,b,c,d);else idx.push(a,b,c,b,d,c);}
   const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(pos,3));g.setAttribute('uv',new THREE.Float32BufferAttribute(uv,2));g.setIndex(idx);g.computeVertexNormals();return g;}
-function maskTex(W,H,fn,emis){const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d'),im=x.createImageData(W,H),D=im.data;let e=null,E=null;if(emis){e=document.createElement('canvas');e.width=W;e.height=H;E=e.getContext('2d').createImageData(W,H);}
+function maskTex(W,H,fn,emis){W=Math.max(16,Math.round(W*TEXS));H=Math.max(16,Math.round(H*TEXS));const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d'),im=x.createImageData(W,H),D=im.data;let e=null,E=null;if(emis){e=document.createElement('canvas');e.width=W;e.height=H;E=e.getContext('2d').createImageData(W,H);}
   for(let py=0;py<H;py++)for(let px=0;px<W;px++){const v=fn(px/W,py/H),o=(py*W+px)*4;if(!v){D[o+3]=0;continue;}D[o]=v[0];D[o+1]=v[1];D[o+2]=v[2];D[o+3]=255;if(E&&v[3]){E.data[o]=255;E.data[o+1]=255;E.data[o+2]=255;E.data[o+3]=255;}}
   x.putImageData(im,0,0);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=8;let te=null;if(e){e.getContext('2d').putImageData(E,0,0);te=new THREE.CanvasTexture(e);}return[t,te];}
 // Cockpitscheiben: Band zwischen Höhe yl..yh, vorne ab t0, hinten bis back(Winkel), Pfosten bei posts (Grad)
@@ -474,7 +475,7 @@ function cockpitShell(L,PR,R,C,key){const H=R*(C.sy||1),lay=paneLayout(C,PR,L,R,
       return[frm[0]+(wall[0]-frm[0])*q,frm[1]+(wall[1]-frm[1])*q,frm[2]+(wall[2]-frm[2])*q,al*255];});}
   const m=new THREE.Mesh(g,new THREE.MeshStandardMaterial({map:GC[key],transparent:false,alphaTest:0.5,side:THREE.BackSide,roughness:0.85,metalness:0.0}));m.castShadow=false;m.receiveShadow=false;m.name='cockpitShell';return m;}
 // Textur mit weichem Alpha (v = [r,g,b,a] oder null)
-function softTex(W,H,fn){const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d'),im=x.createImageData(W,H),D=im.data;
+function softTex(W,H,fn){W=Math.max(16,Math.round(W*TEXS));H=Math.max(16,Math.round(H*TEXS));const c=document.createElement('canvas');c.width=W;c.height=H;const x=c.getContext('2d'),im=x.createImageData(W,H),D=im.data;
   for(let py=0;py<H;py++)for(let px=0;px<W;px++){const v=fn(px/W,py/H),o=(py*W+px)*4;if(!v){D[o+3]=0;continue;}D[o]=v[0];D[o+1]=v[1];D[o+2]=v[2];D[o+3]=v[3]??255;}
   x.putImageData(im,0,0);const t=new THREE.CanvasTexture(c);t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=8;return t;}
 let CGM=new Map();function cockpitGlassMat(tex){if(CGM.has(tex))return CGM.get(tex);const m=new THREE.MeshStandardMaterial({map:tex,transparent:true,alphaTest:0.5,roughness:0.04,metalness:0.72,envMapIntensity:2.1,polygonOffset:true,polygonOffsetFactor:-2,polygonOffsetUnits:-2});CGM.set(tex,m);return m;}

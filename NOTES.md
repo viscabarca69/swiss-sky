@@ -10,6 +10,14 @@ Artifact slug e3615a1f-7860-4277-b4c4-84ea1ba2abea · letzte veröffentlichte Ve
 Backup Etappe 1: /tmp/af_e1 (kann nach Neustart weg sein)
 Testen: /tmp/run.sh test/<x>.py (Playwright, SwiftShader) · node test/jobs.mjs (Routen) · node test/mis.mjs
 
+## Version 11.8 (26.11.2026)
+- **Sparmodus** (`js/device.js`): `LOWMEM` auf Handys/Tablets (UA, iPad mit Desktop-UA), bei `navigator.deviceMemory<=4`, nach einem Absturz (Merker `swissSky-alive` beim Start gesetzt, bei `pagehide` gelöscht; steht er beim nächsten Start noch → `swissSky-lite`), per `?lite` / `?full` oder Einstellung (auto/an/aus). Wirkung: `TEXS=0.5` für alle Flugzeug-Texturen (`canvasTex`, `maskTex`, `softTex`) und Pistentexturen, Qualität «Niedrig», nur jeder zweite ZRH-Standplatz belegt, höchstens 2 Parkflugzeuge je Regionalflughafen, 2 statt 4 scharfe Luftbild-Kacheln (Cache 3 statt 8). Gemessen (Headless, Menü): Texturen 742 → 200 MB, Geometrie 244 → 199 MB.
+- **WebGL-Kontextverlust**: `webglcontextlost` → Hinweis mit «Neu laden», setzt `swissSky-lite`.
+- **OSM-Rollwegnetz** (`tools/osm_rollwege.py` → `js/taxiways.js`, Daten `data/osm/rollwege_kompakt.txt`, © OpenStreetMap-Mitwirkende, ODbL): 18 Flugplätze, Knoten/Kanten mit Namen und Breite, Haltepunkte, Standplätze, Vorfelder, Pistenachsen. Querversatz je Platz auf die Spielpiste abgeglichen (Payerne 9,8 m, sonst < 3,2 m; Zürich unverändert, dort gilt das Luftbild).
+- **`js/taxinet.js`**: Graph, A* über gerichtete Kanten (keine Spitzkehren > 115°, Pistenquerung +900 m, Rollgassen ×1,35), `holdFor()` (benannter Haltepunkt nahe Pistenende, 30–145 m neben der Achse), `planPushback()` (Zufahrt aus OSM oder gerade zurück bis zur ersten querenden Rollgasse, dann entlang der Rollgasse in Gegenrichtung zum Rollweg, Kurven gerundet), `smoothPath()`.
+- **Pushback Zürich** (`groundops.js`): folgt dem geplanten Weg (Bogenlänge, Tempo 0,3–2,6 m/s), danach grüne Punkte entlang der Route; Missionsziel «Rollhalt» liegt jetzt auf dem OSM-Haltepunkt E11 (Radius 30 m). Funk nennt die Rollwege (`ctx.taxiVia`, ICAO-Buchstabieralphabet vollständig).
+- Test: 26 von 27 ZRH-Standplätzen bekommen einen Pushback-Weg (l320 bei 2684559/1256262 fällt auf das alte Verfahren zurück).
+
 ## Version 11.7 (25.11.2026)
 - menus.js: Karriere, Lackier-Editor, Flugzeugbilder, Ausstellungsplatz, Flughafenplan, Freier Flug, Optionen (main.js 1326 Zeilen). Split-Werkzeug: /tmp/jsscan.py-Logik (Strings, Templates, Regex) + eslint no-undef für ctx-Namen
 - cockpit.js: panTex (Canvas mit Schaltern/Knöpfen/Beschriftung), Emissive nachts (env.night), Boden + Kniebrett (verdecken nachts angestrahlten Rumpf), Tiller, Bremsklappenhebel; aircraft.js cockpitShell: alphaTest 0.5 statt weicher Kante
