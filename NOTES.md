@@ -17,6 +17,7 @@ Testen: /tmp/run.sh test/<x>.py (Playwright, SwiftShader) · node test/jobs.mjs 
 - **Kontextknopf** (`ctxNext`/`ctxUpdate`, `#ctxBtn`, Enter): Pushback → Rollfreigabe → was der Funk vorschlägt. Touch: Tastenleiste aus; `@media (max-height:500px)` kompaktes HUD.
 - **Abgestellte Flugzeuge als InstancedMesh** (`parkTemplate`, `finalizeParked`, `parkVis`): Vorbild je Typ, Instanzen je Gruppe/Typ/250-m-Zelle (grössere Zellen: schlechteres Culling → mehr Dreiecke). Alter 9-km-Culling-Loop entfernt.
 - **Luftbild-Stream** (`js/stream.js`, seit 6cb08ec): wmts.geo.admin.ch 3857, 4 Ringpuffer-Stufen (1/4/16/65 km, Zoom 18/16/14/12), Teil-Uploads mit copyTextureToTexture, eigene Mipmaps, `textureGrad`. Im Artefakt blockiert die CSP fremde Abrufe → Rückfall + Hinweis. Echter Kacheltest steht aus (Luis testet auf GitHub Pages).
+- Veröffentlicht: Artefakt 1795694635-5dd5 (12:04 UTC), Commit 92ff8d6.
 - **Schrift lokal** (`css/fonts/`, Inter via @fontsource, OFL) statt Google Fonts; Datenschutz-Hinweis im Desktop; `data/osm/LIZENZ.md`.
 
 ## Version 11.9 (26.11.2026)
