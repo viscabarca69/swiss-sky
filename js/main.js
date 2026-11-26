@@ -40,7 +40,7 @@ import {createCamera} from './camera.js';
 import {createMenus} from './menus.js';
 import {setClockTime} from './realcity.js';
 import {LOWMEM,MOBILE,CRASHED} from './device.js';
-import {taxiNet,holdFor} from './taxinet.js';
+import {taxiNet,holdFor,standsFor,planPushback,route} from './taxinet.js';
 import {initStream} from './stream.js';
 
 const _el={},$=id=>_el[id]&&_el[id].isConnected?_el[id]:(_el[id]=document.getElementById(id)),DEG=Math.PI/180;
@@ -132,7 +132,7 @@ async function boot(){
   env=createEnv(renderer,scene,Q);env.onSun=d=>world.uSun.value.copy(d);
   buildComposer();
   prog(0.9,'Flughäfen werden gebaut');await new Promise(r=>setTimeout(r,0));
-  airports=buildAirports(scene,S,addParked);
+  airports=buildAirports(scene,S,addParked);finalizeParked();
   try{helipads=buildHelipads(scene,S,world.heavy);}catch(e){console.warn('Landeplätze',e);}
   traffic=createTraffic(scene,S,buildModel,animateModel,PLANES,helipads);traffic.prewarm();
   attr=createAttractions(scene,S,{collected:ewIds(),area:AREA_ID,realCover:world.inReal});
@@ -151,11 +151,28 @@ async function boot(){
   showMenu();
   if(CRASHED&&LOWMEM)setTimeout(()=>toast('Swiss Sky wurde beim letzten Mal unerwartet beendet – der Sparmodus ist jetzt eingeschaltet (Einstellungen → Grafik).',7000),1500);
 }
-function addParked(id,A,along,across,rot,nose,abs){const m=bakeModel(buildModel(id));let info=null;
+// Abgestellte Flugzeuge: je Typ ein Vorbild, gezeichnet als InstancedMesh je Flugplatzgruppe (finalizeParked).
+// addParked liefert einen leeren Platzhalter (Position, Drehung) – sichtbar wird er erst durch die Instanzen.
+const PTPL=new Map();
+function parkTemplate(id){let t=PTPL.get(id);if(t)return t;const m=bakeModel(buildModel(id)),pr=m.userData.parts;if(pr&&pr.lights)pr.lights.P.visible=false;m.updateMatrixWorld(true);
+  const box=new THREE.Box3().setFromObject(m),parts=[];
+  m.traverse(o=>{if(!o.isMesh)return;for(let q=o;q;q=q.parent)if(!q.visible)return;parts.push(o);});
+  t={m,parts,box};PTPL.set(id,t);return t;}
+function addParked(id,A,along,across,rot,nose,abs){const T=parkTemplate(id),m=new THREE.Object3D();m.userData.parkId=id;let info=null;
   // echte Standplätze (Weltkoordinaten + Kurs in Grad)
-  if(abs){m.position.set(abs.x,S.heightAt(abs.x,abs.z)+PLANES[id].gearH,abs.z);m.rotation.y=-abs.h*DEG;const pr=m.userData.parts;if(pr.lights)pr.lights.P.visible=false;scene.add(m);PARKED.push({id,m,A,along:2000,rot:0,abs:true});return{m};}if(nose){m.updateMatrixWorld(true);const b=new THREE.Box3().setFromObject(m);const nf=-b.min.z;across=Math.sign(nose)*(Math.abs(nose)-nf);info={nf,across};}const p=fromLocal(A,along,across);m.position.set(p.x,A.elev+PLANES[id].gearH,p.z);m.rotation.y=-A.a+rot;
-  const pr=m.userData.parts;if(pr.lights)pr.lights.P.visible=false;scene.add(m);PARKED.push({id,m,A,along,rot});return Object.assign(info||{},{m});}
+  if(abs){m.position.set(abs.x,S.heightAt(abs.x,abs.z)+PLANES[id].gearH,abs.z);m.rotation.y=-abs.h*DEG;scene.add(m);PARKED.push({id,m,A,along:2000,rot:0,abs:true});return{m};}if(nose){const nf=-T.box.min.z;across=Math.sign(nose)*(Math.abs(nose)-nf);info={nf,across};}const p=fromLocal(A,along,across);m.position.set(p.x,A.elev+PLANES[id].gearH,p.z);m.rotation.y=-A.a+rot;
+  scene.add(m);PARKED.push({id,m,A,along,rot});return Object.assign(info||{},{m});}
 const PARKED=[];let parkT=0;
+// alle Platzhalter einer Gruppe und eines Typs zu Instanzen zusammenfassen (nach dem Bau der Flugplätze)
+function finalizeParked(){const by=new Map();for(const p of PARKED){if(p.inst)continue;const g=p.m.parent||scene,k=g.uuid+'|'+p.id+'|'+Math.floor(p.m.position.x/250)+'|'+Math.floor(p.m.position.z/250);/* Zellen à 250 m: Sicht- und Schattenkegel können einzelne Gruppen weglassen */if(!by.has(k))by.set(k,{g,id:p.id,list:[]});by.get(k).list.push(p);}
+  const M=new THREE.Matrix4();
+  for(const {g,id,list} of by.values()){const T=parkTemplate(id),ims=[];
+    for(const part of T.parts){const im=new THREE.InstancedMesh(part.geometry,part.material,list.length);im.castShadow=part.castShadow;im.receiveShadow=true;im.userData.local=part.matrixWorld.clone();
+      list.forEach((p,i)=>{p.m.updateMatrixWorld(true);M.multiplyMatrices(p.m.matrixWorld,im.userData.local);im.setMatrixAt(i,M);});im.instanceMatrix.needsUpdate=true;im.computeBoundingSphere();g.add(im);ims.push(im);}
+    list.forEach((p,i)=>{p.inst={ims,i};});}}
+// sichtbar/unsichtbar (Gate-Start versteckt das Flugzeug am eigenen Stand)
+const ZERO=new THREE.Matrix4().makeScale(0,0,0);
+function parkVis(p,v){p.m.visible=v;if(!p.inst)return;const M=new THREE.Matrix4();for(const im of p.inst.ims){if(v){p.m.updateMatrixWorld(true);M.multiplyMatrices(p.m.matrixWorld,im.userData.local);im.setMatrixAt(p.inst.i,M);}else im.setMatrixAt(p.inst.i,ZERO);im.instanceMatrix.needsUpdate=true;}}
 
 // ---------- Eingabe ----------
 const K=new Set();
@@ -171,6 +188,14 @@ addEventListener('keydown',e=>{
   if(state==='result'&&e.code==='Escape'&&$('rMenu')){$('rMenu').click();return;}
   keyAction(code);
 });
+// nächster sinnvoller Schritt für den Kontextknopf: Pushback am Gate, sonst was der Funk vorschlägt
+function ctxNext(){if(!G||!G.F||state!=='fly')return null;if(G.atGate&&!G.push)return{t:'Pushback',k:'KeyJ'};if(G.push)return null;
+  const p=atc&&atc.on&&atc.prompt;if(p&&/T drücken/.test(p)){const t=p.split(/[–-]\s*/).slice(1).join(' – ').trim()||'Funk';return{t:t.charAt(0).toUpperCase()+t.slice(1),k:'KeyT'};}
+  const F=G.F;if(atc&&atc.on&&F.onGround&&!G.taxiRoute&&F.vel.length()<3&&!WF.runwayAt(F.pos.x,F.pos.z)&&atc.phase==='ground')return{t:'Rollfreigabe anfordern',k:'KeyT'};
+  return null;}
+let ctxT=0,ctxLast='';
+function ctxUpdate(T){if(T-ctxT<0.25)return;ctxT=T;const n=ctxNext(),b=$('ctxBtn'),k=n?n.t:'';if(k===ctxLast)return;ctxLast=k;if(!b)return;
+  if(!n){b.classList.add('hidden');return;}b.querySelector('span').textContent=n.t;b.classList.remove('hidden');b.onclick=()=>{const m=ctxNext();if(m)keyAction(m.k);};}
 function keyAction(code){
   if(G&&G.tut&&G.tut.s)G.tut.s[code]=true;
   if(state==='replay'){if(code==='Escape'||code==='KeyP'||code==='Backspace')endReplay();else if(code==='Space'||code==='KeyC'){RP.next=true;RP.lock=true;}else if(code==='KeyE')rpSpeed(1);else if(code==='KeyQ')rpSpeed(-1);else if(code==='ArrowLeft')rpSeek(-5);else if(code==='ArrowRight')rpSeek(5);else if(code==='KeyA'){RP.lock=!RP.lock;rpLbl();}return;}
@@ -181,6 +206,7 @@ function keyAction(code){
   if(code==='KeyK'&&G&&(state==='fly'||state==='pause')){togglePhoto();return;}
   if(state!=='fly'||!G)return;const F=G.F;
   if(G.atGate&&(code==='KeyJ'||code==='KeyU')){startPushback();return;}
+  if(code==='Enter'&&!G.apAsk){const n=ctxNext();if(n){keyAction(n.k);return;}}
   if(G.apAsk){if(code==='KeyU'||code==='Digit1'||code==='Numpad1'||code==='Enter'){apEngage(false);return;}if(code==='KeyH'||code==='Digit2'||code==='Numpad2'){apEngage(true);return;}if(code==='Escape'||code==='Backspace'){apAskClose();return;}}
   switch(code){
     case'KeyG':if(G.gearStuck){G.pump=(G.pump||0)+1;audio.click();pad.rumble(0.15,0.3,90);if(G.pump>=6){G.gearStuck=false;F.gear=true;audio.gear();toast('Fahrwerk ausgefahren und verriegelt ✓',2600);hideEmerg();}else toast(`Handpumpe: ${G.pump} / 6`,900);break;}
@@ -217,7 +243,7 @@ const ringMat=(fin)=>new THREE.MeshBasicMaterial({color:0xffffff,map:fin?RING_TE
 const ringHalo=(r,col)=>{const h=new THREE.Mesh(new THREE.TorusGeometry(r,3.0,8,48),new THREE.MeshBasicMaterial({color:col,transparent:true,opacity:0.1,blending:THREE.AdditiveBlending,depthWrite:false,fog:true,toneMapped:false}));h.name='halo';return h;};
 const crateGeo=new THREE.BoxGeometry(1.4,1.4,1.4),crateMat=new THREE.MeshStandardMaterial({color:0x9a6a36,roughness:0.85});
 const chuteGeo=new THREE.SphereGeometry(4,16,8,0,Math.PI*2,0,Math.PI/2),chuteMat=new THREE.MeshStandardMaterial({color:0xff6a1a,roughness:0.7,side:THREE.DoubleSide});
-function cleanup(){try{logCommit();}catch(e){console.warn('Logbuch',e);}{const b=$('tdb');if(b)b.className='';}if(G&&G.cshadow){try{G.cshadow.userData.rt.dispose();}catch(e){}}atc.stop();PARKED.forEach(p=>{p.gate=false;p.m.visible=true;});wx.set({dir:240},0);audio.setRain&&audio.setRain(0);if(!G)return;for(const o of G.dyn){scene.remove(o);}if(G.rfx)G.rfx.forEach(f=>scene.remove(f.m));G=null;}
+function cleanup(){try{logCommit();}catch(e){console.warn('Logbuch',e);}{const b=$('tdb');if(b)b.className='';}if(G&&G.cshadow){try{G.cshadow.userData.rt.dispose();}catch(e){}}atc.stop();PARKED.forEach(p=>{if(p.gate||!p.m.visible){p.gate=false;parkVis(p,true);}});wx.set({dir:240},0);audio.setRain&&audio.setRain(0);if(!G)return;for(const o of G.dyn){scene.remove(o);}if(G.rfx)G.rfx.forEach(f=>scene.remove(f.m));G=null;}
 // echter Rollhalt (OSM): auf dem Rollweg kurz vor der Haltelinie, Nase zur Piste
 function holdStart(A,s,P){const net=taxiNet(A.icao),h=net&&holdFor(net,A,s);if(!h||!net.adj[h.n].length)return null;let best=null;
   for(const k of net.adj[h.n]){const e=net.edges[k],m=e.a===h.n?e.b:e.a,d=Math.abs(toLocal(A,net.X[m],net.Z[m]).across);if(!best||d>best.d)best={m,d,len:e.len};}
@@ -240,8 +266,15 @@ function startFlight(cfg){
     else if(!mission&&!lesson&&cfg.hold&&!P.heli){// Rollhalt: neben der Piste vor der Haltelinie, Nase zur Piste
       const sd=A.side||1,p=fromLocal(A,-s*(A.len/2-110),sd*(A.w/2+60));pos=new THREE.Vector3(p.x,S.heightAt(p.x,p.z)+P.gearH,p.z);const dx=-sd*Math.cos(A.a),dz=-sd*Math.sin(A.a);yaw=Math.atan2(-dx,-dz);}
     else{const p=fromLocal(A,-s*(A.len/2-25-(P.prop?0:30)),0);pos=new THREE.Vector3(p.x,A.elev+P.gearH,p.z);}}
-  let gateP=null;if((mission?mission.gate:cfg.gate)&&P.cls==='jet'){const cand=PARKED.filter(q=>q.A.icao==='LSZH'&&AIRLINER[q.id]);gateP=cand.find(q=>q.id===planeId&&q.along>1500)||cand.find(q=>q.id===planeId)||cand.sort((a,b)=>b.along-a.along)[0];
-    if(gateP){gateP.m.visible=false;gateP.gate=true;pos=gateP.m.position.clone();yaw=gateP.m.rotation.y;air=false;}}
+  let gateP=null;if((mission?mission.gate:cfg.gate)&&P.cls==='jet'&&(mission||(AP[cfg.ap]&&AP[cfg.ap].icao==='LSZH'))){const cand=PARKED.filter(q=>q.A.icao==='LSZH'&&AIRLINER[q.id]);gateP=cand.find(q=>q.id===planeId&&q.along>1500)||cand.find(q=>q.id===planeId)||cand.sort((a,b)=>b.along-a.along)[0];
+    if(gateP){parkVis(gateP,false);gateP.gate=true;pos=gateP.m.position.clone();yaw=gateP.m.rotation.y;air=false;}}
+  // andere Flugplätze: Start auf einem echten Standplatz (OSM), Nase in die Box
+  let standS=null,standPB=null;if(!mission&&!lesson&&cfg.gate&&!gateP&&!P.heli&&AP[cfg.ap]){const A0=AP[cfg.ap],jet=P.cls==='jet',L=standsFor(A0.icao,jet);
+    if(L.length){const occ=s=>PARKED.some(q=>Math.hypot(q.m.position.x-s.x,q.m.position.z-s.z)<30),free=L.filter(s=>!occ(s)),pool=(free.length?free:L).map(s=>[s,Math.random()+(s.ap?0:1)]).sort((a,b)=>a[1]-b[1]).map(a=>a[0]);
+      const back=AIRLINER[planeId]?AIRLINER[planeId].L*0.32:2.5,net=taxiNet(A0.icao),h=jet?holdFor(net,A0,cfg.rev?-1:1):null;
+      for(const s of pool.slice(0,12)){const x=s.x-s.fx*back,z=s.z-s.fz*back;let pb=null;
+        if(jet&&h){try{pb=planPushback(net,x,z,[s.fx,s.fz],AIRLINER[planeId]?AIRLINER[planeId].L:30,h.n,{jet:true});}catch(e){pb=null;}if(!pb)continue;}
+        standS=s;standPB=pb&&{pb,h};pos=new THREE.Vector3(x,S.heightAt(x,z)+P.gearH,z);yaw=Math.atan2(-s.fx,-s.fz);air=false;break;}}}
   let startAP=null,startRev=false;if(!(mission&&mission.air)){const st=mission?mission.start:lesson?[lesson.ap,lesson.rev]:[cfg.ap,cfg.rev];startAP=AP[st[0]];startRev=!!st[1];}
   if(P.heli&&!air&&!(mission&&mission.air)){const st=mission?mission.start:[cfg.ap,cfg.rev];const A=AP[st[0]],s=st[1]?-1:1,p=fromLocal(A,-s*(A.len/2-120),A.side*Math.min(75,(A.flatW||100)-30));pos=new THREE.Vector3(p.x,S.heightAt(p.x,p.z)+P.gearH,p.z);}
   const F=P.heli?createHeli(P,pos,yaw,{air,assist:save.settings.assist,speed:25}):createFlight(P,pos,yaw,{air,assist:save.settings.assist,level:LEVEL[save.settings.level]??0.35,speed:P.Vref*1.3});
@@ -257,6 +290,8 @@ function startFlight(cfg){
   try{G.cshadow=makeContactShadow(model);scene.add(G.cshadow);G.dyn.push(G.cshadow);}catch(e){console.warn('Kontaktschatten',e);G.cshadow=null;}
   G.vap=null;try{vaporSetup();}catch(e){console.warn('Kondensfahnen',e);}
   setupStage3(mission,P);G.atGate=!!gateP;if(gateP&&!mission)G.obj=buildObjectives({obj:({TX})=>[TX()]},S);if(gateP)setupGate();
+  if(standS){G.standStart=standS;if(standPB){G.pushPlan=standPB.pb;G.taxiRoute=standPB.pb.taxi;G.taxiHold=standPB.h;G.atGate=true;}
+    const msg=G.atGate?`Am Standplatz${standS.ref?' '+standS.ref:''} – Enter/J: Pushback, danach T: Rollfreigabe.`:`Am Standplatz${standS.ref?' '+standS.ref:''} – T: Rollfreigabe anfordern, dann den grünen Punkten folgen.`;setTimeout(()=>{if(!G.push&&G.F&&G.F.onGround)toast(msg,6000);},600);}
   // Ziele
   let prev=pos.clone();
   G.obj.forEach((o,i)=>{
@@ -449,7 +484,16 @@ function step(dt){
   {const agl0=F.pos.y-S.groundAt(F.pos.x,F.pos.z);wx.terrain(dt,F.pos,S,G.hour);WF.wind=wx.update(dt,agl0);wx.kick(F,dt);if(G.therm){G.lift=thermalLift(F.pos.x,F.pos.y,F.pos.z,agl0);WF.wind.y+=G.lift;}}
   const wasGround=F.onGround;
   F.apIn=!!G.ap;liveTick(dt);
-  if(G.taxiDots&&G.taxiDots.visible&&G.taxiHold&&F.onGround&&Math.hypot(F.pos.x-G.taxiHold.x,F.pos.z-G.taxiHold.z)<28){G.taxiDots.visible=false;audio.chime();toast('Rollhalt erreicht – T: Startfreigabe anfordern, dann auf die Piste rollen.',4500);}
+  // nach der Landung: Weg zu einem freien Standplatz (OSM) – vom Stand zum Stand
+  if(G.arrAP&&!G.arrDone&&F.onGround&&!G.push&&F.vel.length()<13&&!WF.runwayAt(F.pos.x,F.pos.z)&&(!G.arrTry||performance.now()-G.arrTry>4000)){G.arrTry=performance.now();
+    const A=G.arrAP,net=taxiNet(A.icao),L=net?standsFor(A.icao,F.P.cls==='jet'):[];
+    if(L.length){const occ=s=>PARKED.some(q=>q.m.visible&&Math.hypot(q.m.position.x-s.x,q.m.position.z-s.z)<30),e=new THREE.Euler().setFromQuaternion(F.q,'YXZ');
+      const cand=L.filter(s=>!occ(s)).sort((a,b)=>Math.hypot(a.x-F.pos.x,a.z-F.pos.z)+(a.ap?0:600)-Math.hypot(b.x-F.pos.x,b.z-F.pos.z)-(b.ap?0:600)).slice(0,5);let best=null;
+      for(const s of cand){const r=route(net,F.pos.x,F.pos.z,s.n,{jet:F.P.cls==='jet',maxD:200,heading:[-Math.sin(e.y),-Math.cos(e.y)]});if(r&&(!best||r.len<best.r.len))best={s,r};}
+      G.arrDbg={n:L.length,c:cand.length,ok:!!best};if(best){G.arrDone=true;if(best.s.ex!==undefined)best.r.pts.push([best.s.ex,best.s.ez]);best.r.pts.push([best.s.x,best.s.z]);G.taxiRoute=best.r;G.taxiHold={x:best.s.x,z:best.s.z,ref:best.s.ref,stand:true};buildTaxiDots();audio.chime();
+        toast(`Willkommen in ${A.name}! Rollen Sie zum Standplatz${best.s.ref?' '+best.s.ref:''}${best.r.names.length?' via '+best.r.names.slice(0,5).join(', '):''} – den grünen Punkten nach.`,7000);}}}
+  if(G.taxiHold&&G.taxiHold.stand&&!G.parked&&F.onGround&&F.vel.length()<1.5&&Math.hypot(F.pos.x-G.taxiHold.x,F.pos.z-G.taxiHold.z)<14){G.parked=true;if(G.taxiDots)G.taxiDots.visible=false;audio.chime();toast('Parkposition erreicht – Bremse setzen, Triebwerke aus. Schöner Flug!',6000);}
+  if(G.taxiDots&&G.taxiDots.visible&&G.taxiHold&&!G.taxiHold.stand&&F.onGround&&Math.hypot(F.pos.x-G.taxiHold.x,F.pos.z-G.taxiHold.z)<28){G.taxiDots.visible=false;audio.chime();toast('Rollhalt erreicht – T: Startfreigabe anfordern, dann auf die Piste rollen.',4500);}
   if(G.push)pushTick(F,dt);else if(F.P.heli){ctl.coll=thrUp-thrDn;const n=Math.ceil(dt/(1/120));for(let i=0;i<n;i++)stepHeli(F,ctl,dt/n,WF);}else{const n=Math.ceil(dt/(1/120));for(let i=0;i<n;i++)stepFlight(F,ctl,dt/n,WF);}
   // Kisten
   for(const b of G.boxes){if(b.landed){b.t+=dt;if(b.t>12)b.g.visible=false;continue;}b.t+=dt;crateStep(b.g.position,b.v,b.t,dt);const chute=b.t>0.9;b.ch.visible=b.lines.visible=chute;
@@ -461,6 +505,7 @@ function step(dt){
   for(const ev of F.events){
     if(ev.type==='liftoff'&&!G.liftMsg){G.liftMsg=true;toast(F.P.fixedGear?'Abgehoben! Klappen einfahren mit V':'Abgehoben! Fahrwerk einfahren mit G');}
     if(ev.type==='liftoff')atc.event('liftoff');
+    if(ev.type==='touchdown'&&ev.rw&&!ev.water&&F.airTime>20&&!G.mission){G.arrAP=ev.rw;G.arrDone=false;G.arrTry=0;G.parked=false;}
     if(ev.type==='touchdown'){pad.rumble(Math.min(1,0.25+ev.sink*0.18),0.5,180+ev.sink*60);if(!G.lesson){const ap0=ev.rw||WF.airportZone(F.pos.x,F.pos.z);if(ap0)markVisit(ap0);}atc.event('touchdown',{ap:ev.rw||WF.airportZone(F.pos.x,F.pos.z)});if(G.mission&&G.mission.comfort&&ev.sink>2.2)G.comfort-=Math.min(30,(ev.sink-2.2)*15);audio.touch(ev.sink);if(ev.heli){const gr=heliGrade(ev);G.lastTouch=gr;toast(`Landung ${gr.letter} · Sinkrate ${ev.sink.toFixed(1)} m/s`,2600);}else if(ev.rw){const gr=gradeLanding(ev,F);G.lastTouch=gr;G.tdLetter=gr.letter;}}
     if(ev.type==='touchdown'&&!ev.water)touchFx(F,ev);
     if(ev.type==='touchdown'&&ev.water){audio.splash(1.5);G.waterTouch=ev.sink;}
@@ -1331,8 +1376,8 @@ function loop(now){
   }else if(state==='menu'){if(FLARE)FLARE.visible=false;menuCam(T);env.update(cam.position.clone().add(new THREE.Vector3(0,-60,0)),cam,120);audio.update({silent:true});}
   if(traffic&&state!=='load')traffic.update(state==='pause'?0:dt,G&&state!=='menu'?G.F:null,T,env.night,{s:glowU.uScale.value,f:glowU.uFogD.value});
   if(attr&&state!=='load')attr.update(state==='pause'?0:dt,T,cam,env.night,glowU.uScale.value,wx.wind);
-  if(T-(parkT||0)>0.5){parkT=T;for(const p of PARKED){p.m.visible=!p.gate&&p.m.position.distanceToSquared(cam.position)<81e6;}}
-  world.updateTrees(cam.position);{const agl=cam.position.y-S.groundAt(cam.position.x,cam.position.z);if(orthoUp)orthoUp(cam.position,agl);if(streamUp)streamUp.update(cam.position,agl);}
+
+  ctxUpdate(performance.now()/1000);world.updateTrees(cam.position);{const agl=cam.position.y-S.groundAt(cam.position.x,cam.position.z);if(orthoUp)orthoUp(cam.position,agl);if(streamUp)streamUp.update(cam.position,agl);}
   airports.update(G&&G.cam!==1?G.F.pos:cam.position,T,glowU.uScale.value,glowU.uFogD.value);
   cityU.uI.value=env.night*1.25;if(helipads){helipads.setNight(env.night);if(G&&G.F)helipads.update(G.F.pos,1/30);}cityU.uScale.value=glowU.uScale.value;cityU.uFogD.value=glowU.uFogD.value;
   world.waterTex.offset.x=T*0.006;world.waterTex.offset.y=T*0.004;

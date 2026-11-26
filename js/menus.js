@@ -8,6 +8,7 @@ import {MISSIONS as ALL_MISSIONS,buildObjectives,objPath,turnRadius} from './mis
 import {runwayAt,approachOptions,planApproach,approachGuide,finalSlope} from './approach.js';
 import {initOrtho,onOrthoReady,orthoPaved} from './ortho.js';
 import {LOWMEM,LOWMEM_WHY,setLite} from './device.js';
+import {standsFor} from './taxinet.js';
 import {createLogbook,SPECIAL_LIV,logGet} from './logbook.js';
 export function createMenus(ctx){const ZS=ctx.ZS;
 // ---------- Karriere-Menü ----------
@@ -131,7 +132,7 @@ function airportPlan(icao,f){const {$,AP,DEG,S}=ctx;const I=ICAOS.find(q=>q.icao
       g+=`<g class="apEnd" data-id="${A.id}" data-r="${rev}" style="cursor:pointer"><line x1="${sx}" y1="${sy}" x2="${lx}" y2="${ly}" stroke="rgba(255,255,255,0.35)"/><circle cx="${lx}" cy="${ly}" r="15" fill="${sel?'#ffd84a':'rgba(20,28,22,0.85)'}" stroke="${hard?'#ff9a3c':sel?'#fff':'#c9d1c9'}" stroke-width="${hard?3:1.5}"/><text x="${lx}" y="${ly+4}" text-anchor="middle" font-size="12" font-weight="800" fill="${sel?'#1b1b1b':'#fff'}" font-family="Inter,Arial">${rev?A.rwyB:A.rwyA}</text>`+
         (sel?`<path d="M${sx+ux*8},${sy+uy*8} L${sx+ux*Math.min(len*0.7,120)},${sy+uy*Math.min(len*0.7,120)}" stroke="#ffd84a" stroke-width="3" marker-end="url(#ah)"/>`:'')+`</g>`;}
   g+=`<defs><marker id="ah" markerWidth="8" markerHeight="8" refX="5" refY="4" orient="auto"><path d="M0,0 L8,4 L0,8 Z" fill="#ffd84a"/></marker></defs>`;
-  const sA=AP[f.ap],tt=sA&&sA.icao===icao?`<p style="margin:2px 0 4px;font-weight:700">${f.gate?'Am Gate (mit Pushback)':'Start auf Piste '+(f.rev?sA.rwyB:sA.rwyA)+' · Richtung '+hdgName(rwyHdg(sA,f.rev))}</p>`:'';
+  const sA=AP[f.ap],tt=sA&&sA.icao===icao?`<p style="margin:2px 0 4px;font-weight:700">${f.gate?(sA.icao==='LSZH'?'Am Gate (mit Pushback)':'Am Standplatz · danach zur Piste '+(f.rev?sA.rwyB:sA.rwyA)):'Start auf Piste '+(f.rev?sA.rwyB:sA.rwyA)+' · Richtung '+hdgName(rwyHdg(sA,f.rev))}</p>`:'';
   // Warnung: Landung auf dieser Piste (Anflug über das markierte Ende) ist für Jets steil
   let warn='';if(jet&&steep.size){const hardL=[...steep.entries()].filter(([L,v])=>v.deg>3.6);
     if(hardL.length){const nm=hardL.map(([L,v])=>`Piste ${L.rev?L.A.rwyB:L.A.rwyA}: ${v.deg>20?'kein freier Gleitpfad':v.deg.toFixed(1).replace('.',',')+'°'}`).join(' · '),allHard=hardL.length===labs.length;
@@ -145,7 +146,6 @@ function renderFree(){const {$,AP,fmtH,liveWeather,persist,save}=ctx;
   $('fPlanes').querySelectorAll('.pc').forEach(el=>el.onclick=()=>{f.plane=el.dataset.id;persist();renderFree();});
   if(PLANES[f.plane]&&!PLANES[f.plane].heli){$('fLiv').innerHTML=livHTML(f.plane);livBind($('fLiv'),f.plane,renderFree);}else $('fLiv').innerHTML='<p class="hint">Dieses Luftfahrzeug hat eine feste Lackierung.</p>';
   const cur=AP[f.ap];
-  {const P=PLANES[f.plane];$('fSum').textContent=`${P?P.name:''} · ${cur?cur.name:''} · ${f.air?'im Anflug':f.hold?'am Rollhalt':'auf der Piste'}`;}
   $('fAP').innerHTML=ICAOS.map(I=>`<button class="chip ${cur.icao===I.icao?'sel':''}" data-i="${I.icao}">${I.name}<small>${I.icao} · ${Math.max(...I.rwys.map(r=>r.len))} m</small></button>`).join('');
   $('fAP').querySelectorAll('.chip').forEach(el=>el.onclick=()=>{f.ap=ICAOS.find(I=>I.icao===el.dataset.i).rwys[0].id;f.rev=false;persist();renderFree();});
   const rw=ICAOS.find(I=>I.icao===cur.icao).rwys;
@@ -154,7 +154,12 @@ function renderFree(){const {$,AP,fmtH,liveWeather,persist,save}=ctx;
   $('fRwy').querySelectorAll('[data-r]').forEach(el=>el.onclick=()=>{f.ap=el.dataset.id;f.rev=el.dataset.r==='true';f.gate=false;persist();renderFree();});
   $('fRwy').querySelectorAll('[data-a]').forEach(el=>el.onclick=()=>{f.air=el.dataset.a==='air';f.hold=el.dataset.a==='hold';f.gate=false;persist();renderFree();});
   $('fRwy').querySelectorAll('.apEnd').forEach(el=>el.onclick=()=>{f.ap=el.dataset.id;f.rev=el.dataset.r==='true';f.gate=false;persist();renderFree();});
-  if(cur.icao==='LSZH'&&PLANES[f.plane].cls==='jet'){$('fRwy').insertAdjacentHTML('beforeend',`<button class="chip ${f.gate?'sel':''}" id="fGate">Am Gate (mit Pushback)<small>Rollen zur Piste 34</small></button>`);$('fGate').onclick=()=>{f.gate=!f.gate;if(f.gate){f.air=false;f.hold=false;f.ap='ZRH16';f.rev=true;}persist();renderFree();};}else f.gate=false;
+  if(cur.icao==='LSZH'&&PLANES[f.plane].cls==='jet'){$('fRwy').insertAdjacentHTML('beforeend',`<button class="chip ${f.gate?'sel':''}" id="fGate">Am Gate (mit Pushback)<small>Rollen zur Piste 34</small></button>`);$('fGate').onclick=()=>{f.gate=!f.gate;if(f.gate){f.air=false;f.hold=false;f.ap='ZRH16';f.rev=true;}persist();renderFree();};}
+  // andere Flugplätze mit echten Standplätzen (OpenStreetMap): Start am Stand, Rollen zur gewählten Piste
+  else if(cur.icao!=='LSZH'&&!PLANES[f.plane].heli&&standsFor(cur.icao,PLANES[f.plane].cls==='jet').length){const sA=AP[f.ap]&&AP[f.ap].icao===cur.icao?AP[f.ap]:cur;
+    $('fRwy').insertAdjacentHTML('beforeend',`<button class="chip ${f.gate?'sel':''}" id="fGate">Am Standplatz<small>Rollen zur Piste ${f.rev?sA.rwyB:sA.rwyA}</small></button>`);$('fGate').onclick=()=>{f.gate=!f.gate;if(f.gate){f.air=false;f.hold=false;f.ap=sA.id;}persist();renderFree();};}
+  else f.gate=false;
+  {const P=PLANES[f.plane];$('fSum').textContent=`${P?P.name:''} · ${cur?cur.name:''} · ${f.air?'im Anflug':f.hold?'am Rollhalt':f.gate?(cur&&cur.icao==='LSZH'?'am Gate':'am Standplatz'):'auf der Piste'}`;}
   $('fTime').innerHTML=[[7.2,'Morgen'],[12.5,'Mittag'],[17,'Nachmittag'],[20.1,'Abendrot'],[22.8,'Nacht']].map(([h,n])=>`<button class="chip ${Math.abs(f.hour-h)<0.01?'sel':''}" data-h="${h}">${n}<small>${fmtH(h)}</small></button>`).join('');
   $('fTime').querySelectorAll('.chip').forEach(el=>el.onclick=()=>{f.hour=+el.dataset.h;persist();renderFree();});
   $('fWx').innerHTML=[['clear','Klar'],['fair','Schönwetterwolken'],['cloudy','Bewölkt'],['rain','Regen'],['storm','Gewitter'],['snow','Schneefall'],['fog','Nebelmeer'],['foehn','Föhn (klar)']].map(([k,n])=>`<button class="chip ${f.weather===k?'sel':''}" data-w="${k}">${n}</button>`).join('');

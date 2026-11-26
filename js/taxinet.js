@@ -54,7 +54,8 @@ export function route(net,x0,z0,goalNode,opt={}){if(!net||goalNode==null||goalNo
   if(!found)return null;const nodes=[],ks=[];for(let s=found;s;s=s.prev){nodes.push(s.n);ks.push(s.k);}nodes.reverse();ks.reverse();
   const pts=[[x0,z0],[st.x,st.z],...nodes.map(n=>[X[n],Z[n]])];
   // Namen der Rollwege in Reihenfolge (ohne Wiederholungen, ohne unbenannte Gassen)
-  const names=[];for(const k of ks){const r=edges[k].ref;if(r&&names[names.length-1]!==r&&!edges[k].rwy)names.push(r);}
+  // nur sprechbare Rollweg-Namen (A, E11, Link 3, Inner) – OSM-Notizen wie «D1TOD5» oder «PRKG E-F» fallen weg
+  const names=[],ok=r=>/^([A-Z]{1,2}\d{0,2}|Link [0-9A-Z]{1,2}|[A-Z][a-z]{2,8})$/.test(r);for(const k of ks){const r=edges[k].ref;if(r&&ok(r)&&names[names.length-1]!==r&&!edges[k].rwy)names.push(r);}
   return{pts:dedup(pts),names,nodes,edges:ks,len:found.g};}
 function dedup(P){const o=[];for(const p of P)if(!o.length||Math.hypot(p[0]-o[o.length-1][0],p[1]-o[o.length-1][1])>0.5)o.push(p);return o;}
 // Polylinie mit runden Kurven (Radius r) neu abtasten, Schrittweite ds
@@ -107,3 +108,18 @@ export function planPushback(net,x,z,nose,L,goal,opt={}){if(!net)return null;con
   const dir=[pe[0]-end[0],pe[1]-end[1]],dl=Math.hypot(dir[0],dir[1])||1;
   const taxi=route(net,end[0],end[1],goal,{jet,maxD:15,heading:[dir[0]/dl,dir[1]/dl],strictHeading:true})||best.r;
   return{path,taxi};}
+// Standplätze mit genau einer Zufahrt: Position (Bugrad), Blickrichtung in die Box, Abstand zum nächsten Stand
+const pip=(P,x,z)=>{let c=false;for(let i=0,j=P.length-1;i<P.length;j=i++){const [xi,zi]=P[i],[xj,zj]=P[j];if((zi>z)!==(zj>z)&&x<(xj-xi)*(z-zi)/(zj-zi)+xi)c=!c;}return c;};
+// Standplätze mit Blickrichtung; ap: liegt auf einer gezeichneten Vorfeldfläche (bevorzugt)
+export function standsFor(ic,jet){const net=taxiNet(ic);if(!net)return[];if(!net.sf)net.sf={};if(net.sf[jet])return net.sf[jet];const {X,Z,adj,edges,grid,key,C}=net,out=net.sf[jet]=[],dead=n=>adj[n].length===1;
+  for(const st of net.stands){let nn=1e9;for(const o of net.stands)if(o!==st)nn=Math.min(nn,Math.hypot(o.x-st.x,o.z-st.z));if(jet&&nn<34)continue;const n=st.n;
+    if(n>=0&&dead(n)){const e=edges[adj[n][0]],m=e.a===n?e.b:e.a,dl=Math.hypot(X[n]-X[m],Z[n]-Z[m])||1;
+      out.push({n,x:X[n],z:Z[n],fx:(X[n]-X[m])/dl,fz:(Z[n]-Z[m])/dl,nn,ref:st.ref||'',lead:true,ap:net.aprons.some(P=>pip(P,X[n],Z[n]))});continue;}
+    // Standplatz ohne eigene Einfahrtslinie: Nase weg vom nächsten Rollweg (keine Sackgassen, keine Pisten)
+    let b=null;const r=Math.ceil(100/C);
+    for(let i=Math.floor(st.x/C)-r;i<=Math.floor(st.x/C)+r;i++)for(let j=Math.floor(st.z/C)-r;j<=Math.floor(st.z/C)+r;j++){const L=grid.get(key(i,j));if(!L)continue;
+      for(const k of L){const e=edges[k];if(e.rwy||dead(e.a)||dead(e.b))continue;const ax=X[e.a],az=Z[e.a],dx=X[e.b]-ax,dz=Z[e.b]-az,L2=dx*dx+dz*dz||1;
+        const t=Math.max(0,Math.min(1,((st.x-ax)*dx+(st.z-az)*dz)/L2)),px=ax+dx*t,pz=az+dz*t,d=Math.hypot(st.x-px,st.z-pz);
+        if(d>=8&&d<=100&&(!b||d<b.d))b={d,t,px,pz,e};}}
+    if(b)out.push({n:b.t<0.5?b.e.a:b.e.b,x:st.x,z:st.z,fx:(st.x-b.px)/b.d,fz:(st.z-b.pz)/b.d,nn,ref:st.ref||'',ex:b.px,ez:b.pz,ap:net.aprons.some(P=>pip(P,st.x,st.z))});}
+  return out;}

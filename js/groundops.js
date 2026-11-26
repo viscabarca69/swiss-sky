@@ -33,7 +33,7 @@ function pushTick(F,dt){const {G,S,audio,toast}=ctx;const p=G.push;let v=2.4;F.v
   else if(p.mode==='path'){}
   else if(p.ph===0){const d=Math.min(dt*v,p.rem);F.pos.x+=Math.sin(p.yaw)*d;F.pos.z+=Math.cos(p.yaw)*d;p.rem-=d;if(p.rem<=0)p.ph=1;}
   else if(p.ph===1){const w=v/38*dt;p.yaw+=p.dir*w;p.ang+=w;F.pos.x+=Math.sin(p.yaw)*v*dt;F.pos.z+=Math.cos(p.yaw)*v*dt;if(p.ang>=Math.PI/2)p.ph=2,p.t=0;}
-  if(p.ph===2){p.t+=dt;if(p.t>2){G.push=null;if(G.tug)G.tug.visible=false;F.brake=false;toast('Pushback beendet – Schub geben und den grünen Rolllichtern zur Piste 34 folgen.',5000);buildTaxiDots();audio.chime();}}
+  if(p.ph===2){p.t+=dt;if(p.t>2){G.push=null;if(G.tug)G.tug.visible=false;F.brake=false;{const A=G.startAP,rw=A?(G.startRev?A.rwyB:A.rwyA):'';toast(`Pushback beendet – Schub geben und den grünen Rolllichtern zur Piste ${rw} folgen.`,5000);}buildTaxiDots();audio.chime();}}
   F.q.setFromEuler(new THREE.Euler(0,p.yaw,0,'YXZ'));F.pos.y=S.heightAt(F.pos.x,F.pos.z)+F.P.gearH;placeTug();}
 // Rollweg zur Piste: kürzester Weg über befestigte Flächen im Luftbild, mit Abstand zu allen Gebäuden (halbe Spannweite)
 function planTaxi(x0,z0,x1,z1,half){const {world}=ctx;const C=6,pad=450,X0=Math.min(x0,x1)-pad,Z0=Math.min(z0,z1)-pad,NX=Math.ceil((Math.max(x0,x1)+pad-X0)/C),NZ=Math.ceil((Math.max(z0,z1)+pad-Z0)/C),N=NX*NZ;

@@ -86,7 +86,7 @@ export function createATC(audio,opts){
       A.twrName=Ap.name+' ATIS';say('atis',`${Ap.name} Information ${LN}: Piste ${ctx.startRwy} in Betrieb, ${wt}, Sicht ${vis}, Temperatur ${T}°, QNH ${q}. Turm ${FQ(Ap.icao,'twr')}, Rollkontrolle ${FQ(Ap.icao,'gnd')}.`,
         `${Ap.name} Information ${LN}, Piste ${spell(ctx.startRwy)} in Betrieb, ${ws}, Temperatur ${T} Grad, Q N H ${spell(String(q))}`);A.twrName=(TWR[Ap.icao]||{n:Ap.name}).n;}
     const key=ctx.pad?'L3 / Create':'T';
-    if(A.phase==='ground'){if(!A.reqTO)p=`Funk: ${key} drücken – Startfreigabe anfordern`;else if(!A.clrTO)p='Warte auf Startfreigabe …';
+    if(A.phase==='ground'){if(!A.reqTO)p=!A.taxiClr&&!ctx.onRwy&&ctrl(A.home)?`Funk: ${key} drücken – Rollfreigabe anfordern`:`Funk: ${key} drücken – Startfreigabe anfordern`;else if(!A.clrTO)p='Warte auf Startfreigabe …';
       if(A.waitTO&&!A.clrTO&&!(ctx.traffic&&ctx.traffic.busy(A.home,ctx.startRwyObj,'dep'))){A.waitTO=false;A.clrTO=true;const [wt,ws]=windTxt(ctx.wind,ctx.metric);say('twr',`${A.cs}, ${wt}, Piste ${ctx.startRwy}, Start frei.`,`${A.csS}, ${ws}, Piste ${spell(ctx.startRwy)}, Start frei`,0.5);}}
     else if(!F.onGround){
       if(A.phase==='departure'&&ctx.agl>450&&!A.warned.dep){A.warned.dep=1;A.phase='enroute';if(ctrl(A.home)){A.depCall=true;say('twr',`${A.cs}, kontaktieren Sie die Abflugkontrolle auf ${FQ(A.home.icao,'dep')}. Auf Wiederhören!`,`${A.csS}, kontaktieren Sie die Abflugkontrolle auf ${fqSpeak(FQ(A.home.icao,'dep'))}, auf Wiederhören`);}}
