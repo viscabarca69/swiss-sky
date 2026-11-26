@@ -157,6 +157,9 @@ function surface(A,B,cA,cB,th,mat,parent,prof){
   const zA=new THREE.Vector3(0,0,1).addScaledVector(ax,-ax.z).normalize(),yA=new THREE.Vector3().crossVectors(zA,ax);
   h.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(ax,yA,zA));
   const g=loft([{x:0,y:0,z:0,c:cA,t:th/Math.max(cA,0.01)},{x:len,y:0,z:0,c:cB,t:(prof&&prof.th1!=null?prof.th1:th)/Math.max(cB,0.01)}],prof?prof.loop:WEDGE);
+  // Enden in Flugrichtung (wie die Aussparung im Flügel) statt senkrecht zur gepfeilten Scharnierlinie –
+  // sonst ragt die innere Klappenecke in den Rumpf und kommt beim Ausfahren unter dem Bauch hervor
+  if(Math.abs(ax.x)>0.7){const p=g.attributes.position;for(let k=0;k<p.count;k++)p.setX(k,p.getX(k)-(p.getY(k)*yA.x+p.getZ(k)*zA.x)/ax.x);g.computeVertexNormals();}
   const m=new THREE.Mesh(g,mat);m.castShadow=true;m.userData.ext=(cA+cB)/2*(prof&&prof.ext!=null?prof.ext:0);h.add(m);parent.add(h);return m;
 }
 // Flügel (rechte Hälfte) mit Ruderflächen
@@ -264,7 +267,7 @@ const LUISL={tpl:'clean',c1:'#0b2545',c2:'#d7263d',base:'#f3f5f8',name:'LUIS AIR
 export const LIV_DEF={alpina:{tpl:'klassisch',c1:'#1d3a7a',c2:'#c8202f',base:'#f8f8f7',name:''},saentis:{...LUISL,name:''},titlis:{...LUISL},foehn:{tpl:'klassisch',c1:'#0f4d36',c2:'#1f8a5b',base:'#f8f8f7',name:'FÖHN AIR'},
   feuer:{tpl:'bauch',c1:'#e8b330',c2:'#d7263d',base:'#f8f8f7',name:'LUIS FEUERWEHR'},segler:{tpl:'klassisch',c1:'#d7263d',c2:'#0b2545',base:'#f8f8f7',name:''},
   rega:{tpl:'bauch',c1:'#e30613',c2:'#e30613',base:'#f8f8f7',name:'REGA'},
-  l320:{...LUISL},l32n:{...LUISL},l330:{...LUISL},l340:{...LUISL},l346:{...LUISL},l350:{...LUISL},l747:{...LUISL},l380:{...LUISL,tpl:'bauch',base:'#f3f5f8'}};
+  l320:{...LUISL},l32n:{...LUISL},l330:{...LUISL},l340:{...LUISL},l346:{...LUISL},l350:{...LUISL},l747:{...LUISL},l380:{...LUISL}};
 export const livSpec=(id,c)=>({...(LIV_DEF[id]||LUISL),...(c||{})});
 function lum(c){const n=parseInt(c.slice(1),16),f=v=>{v/=255;return v<=0.03928?v/12.92:Math.pow((v+0.055)/1.055,2.4);};return 0.2126*f(n>>16&255)+0.7152*f(n>>8&255)+0.0722*f(n&255);}
 const cRatio=(a,b)=>{const A=lum(a),B=lum(b);return(Math.max(A,B)+0.05)/(Math.min(A,B)+0.05);};
@@ -288,7 +291,7 @@ function paint(G,S){const {c1,c2}=S,base=S.base||'#f8f8f7',am=m=>m/(2*Math.PI*G.
   const nm=(S.name||'').trim().toUpperCase().slice(0,16);
   if(G.nm&&nm){const [w1,...r]=nm.split(/\s+/);cfg.title={main:w1,sub:r.join(' '),a:G.nm.a,x:G.nm.x,size:G.nm.size,max:G.nm.max,colMain:nameC,colSub:subC};}
   cfg.text=[{str:G.reg.str,a:G.reg.a,x:G.reg.x,size:G.reg.size,col:regC}];
-  return{cfg,fin:[fin,c1,c2,G.nm&&nm?nm[0]:'',base]};
+  return{cfg,fin:[fin,c1,c2,'',base]};// Version 13: kein Buchstabe mehr auf dem Seitenleitwerk
 }
 function rr(x,a,b,w,h,r){x.beginPath();x.moveTo(a+r,b);x.arcTo(a+w,b,a+w,b+h,r);x.arcTo(a+w,b+h,a,b+h,r);x.arcTo(a,b+h,a,b,r);x.arcTo(a,b,a+w,b,r);x.closePath();}
 
@@ -502,7 +505,7 @@ function finUV(g){const p=g.attributes.position;let z0=1e9,z1=-1e9,y0=1e9,y1=-1e
   const ix=g.index.array,R=[],Lf=[];for(let k=0;k<ix.length;k+=3){const cx=p.getX(ix[k])+p.getX(ix[k+1])+p.getX(ix[k+2]);(cx>=0?R:Lf).push(ix[k],ix[k+1],ix[k+2]);}
   g.setIndex([...R,...Lf]);g.clearGroups();g.addGroup(0,R.length,0);g.addGroup(R.length,Lf.length,1);}
 const FINM={};
-function finMats(spec){const [style,c1,c2,letter,base]=spec||['stripe','#0b2545','#d7263d','L','#f8f8f7'],key=spec?spec.join('|'):'d';if(FINM[key])return FINM[key];
+function finMats(spec){const [style,c1,c2,letter,base]=spec||['stripe','#0b2545','#d7263d','','#f8f8f7'],key=spec?spec.join('|'):'d';if(FINM[key])return FINM[key];
   const lc=style==='swoosh'?onCol('#ffffff',c1):onCol('#ffffff',c1);
   const draw=flip=>(x,w,h)=>{x.save();if(flip){x.translate(w,0);x.scale(-1,1);}
     // u=0 vorne (links im Bild) für die linke Seite, oben = Spitze des Leitwerks
@@ -521,31 +524,30 @@ function finMats(spec){const [style,c1,c2,letter,base]=spec||['stripe','#0b2545'
   return FINM[key]=[mk(true),mk(false)];}
 let LV=null,FS=null;
 const solidMat=(c,r)=>new THREE.MeshStandardMaterial({color:new THREE.Color(c),roughness:r||0.3,side:THREE.DoubleSide});
-function tailDecal(){return canvasTex(512,512,(x)=>{x.clearRect(0,0,512,512);x.save();x.translate(256,256);x.rotate(-0.55);x.fillStyle=RED;x.fillRect(-400,40,800,70);x.fillStyle='#ffffff';x.fillRect(-400,118,800,14);x.restore();
-  x.fillStyle='#ffffff';x.font='900 250px Arial';x.textAlign='center';x.textBaseline='middle';x.fillText('L',230,215);});}
 export const AIRLINER={
   // A321neo: A320 + 4,27 m vor und 2,67 m hinter dem Flügel (44,51 m), LEAP-1A, Sharklets, vier Türpaare
   l320:{L:44.51,R:1.98,sy:1.05,nose:0.101,tail:0.73,up:1,reg:'HB-LAA',
-    wing:{x0:1.6,span:15.4,root:6.7,tip:1.55,sweep:7.6,dih:5.5,y0:-1.25,z0:-3.19,tr:0.14,tt:0.11,kink:0.34},winglet:'sharklet',
+    wing:{x0:1.6,span:15.4,root:6.7,tip:1.55,sweep:7.6,dih:5.5,y0:-1.25,z0:-5.39,tr:0.14,tt:0.11,kink:0.34},winglet:'sharklet',
     eng:[{x:5.9,len:5.3,r:1.3,k:0.86,fwd:0.68,neo:1}],fin:{z:15.69,root:6.2,tip:2.5,h:6.3,sweep:4.4,y:1.7},stab:{x0:0.6,span:5.6,root:3.7,tip:1.6,sweep:3.4,dih:6,y:0.85,z:18.39},
-    main:[{x:3.8,z:2.02,ax:1}],ng:-16.86,eye:[-0.52,0.62,-20.0],cg:2.6,winX:[0.1,0.86],doors:[0.11,0.39,0.61,0.86],skip:[]},
+    main:[{x:3.8,z:-0.18,ax:1}],ng:-16.86,eye:[-0.52,0.62,-20.0],cg:4.8,winX:[0.1,0.86],doors:[0.11,0.39,0.61,0.86],skip:[]},
   l32n:{L:37.6,R:1.98,sy:1.05,nose:0.12,tail:0.68,up:1,reg:'HB-LNA',
-    wing:{x0:1.6,span:15.4,root:6.6,tip:1.55,sweep:7.6,dih:5.5,y0:-1.25,z0:-4.0,tr:0.14,tt:0.11,kink:0.34},winglet:'sharklet',
+    wing:{x0:1.6,span:15.4,root:6.6,tip:1.55,sweep:7.6,dih:5.5,y0:-1.25,z0:-6.0,tr:0.14,tt:0.11,kink:0.34},winglet:'sharklet',
     eng:[{x:5.9,len:5.3,r:1.3,k:0.86,fwd:0.68,neo:1}],fin:{z:12.2,root:6.2,tip:2.5,h:6.3,sweep:4.4,y:1.7},stab:{x0:0.6,span:5.6,root:3.7,tip:1.6,sweep:3.4,dih:6,y:0.85,z:14.9},
-    main:[{x:3.8,z:1.2,ax:1}],ng:-13.4,eye:[-0.52,0.62,-16.55],cg:1.8,winX:[0.12,0.86],doors:[0.12,0.41,0.84],skip:[[0.105,0.135],[0.39,0.43],[0.82,0.86]]},
+    main:[{x:3.8,z:-0.8,ax:1}],ng:-13.4,eye:[-0.52,0.62,-16.55],cg:3.8,winX:[0.12,0.86],doors:[0.12,0.41,0.84],skip:[[0.105,0.135],[0.39,0.43],[0.82,0.86]]},
   // A330-900neo: Rumpf wie A330-300, Trent 7000 (Fan 2,84 m), neue Flügelspitze mit Sharklet (64 m), schwarze Cockpitmaske
   l330:{L:63.66,R:2.82,sy:1.04,nose:0.1,tail:0.72,up:1,reg:'HB-LBA',mask:1,
-    wing:{x0:2.7,span:27.4,root:10.6,tip:2.2,sweep:16.5,dih:5.5,y0:-1.75,z0:-6.2,tr:0.13,tt:0.1,kink:0.36},winglet:'neo330',
+    wing:{x0:2.7,span:27.4,root:10.6,tip:2.2,sweep:16.5,dih:5.5,y0:-1.75,z0:-9.3,tr:0.13,tt:0.1,kink:0.36},winglet:'neo330',
     eng:[{x:9.4,len:7.1,r:1.78,k:0.8,fwd:0.7,neo:1}],fin:{z:22.0,root:10,tip:4,h:9.4,sweep:8,y:2.4},stab:{x0:1.1,span:8.5,root:5.6,tip:2.1,sweep:5.8,dih:6,y:1.2,z:25.6},
-    main:[{x:5.4,z:2.2,ax:2}],ng:-26.4,eye:[-0.55,0.9,-29.0],cg:3.0,winX:[0.1,0.87],doors:[0.1,0.3,0.6,0.85],skip:[]},
+    main:[{x:5.4,z:-0.9,ax:2}],ng:-26.4,eye:[-0.55,0.9,-29.0],cg:6.1,winX:[0.1,0.87],doors:[0.1,0.3,0.6,0.85],skip:[]},
+  // Version 13: Flügel + Hauptfahrwerk der Airbus-Typen 2–3 m nach vorn (Radstand wie im Airbus-Datenblatt: A340-300 25,6 m, A321 16,9 m …), Schwerpunkt mitverschoben
   l340:{L:63.7,R:2.82,sy:1.04,nose:0.1,tail:0.72,up:1,reg:'HB-LCA',
-    wing:{x0:2.7,span:27.4,root:10.6,tip:2.2,sweep:16.5,dih:5.5,y0:-1.75,z0:-6.2,tr:0.13,tt:0.1,kink:0.36},winglet:'tall',
+    wing:{x0:2.7,span:27.4,root:10.6,tip:2.2,sweep:16.5,dih:5.5,y0:-1.75,z0:-9.3,tr:0.13,tt:0.1,kink:0.36},winglet:'tall',
     eng:[{x:10.0,len:5.0,r:1.0,k:1.0,fwd:0.62,cfm:1},{x:18.6,len:5.0,r:1.0,k:1.0,fwd:0.6,cfm:1}],fin:{z:22.0,root:10,tip:4,h:9.4,sweep:8,y:2.4},stab:{x0:1.1,span:8.5,root:5.6,tip:2.1,sweep:5.8,dih:6,y:1.2,z:25.6},
-    main:[{x:5.4,z:2.2,ax:2},{x:0,z:2.9,ax:1,center:1}],ng:-26.4,eye:[-0.55,0.9,-29.0],cg:3.0,winX:[0.1,0.87],doors:[0.1,0.3,0.6,0.85],skip:[[0.09,0.115],[0.29,0.315],[0.59,0.615],[0.84,0.865]]},
+    main:[{x:5.4,z:-0.9,ax:2},{x:0,z:-0.2,ax:1,center:1}],ng:-26.4,eye:[-0.55,0.9,-29.0],cg:6.1,winX:[0.1,0.87],doors:[0.1,0.3,0.6,0.85],skip:[[0.09,0.115],[0.29,0.315],[0.59,0.615],[0.84,0.865]]},
   l346:{L:75.4,R:2.82,sy:1.04,nose:0.09,tail:0.75,up:1,reg:'HB-LFA',
-    wing:{x0:2.7,span:29.1,root:11.4,tip:2.3,sweep:17.8,dih:5.5,y0:-1.75,z0:-7.0,tr:0.13,tt:0.1,kink:0.36},winglet:'tall',
+    wing:{x0:2.7,span:29.1,root:11.4,tip:2.3,sweep:17.8,dih:5.5,y0:-1.75,z0:-9.3,tr:0.13,tt:0.1,kink:0.36},winglet:'tall',
     eng:[{x:10.7,len:6.2,r:1.4},{x:19.9,len:6.2,r:1.4}],fin:{z:27.6,root:10.6,tip:4.2,h:9.8,sweep:8.3,y:2.4},stab:{x0:1.1,span:9.4,root:6,tip:2.2,sweep:6.2,dih:6,y:1.2,z:31.6},
-    main:[{x:5.4,z:3.0,ax:2},{x:0,z:3.4,ax:2,center:1}],ng:-31.8,eye:[-0.55,0.9,-34.8],cg:3.4,winX:[0.09,0.89],doors:[0.09,0.27,0.53,0.75,0.88],skip:[[0.08,0.1],[0.26,0.28],[0.52,0.54],[0.74,0.76],[0.87,0.89]]},
+    main:[{x:5.4,z:0.7,ax:2},{x:0,z:1.1,ax:2,center:1}],ng:-31.8,eye:[-0.55,0.9,-34.8],cg:5.7,winX:[0.09,0.89],doors:[0.09,0.27,0.53,0.75,0.88],skip:[[0.08,0.1],[0.26,0.28],[0.52,0.54],[0.74,0.76],[0.87,0.89]]},
   l350:{L:73.8,R:2.98,sy:1.03,nose:0.1,tail:0.72,up:1,reg:'HB-LDA',noseK:'a350',ws:'a350',
     wing:{x0:2.8,span:29.6,root:12.5,tip:2.6,sweep:18.4,dih:6,y0:-1.9,z0:-6.5,tr:0.13,tt:0.1,kink:0.32},winglet:'curved',
     eng:[{x:10.3,len:7.6,r:1.75,k:1.0,fwd:0.62}],fin:{z:23.6,root:11,tip:4.3,h:9.0,sweep:7.2,y:2.6},stab:{x0:1.2,span:9.6,root:6.5,tip:2.4,sweep:6.5,dih:5,y:1.4,z:27.0},
@@ -637,13 +639,13 @@ function buildAirliner(C,body,parts,root,P){
   const kS=W.kink||0.34,WG=wing({...W,dih:D,surfaces:[[0.0,kS,'flap'],[kS,0.74,'flap'],[0.76,0.94,'ail']]},wm,wm,body,parts);
   const yW=x=>W.y0+(x-W.x0)*Math.tan(D),zLE=x=>W.z0+(x-W.x0)/W.span*W.sweep,cW=x=>WG.chord(Math.max(0,Math.min(1,(x-W.x0)/W.span)));
   // Klappenschienen-Verkleidungen (Kanus): hängen an den Klappen und kippen mit ihnen nach unten
-  {const kk=Math.min(R,2.6),canoe=(prof)=>{const pts=prof.map(([z,r])=>new THREE.Vector2(Math.max(0.001,r),z));const g=new THREE.LatheGeometry(pts,14);g.rotateX(Math.PI/2);g.scale(0.06*kk,0.085*kk,1);g.translate(0,-0.045*kk,0);return g;};
+  {const kk=Math.min(R,2.6),canoe=(prof)=>{const pts=prof.map(([z,r])=>new THREE.Vector2(Math.max(0.001,r),z));const g=new THREE.LatheGeometry(pts,14);g.rotateX(Math.PI/2);g.scale(0.05*kk,0.07*kk,1);g.translate(0,-0.045*kk,0);return g;};
    // vorne stumpf ansetzend, dann gleich dick; hinten schlank zur Spitze auslaufend – zusammen ein «Kanu»
-   const ftF=canoe([[0,0],[0.06,0.55],[0.2,0.85],[0.45,0.98],[1,1]]),ftR=canoe([[0,1],[0.25,0.97],[0.55,0.78],[0.82,0.42],[1,0.04]]);body.updateMatrixWorld(true);
+   const ftF=canoe([[0,0],[0.06,0.55],[0.2,0.85],[0.45,0.98],[1,1]]),ftR=canoe([[0,1],[0.3,0.95],[0.6,0.74],[0.85,0.48],[1,0.22]]);body.updateMatrixWorld(true);// hinten stumpf auslaufend (keine Spiesse)
    for(const s of [kS*0.62,kS+(0.74-kS)*0.3,kS+(0.74-kS)*0.75]){const x=W.x0+s*W.span,c=cW(x),t=W.tr+(W.tt-W.tr)*s,yb=yW(x)-t*c*0.32;for(const sg of [1,-1]){
      // vorderer Teil fest am Flügel, hinterer Teil hängt an der Klappe und kippt mit
      const f=new THREE.Mesh(ftF,surfMat(wm));f.scale.set(1,1,c*0.36);f.position.set(sg*x,yb,zLE(x)+c*0.44);f.castShadow=true;body.add(f);
-     const m=new THREE.Mesh(ftR,surfMat(wm));m.scale.set(1,1,c*0.5);m.position.set(sg*x,yb,zLE(x)+c*0.8);m.castShadow=true;body.add(m);
+     const m=new THREE.Mesh(ftR,surfMat(wm));m.scale.set(1,1,c*0.3);m.position.set(sg*x,yb,zLE(x)+c*0.8);m.castShadow=true;body.add(m);
      const seg=(parts.flaps||[]).find(f=>s>=f.s0&&s<=f.s1),fl=seg&&(sg>0?seg.R:seg.L);if(fl){body.updateMatrixWorld(true);fl.attach(m);}}}}
   const tipx=W.x0+W.span,tipy=yW(tipx),tipz=zLE(tipx);
   // echte Flügelspitze (bei der schrägen 747-8-Spitze gut 3 m weiter aussen und 5 m weiter hinten)
@@ -1021,7 +1023,7 @@ export function bakeModel(root){
 export function animateModel(root,st,t,dt){
   const p=root.userData.parts,P=root.userData.spec;if(!p)return;
   const fl=(st.flapPos||0);
-  for(const f of (p.flaps||[]))for(const m of [f.R,f.L]){m.rotation.x=fl*0.6;m.position.z=fl*(m.userData.ext||0);}
+  for(const f of (p.flaps||[]))for(const m of [f.R,f.L]){m.rotation.x=fl*(m.userData.maxRot||0.42);m.position.z=fl*(m.userData.ext||0);}// voll ≈ 24° (vorher 34°: Klappen und Kanus hingen bis zu den Rädern)
   if(p.ailR){p.ailR.rotation.x=(st.ail||0)*0.35;p.ailL.rotation.x=-(st.ail||0)*0.35;}
   if(p.elevR){p.elevR.rotation.x=-(st.elev||0)*0.4;p.elevL.rotation.x=-(st.elev||0)*0.4;}
   if(p.rud)p.rud.rotation.x=-(st.rud||0)*0.45;

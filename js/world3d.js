@@ -42,6 +42,14 @@ export async function buildWorld(scene,H,LK,S,Q,progress){
     const d=c.getImageData(0,0,N,N).data,m=new Uint8Array(N*N);for(let k=0;k<N*N;k++)m[k]=d[k*4]>127?1:0;return{N,m};})();
   const inCH=(x,z)=>{if(!CHM)return false;const N=CHM.N,i=Math.floor((x+HALF)/(2*HALF)*N),j=Math.floor((z+HALF)/(2*HALF)*N);return i>=0&&j>=0&&i<N&&j<N&&CHM.m[j*N+i]===1;};
   W.inCH=inCH;
+  // Laubholzanteil für die Herbstfärbung (240 m): 0 Nadel … 255 Laub; 255 auch ohne Daten (Shader: Höhe entscheidet)
+  if(CHM){const N=1537,u8=new Uint8Array(N*N).fill(255),C2=2*HALF/(N-1),off=[-80,0,80];
+    for(let j=0;j<N;j++){const z=-HALF+j*C2;for(let i=0;i<N;i++){const x=-HALF+i*C2;if(!inCH(x,z))continue;let n=0,sum=0;
+      for(const a of off)for(const b of off){const f=fineForest(x+a,z+b);if(f>0){n++;sum+=f===1?0:f===2?0.5:1;}}
+      u8[j*N+i]=n?Math.round(sum/n*254):178;}
+      if(j%192===0)await tick();}
+    const lt=new THREE.DataTexture(u8,N,N,THREE.RedFormat,THREE.UnsignedByteType);lt.unpackAlignment=1;lt.magFilter=lt.minFilter=THREE.LinearFilter;lt.needsUpdate=true;
+    ORU.orLaub.value=lt;ORU.orLB.value.set(-HALF,-HALF,2*HALF+C2);}
   // Waldfarbe im Gelände (Satellitenbild-Ersatz) in der Schweiz ebenfalls aus den echten Daten: Anteil Waldknoten um jeden Grundknoten
   if(CHM){const o=[[-1,-1],[1,-1],[-1,1],[1,1],[0,0]];for(let j=0;j<N1;j++){const z=-HALF+j*CELL;for(let i=0;i<N1;i++){const x=-HALF+i*CELL;if(!inCH(x,z))continue;
     let n=0;for(const [a,b] of o)if(fineForest(x+a*CF,z+b*CF)>0)n++;FO[j*N1+i]=n>=3?5:n===2?0.6:-5;}
@@ -401,7 +409,12 @@ ${ORTHO_GLSL_BODY}`)
   function* fillGen(out){const st=SETS[1-cur],CH=2500;
     for(let k=0;k<2;k++){const a=out[k],M=st[k];let n=0;const tot=a.length/5;
       for(let o=0;o<a.length;o+=5){const s2=a[o+3];q.setFromAxisAngle(UP,a[o+4]*6.28);m4.compose(p.set(a[o],a[o+1],a[o+2]),q,sc.set(s2,s2*(0.85+a[o+4]*0.4),s2));M.setMatrixAt(n,m4);
-        if(k===0)col.setRGB(0.12+a[o+4]*0.05,0.2+a[o+4]*0.07,0.11);else col.setRGB(0.16+a[o+4]*0.09,0.25+a[o+4]*0.09,0.1+a[o+4]*0.03);M.setColorAt(n,col);n++;
+        const hv=a[o+4],sea=W.season;
+        if(k===0){col.setRGB(0.12+hv*0.05,0.2+hv*0.07,0.11);if(sea==='spring')col.setRGB(0.13+hv*0.05,0.23+hv*0.07,0.11);}
+        else if(sea==='autumn'){const q=(hv*7.31)%1;if(q<0.3)col.setRGB(0.62,0.22+q*0.3,0.06);else if(q<0.62)col.setRGB(0.70,0.52,0.10);else if(q<0.85)col.setRGB(0.48,0.32,0.12);else col.setRGB(0.22,0.30,0.10);}
+        else if(sea==='winter')col.setRGB(0.36+hv*0.06,0.32+hv*0.05,0.28);// kahle Laubbäume (Schnee kommt im Shader dazu)
+        else if(sea==='spring'){const q=(hv*5.17)%1;if(q<0.12)col.setRGB(0.86,0.84,0.80);else col.setRGB(0.24+hv*0.08,0.36+hv*0.08,0.10);}// Obstblüten
+        else col.setRGB(0.16+hv*0.09,0.25+hv*0.09,0.1+hv*0.03);M.setColorAt(n,col);n++;
         if(n%CH===0||n===tot){const s0=(Math.ceil(n/CH)-1)*CH;M.instanceMatrix.addUpdateRange(s0*16,(n-s0)*16);M.instanceColor.addUpdateRange(s0*3,(n-s0)*3);M.instanceMatrix.needsUpdate=true;M.instanceColor.needsUpdate=true;M.count=Math.max(M.count,0);if(n<tot)yield;}}
       M.count=n;}
     yield 'swap';}
@@ -415,6 +428,9 @@ ${ORTHO_GLSL_BODY}`)
   };
   progress(0.68,'Wälder werden gepflanzt');await tick();
   W.LK=LK;W.extras=buildExtras(scene,S,Q,W,airportNear);
-  W.setWinter=on=>{W.uWin.value=on?1:0;};
+  W.setWinter=on=>W.setSeason(on?'winter':'summer');
+  // Jahreszeit: Gelände/Luftbild (ORU.orSea), Bäume werden neu eingefärbt
+  W.season='summer';W.setSeason=s=>{s=s||'summer';const v=ORU.orSea.value;v.set(s==='winter'?1:0,s==='autumn'?1:0,s==='spring'?1:0,0);W.uWin.value=s==='winter'?1:0;
+    if(W.season!==s){W.season=s;center.set(1e9,1e9);}};
   return W;
 }

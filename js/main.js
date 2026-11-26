@@ -342,7 +342,7 @@ function startFlight(cfg){
   let wk=mission?(mission.wind||'light'):lesson?'calm':(cfg.wind||'light');if(weather==='storm'&&(wk==='light'||wk==='calm'))wk='storm';const wp=typeof wk==='string'?WIND_PRESETS[wk]||WIND_PRESETS.light:wk;
   const wdir=(typeof wk==='object'&&wk.dir!=null)?wk.dir:wk==='foehn'?195:(mission&&mission.windDir)||(cfg.windDir??(240+Math.round((Math.random()-0.5)*60)));
   const wet=weather==='rain'||weather==='storm'||weather==='snow';wx.set({...wp,dir:wdir},wet?1:0,weather==='snow');audio.setRain&&audio.setRain(weather==='rain'||weather==='storm'?1:0);G.windDir=wdir;
-  world.setWinter((mission?mission.season:lesson?null:cfg.season)==='winter'||weather==='snow');G.ltT=4+Math.random()*6;
+  {const se=mission?mission.season:lesson?null:cfg.season;world.setSeason(weather==='snow'?'winter':se||'summer');}G.ltT=4+Math.random()*6;
   G.hour=hour;if(!mission&&!lesson&&cfg.liveCH&&LIVE){G.live=true;try{applyLive(true);}catch(e){}}
   const dest=G.obj.find(o=>o.type==='land')?.ap||null;
   atc.start({enabled:!lesson&&!(mission&&mission.race)&&!P.heli&&!P.glider&&save.settings.atc!==false,onGround:!air,startAP,dest,callsign:CALLSIGN[planeId]||'HB-XYZ'});
@@ -671,7 +671,7 @@ const rankName=n=>n>=16?'Flugkapitän':n>=11?'Erster Offizier':n>=6?'Linienpilot
 const hourName=h=>h>=21.5||h<5.5?'Nacht':h>=19?'Abend':h>=16?'Nachmittag':h>=11?'Mittag':'Morgen';
 const fmtH=h=>`${Math.floor(h)}:${String(Math.round((h%1)*60)).padStart(2,'0')}`;
 function showMenu(){
-  state='menu';cleanup();env.setTime(20.0,'fair');world.setWinter(false);SHOW.on=false;
+  state='menu';cleanup();env.setTime(20.0,'fair');world.setSeason('summer');SHOW.on=false;
   ['hud','brief','result','pause','mapov'].forEach(id=>$(id).classList.add('hidden'));$('menu').classList.remove('hidden');
   const n=totalStars();$('rank').innerHTML=`<b>${rankName(n)}</b><span>${n} / ${ALL_MISSIONS.length*3} Sterne</span>`;
   $('mlist').innerHTML=MISSIONS.map((m,i)=>`<div class="mis" data-id="${m.id}"><div class="num">${i+1}</div><div class="mi"><b>${m.name}</b><span>${PLANES[m.plane].name} · ${hourName(m.hour)} · ${m.air?'Luftstart':m.start[2]?'Anflug '+AP[m.start[0]].name:AP[m.start[0]].name}</span></div><div class="mr">${starsHtml(save.stars[m.id]||0)}${save.grades[m.id]?`<em>${save.grades[m.id]}</em>`:''}</div></div>`).join('');
@@ -1128,7 +1128,7 @@ async function liveWeather(){const f=save.free;toast('Echtwetter der ganzen Schw
   try{await fetchLiveCH(true);const tt=new Date(LIVE.time),hour=tt.getHours()+tt.getMinutes()/60;
     const A=AP[f.ap],lw=A?liveAt(A.x,A.z):liveAt(LIVE.pts[21].x,LIVE.pts[21].z);
     f.liveCH=true;f.weather=lw.cls;f.hour=hour;f.wind={spd:lw.spd,gust:lw.gust*0.7,turb:Math.min(0.9,0.08+lw.gust/14),dir:lw.dir};
-    f.season=(lw.cls==='snow'||(lw.T<2&&[11,12,1,2,3].includes(tt.getMonth()+1)))?'winter':'summer';
+    {const mo=tt.getMonth()+1;f.season=(lw.cls==='snow'||(lw.T<2&&[11,12,1,2,3].includes(mo)))?'winter':mo>=3&&mo<=5?'spring':mo>=9&&mo<=11?'autumn':mo===12||mo<=2?'winter':'summer';}
     f.live=`${fmtH(hour)} · ${liveText(lw)} · unterwegs gilt das Wetter der jeweiligen Gegend`;persist();renderFree();toast('Echtwetter Schweiz aktiv · '+liveText(lw),4000);}
   catch(e){toast('Wetterdienst nicht erreichbar. Im claude.ai-Fenster sperrt der Browser Internet-Abfragen – Echtwetter funktioniert in der Desktop-Datei «Swiss Sky.html» und auf viscabarca69.github.io/swiss-sky.',7000);}}
 // ---------- Rega ----------

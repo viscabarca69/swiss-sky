@@ -290,6 +290,8 @@ export function decodeShare(code){try{code=(code||'').trim();if(!code.startsWith
 export function createCareer(save,persist){
   const C=save.career=Object.assign({money:20000,earned:0,owned:['alpina'],jobs:[],seq:1,done:0,badges:{},daily:{},stats:{},name:'',liv:{},ghost:true,best:{},friends:[]},save.career||{});
   const JK=BO?'jobsBO':'jobs';if(!Array.isArray(C[JK]))C[JK]=[];
+  // Version 13: L-380 wieder in der normalen LUIS-Lackierung (der alte Farbbauch-Standard war evtl. schon gespeichert)
+  {const q=C.liv&&C.liv.l380;if(!C.livV13&&q&&q.tpl==='bauch'&&q.c1==='#0b2545'&&q.c2==='#d7263d')q.tpl='clean';C.livV13=1;}
   // Aufträge enthalten Koordinaten: nach dem Kartenwechsel neu erzeugen
   if(CH&&C.jobsW!=='ch1'){C.jobs=[];delete C.jobsBO;C.jobsW='ch1';}
   const K={C,jobs:()=>C[JK],

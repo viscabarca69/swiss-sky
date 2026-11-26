@@ -10,6 +10,13 @@ Artifact slug e3615a1f-7860-4277-b4c4-84ea1ba2abea · letzte veröffentlichte Ve
 Backup Etappe 1: /tmp/af_e1 (kann nach Neustart weg sein)
 Testen: /tmp/run.sh test/<x>.py (Playwright, SwiftShader) · node test/jobs.mjs (Routen) · node test/mis.mjs
 
+## Version 13.1 (26.11.2026) – Jahreszeiten, Airliner-Formen
+- Jahreszeiten: world.setSeason('spring'|'summer'|'autumn'|'winter') (setWinter = Kurzform). ORU.orSea (vec4 Winter, Herbst, Frühling), orLaub (R8-Textur 1537², Laubholzanteil aus forest_fine, orLB = x0,z0,Breite). GLSL seasonPhoto(c,wp,sea) in ORTHO_GLSL_HEAD: Vegetation = Grünüberschuss, dunkel = Wald; Herbst Laubwald orange/gelb/braun nach Laubanteil, Felder Stoppelgelb; Frühling frischgrün + Blütenpunkte (step 0,993); Winter Schnee über Fotos. Wirkt auch auf Gelände ohne Foto (orSea.y/z). Bäume: fillGen-Farben je Jahreszeit, Neuverteilung bei Wechsel (center zurückgesetzt). Dächer Winter: realcity mix(…, 0,80/0,83/0,87, orSea.x · (flach 0,55 / steil 0,8)).
+- Menü: Frühling/Sommer/Herbst/Winter-Chips; Live-Wetter: März–Mai Frühling, Sept–Nov Herbst, Dez–Feb oder Schnee/kalt Winter.
+- Airliner: Klappen max. 0,42 rad (24°, vorher 0,6); Kanus kleiner (0,05/0,07·R), hinten stumpf (ftR Ende 0,22), hinterer Teil c·0,3. surface(): Enden in Flugrichtung geschert (|ax.x| > 0,7) – vorher senkrecht zur gepfeilten Scharnierlinie, innere Klappenecke steckte bis 1,9 m im Rumpf und kam ausgefahren unter dem Bauch neben dem Mittelfahrwerk hervor («Räder durch die Flügel»). Test /tmp/clr.py: keine Klappe über Rädern (A320–A350); 747/A380 seitlich neben dem Körperfahrwerk.
+- Airbus-Flügel + Hauptfahrwerk nach vorn (wing.z0, main.z − d, cg + d; Physik unverändert): l320 2,2, l32n 2,0, l330/l340 3,1, l346 2,3 m → Radstand l320 16,7, l330/l340 25,5 (A340-300: 25,6), l346 32,5.
+- Lackierung: kein Buchstabe mehr auf dem Seitenleitwerk (alle Typen; finMats letter ''), L-380 Standard wieder LUIS «clean» (alter Farbbauch-Standard im Spielstand → einmalig clean, C.livV13). tailDecal (unbenutzt) entfernt.
+
 ## Version 13.0 (26.11.2026) – feine Berge, echte Wälder, Pisten frei
 - Pipeline (jobs.txt «fine forest»): terrain_fine.py → swissALTIRegio im Feinraster CELL/4 (12289², 30 m), Abweichung zum 120-m-Grundraster (Dreiecke wie heightAt), Seen 0, Ufer ≥ Spiegel+0,8. fine_pack.py: nur Schweiz + 3 km (weich), 1-m-Stufen bis ±60 m, darüber 5 m, WebP-Atlanten (16×16 Kacheln à 256²) → data/terrain_fine.txt (Base64, 21,9 MB binär, 895 Kacheln). GDAL: Datensatz-Referenz halten (gdal.Open(...).GetRasterBand → Absturz), grosse .tif nicht nach daten-out.
 - forest_fine.py: Waldmischungsgrad LFI (10 m, Wert = LAUBholzanteil %: Engadin 17, Tessin 71) → Klassen 1 Nadel (<30) / 2 Misch / 3 Laub (>70), 2 Bit je Knoten, gzip → data/forest_fine.txt (5,3 MB).

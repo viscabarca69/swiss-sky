@@ -67,7 +67,9 @@ export {lv95ToXZ};
 
 const blank=new THREE.DataTexture(new Uint8Array([128,128,128,255]),1,1);blank.needsUpdate=true;
 // Uniforms (werden vom Geländeshader übernommen)
-export const ORU={orA:{value:blank},orB:{value:blank},orH0:{value:blank},orH1:{value:blank},orH2:{value:blank},orH3:{value:blank},
+// Jahreszeit: orSea = (Winter, Herbst, Frühling, 0); orLaub = Laubholzanteil (LFI, 240 m; 1 = keine Daten → Höhe entscheidet), Fläche orLB (x0,z0,Breite)
+const blankL=new THREE.DataTexture(new Uint8Array([255,255,255,255]),1,1);blankL.needsUpdate=true;
+export const ORU={orSea:{value:new THREE.Vector4(0,0,0,0)},orLaub:{value:blankL},orLB:{value:new THREE.Vector3(0,0,1)},orA:{value:blank},orB:{value:blank},orH0:{value:blank},orH1:{value:blank},orH2:{value:blank},orH3:{value:blank},
   orAE:{value:new THREE.Vector3()},orAN:{value:new THREE.Vector3()},orBE:{value:new THREE.Vector3()},orBN:{value:new THREE.Vector3()},
   orABox:{value:new THREE.Vector4(0,0,1,1)},orBBox:{value:new THREE.Vector4(0,0,1,1)},orOn:{value:new THREE.Vector2(0,0)},
   orHT:{value:[0,1,2,3].map(()=>new THREE.Vector4(0,0,0,0))},orGain:{value:0.92},...STU};
@@ -81,7 +83,21 @@ function setSlot(k,R){SLOT[k]=R;const P=k?['orB','orBE','orBN','orBBox']:['orA',
 // Abstand Kamera – Gebiet (m, 0 innerhalb)
 function regionDist(R,x,z){const [E,N]=toEN(R,x,z);return Math.hypot(Math.max(0,R.e0*1000-E,E-R.e1*1000),Math.max(0,R.n0*1000-N,N-R.n1*1000));}
 
-export const ORTHO_GLSL_HEAD=`uniform sampler2D orA,orB,orH0,orH1,orH2,orH3;uniform vec3 orAE,orAN,orBE,orBN;uniform vec4 orABox,orBBox;uniform vec2 orOn;uniform vec4 orHT[4];uniform float orGain;
+export const ORTHO_GLSL_HEAD=`uniform vec4 orSea;uniform sampler2D orLaub;uniform vec3 orLB;
+float seaH(vec2 p){return fract(sin(dot(floor(p),vec2(12.9898,78.233)))*43758.5453);}
+// Luftbild (Sommer) je Jahreszeit umfärben: Vegetation an der Grün-Dominanz, Wald an der Dunkelheit erkannt; Laubanteil aus dem LFI
+vec3 seasonPhoto(vec3 c,vec3 wp,vec4 sea){
+ if(sea.x+sea.y+sea.z<0.001)return c;
+ float l=dot(c,vec3(0.3,0.59,0.11));float veg=clamp((c.g-max(c.r,c.b))*9.0+0.1,0.0,1.0);float dark=1.0-smoothstep(0.035,0.12,l);
+ if(sea.y>0.0){vec2 lu=(wp.xz-orLB.xy)/orLB.z;float lb=texture2D(orLaub,lu).r;if(lb>0.99||lu.x<0.0||lu.y<0.0||lu.x>1.0||lu.y>1.0)lb=0.7-0.6*smoothstep(900.0,1500.0,wp.y);
+  float n=seaH(wp.xz/14.0),n2=seaH(wp.xz/37.0+3.0);vec3 au=n<0.35?vec3(0.42,0.13,0.03):n<0.7?vec3(0.50,0.30,0.04):vec3(0.30,0.24,0.06);au*=0.55+0.9*n2;
+  float laub=smoothstep(0.2,0.8,lb+(n2-0.5)*0.4);c=mix(c,au*(0.32+l*3.0),veg*dark*sea.y*laub*0.85);
+  c=mix(c,c*vec3(1.18,1.0,0.55)+vec3(0.02,0.012,0.0),veg*(1.0-dark)*sea.y*0.75);}
+ if(sea.z>0.0){c=mix(c,c*vec3(0.92,1.15,0.82),veg*sea.z*0.7);float fl=step(0.993,seaH(wp.xz/3.0))*(1.0-dark)*veg;c=mix(c,vec3(0.62,0.55,0.10),fl*sea.z*0.45);}
+ if(sea.x>0.0){float hs=0.55+0.45*smoothstep(380.0,800.0,wp.y);float s=sea.x*hs*((1.0-dark)*0.93+dark*0.32);
+  float ground=0.9;vec3 sn=vec3(0.78,0.81,0.86)*(0.88+0.25*seaH(wp.xz/5.0));c=mix(c,sn,clamp(s*ground,0.0,1.0));}
+ return c;}
+uniform sampler2D orA,orB,orH0,orH1,orH2,orH3;uniform vec3 orAE,orAN,orBE,orBN;uniform vec4 orABox,orBBox;uniform vec2 orOn;uniform vec4 orHT[4];uniform float orGain;
 ${STREAM_GLSL}
 // Luftbild an einer Weltposition: rgb (linear) + Deckung (0 ausserhalb, weicher Rand 350 m)
 vec4 orthoStatic(vec2 wp){vec3 P3=vec3(wp.x,wp.y,1.0);vec2 eA=vec2(dot(P3,orAE),dot(P3,orAN)),eB=vec2(dot(P3,orBE),dot(P3,orBN));vec3 oc=vec3(0.0);float m=0.0;
@@ -98,7 +114,8 @@ vec4 orthoAt(vec2 wp){vec4 s=orthoStatic(wp);if(s.a>0.999)return s;vec4 t=stream
  float A=s.a+t.a*(1.0-s.a);return vec4((s.rgb*s.a+t.rgb*t.a*(1.0-s.a))/max(A,1e-4),A);}`;
 // nach der Grundfarbe des Geländes: Luftbild darüberlegen
 export const ORTHO_GLSL_BODY=`
-float oM=0.0;{vec4 o4=orthoAt(vWP.xz);oM=o4.a;if(oM>0.0)diffuseColor.rgb=mix(diffuseColor.rgb,o4.rgb,oM);}
+float oM=0.0;{vec4 o4=orthoAt(vWP.xz);oM=o4.a;if(orSea.y+orSea.z>0.0)diffuseColor.rgb=seasonPhoto(diffuseColor.rgb,vWP,vec4(0.0,orSea.y,orSea.z,0.0));// erfundener Boden (Winter hat er schon)
+ if(oM>0.0)diffuseColor.rgb=mix(diffuseColor.rgb,seasonPhoto(o4.rgb,vWP,orSea),oM);}
 `;
 
 // Wald im Luftbild erkennen (dunkles Grün, 2-m-Übersichtsbild, 3×3 gemittelt): 1 = Laubwald, 2 = dunkler Nadelwald

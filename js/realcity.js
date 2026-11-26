@@ -142,7 +142,8 @@ diffuseColor.rgb*=pow(c,vec3(2.2));
 // Dächer im Luftbild-Gebiet: echte Dachfarbe aus dem Luftbild
 if(nW.y>0.4){vec4 o4=roofPhoto(vWP.xz);float w=o4.a*(nW.y>0.985?0.95:0.85);
  if(w>0.01)diffuseColor.rgb=mix(diffuseColor.rgb,o4.rgb*0.82,w);
- if(w<0.6){vec4 g=orthoAt(vWP.xz);if(g.a>0.0)diffuseColor.rgb=mix(diffuseColor.rgb,g.rgb*0.82,g.a*0.3*(1.0-w));}}`)
+ if(w<0.6){vec4 g=orthoAt(vWP.xz);if(g.a>0.0)diffuseColor.rgb=mix(diffuseColor.rgb,g.rgb*0.82,g.a*0.3*(1.0-w));}
+ diffuseColor.rgb=mix(diffuseColor.rgb,vec3(0.80,0.83,0.87),orSea.x*(nW.y>0.985?0.55:0.8));}`)
       .replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\ntotalEmissiveRadiance+=mix(vec3(1.0,0.74,0.44),vec3(0.82,0.9,1.0),cool)*(winLit*1.5+farLit)*uNight+diffuseColor.rgb*vec3(1.0,0.86,0.62)*flood*uNight;')
       .replace('#include <roughnessmap_fragment>','#include <roughnessmap_fragment>\nroughnessFactor=mix(roughnessFactor,0.15,winMask);roughnessFactor=mix(roughnessFactor,0.05,glassM);if(metA>0.0)roughnessFactor=min(roughnessFactor,0.5);')
       .replace('#include <metalnessmap_fragment>','#include <metalnessmap_fragment>\nmetalnessFactor=max(metalnessFactor,max(glassM*0.92,metA));');
