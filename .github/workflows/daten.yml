@@ -1,0 +1,32 @@
+# Daten-Pipeline: swisstopo-Daten holen und für Swiss Sky aufbereiten (läuft auf GitHub, nicht im Spiel)
+# Start: Push auf den Zweig «pipeline» oder von Hand (Actions → Daten → Run workflow). Ergebnis: Zweig «daten-out».
+name: Daten
+on:
+  workflow_dispatch:
+  push:
+    branches: [pipeline]
+    paths: ['tools/pipeline/**', '.github/workflows/daten.yml']
+permissions:
+  contents: write
+jobs:
+  daten:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 120
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - name: GDAL installieren
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq gdal-bin python3-gdal python3-numpy > /dev/null && gdalinfo --version
+      - name: Höhenmodell swissALTIRegio
+        run: python3 tools/pipeline/terrain_fetch.py out 2>&1 | tee -a out_log.txt
+      - name: Gebäude swissBUILDINGS3D (Regionalflugplätze)
+        run: python3 tools/pipeline/sb3d_fetch.py out 2>&1 | tee -a out_log.txt
+      - name: Ergebnis auf Zweig daten-out
+        if: always()
+        run: |
+          mkdir -p out && cp out_log.txt out/log.txt 2>/dev/null || true
+          cd out && git init -q && git checkout -q -b daten-out && git add -A
+          git -c user.name=daten-pipeline -c user.email=actions@users.noreply.github.com commit -qm "Daten aus ${GITHUB_SHA::7} (${{ job.status }})"
+          git push -qf "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" daten-out
