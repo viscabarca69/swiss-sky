@@ -18,11 +18,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: GDAL installieren
-        run: sudo apt-get update -qq && sudo apt-get install -y -qq gdal-bin python3-gdal python3-numpy > /dev/null && gdalinfo --version
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq gdal-bin python3-gdal python3-numpy python3-pil > /dev/null && gdalinfo --version
       - name: Höhenmodell swissALTIRegio
         run: python3 tools/pipeline/terrain_fetch.py out 2>&1 | tee -a out_log.txt
       - name: Gebäude swissBUILDINGS3D (Regionalflugplätze)
         run: python3 tools/pipeline/sb3d_fetch.py out 2>&1 | tee -a out_log.txt
+      - name: Luftbilder SWISSIMAGE (Flughäfen)
+        run: python3 tools/pipeline/ortho_fetch.py out 2>&1 | tee -a out_log.txt
       - name: Ergebnis auf Zweig daten-out
         if: always()
         run: |

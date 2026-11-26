@@ -17,7 +17,9 @@ gdal.UseExceptions()
 STAC = 'https://data.geo.admin.ch/api/stac/v0.9/collections/ch.swisstopo.swissbuildings3d_3_0/items'
 # Regionalflugplätze ohne echte Gebäude (Halbseite des Quadrats in m)
 TARGETS = {'EMM': 2000, 'BUO': 1700, 'ALP': 1700, 'BIR': 1400, 'HAU': 1300, 'BRN': 1800, 'INT': 1500, 'MEI': 1700,
-           'REI': 1200, 'RAR': 1300, 'SIO': 2200, 'GRE': 1700, 'ACH': 1700, 'SMV': 1700, 'PAY': 2000}
+           'REI': 1200, 'RAR': 1300, 'SIO': 2200, 'GRE': 1700, 'ACH': 1700, 'SMV': 1700, 'PAY': 2000,
+           # Genf und Lugano-Agno: Flughafengelände fehlte in den Stadtdaten (dort ausgespart) – sb3d_build ergänzt nur, was noch fehlt
+           'GVA': 2400, 'LUG': 1300}
 out = sys.argv[1] if len(sys.argv) > 1 else 'out'
 ids = sys.argv[2:] or list(TARGETS)
 os.makedirs(out, exist_ok=True)
