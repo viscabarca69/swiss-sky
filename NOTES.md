@@ -10,6 +10,15 @@ Artifact slug e3615a1f-7860-4277-b4c4-84ea1ba2abea · letzte veröffentlichte Ve
 Backup Etappe 1: /tmp/af_e1 (kann nach Neustart weg sein)
 Testen: /tmp/run.sh test/<x>.py (Playwright, SwiftShader) · node test/jobs.mjs (Routen) · node test/mis.mjs
 
+## Version 12.2 (26.11.2026) – Zürich-Behandlung für GVA, BRN, LUG, SIO
+- `tools/pipeline/ortho_fetch.py` (GitHub Actions): SWISSIMAGE-dop10, je Kachel neuester Jahrgang (Item-ID `swissimage-dop10_<Jahr>_<E>-<N>`), gdal_translate -projwin auf die km-Kachel, -outsize 2048/512 aus den COG-Übersichten → webp q74/q80. 66 Kacheln, 41 MB. GVA 2495/2496-1123 fehlen (Frankreich) → `skip`.
+- `ortho.js`: ORTHO_REGIONS mit T (Übersicht 512 bzw. 256 px/km), `skip`, `ic`. Shader hat weiter zwei Plätze A/B: `update` legt die zwei nächsten geladenen Gebiete hinein (`setSlot`, `regionDist`), scharfe Kacheln nur aus diesen. Atlas-Alpha → fehlende Kacheln durchsichtig.
+- `inAirportArea`: Zürich-Polygone ODER ≤ 90 m an einem OSM-Vorfeld (alle Plätze mit Höhe 210–700 m). Kodierung im Gebäude-Shader neu: tint = (Boden−200)/2, hA = y − (200 + 2·tint).
+- `taxirender`: Luftbild-Plätze (inOrtho) ohne gezeichneten Belag (Bild zeigt ihn), `drawn` trotzdem gesetzt; grüne Mittellinienlichter LSZH + LSGG.
+- `gfx.hideUnderPhoto`: verwirft Strassen-/Fluss-Pixel, wo `orthoAt` (statisch + Stream) > 0,55 deckt; Bänder werden nicht mehr an der Gebietsgrenze abgeschnitten.
+- Gebäude: sb3d für GVA (2400) und LUG (1300) – vorher Flughafenzonen ausgespart. `sb3d_build` prüft jetzt gegen vorhandene Grundrisse (Mitte im Rechteck ±1 m) statt gegen Cover → nur Fehlendes: GVA +591, LUG +778. `coverTest(RC,true)` (nur Flugplatz-Quadrate) entscheidet über erfundene Flughafengebäude (vorher in 12.1: GVA/LUG/ZOF fälschlich ohne Gebäude).
+- Offen: Flugzeuge im Luftbild nicht entfernt (in Zürich schon).
+
 ## Version 12.1 (26.11.2026) – Daten-Pipeline auf GitHub
 - **Pipeline** `tools/pipeline/` + `.github/workflows/daten.yml`: läuft auf GitHub Actions (Push auf Zweig `pipeline` oder von Hand), weil der Arbeitsbereich swisstopo nicht erreicht. Ergebnis auf Zweig `daten-out` (force-push), danach lokal `terrain_build.py` / `sb3d_build.py`.
   - `terrain_fetch.py`: swissALTIRegio-COG (55000×43000, 10 m, Übersichten bis 860×672) per /vsicurl/ → gdalwarp EPSG:2056→4326, Pixelmitten = Spielgitterknoten (Spielgitter ist linear in lat/lon), -r average, 3073² → `alti_game.f32.gz`. Dauer ~1 min.

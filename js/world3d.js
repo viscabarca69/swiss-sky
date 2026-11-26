@@ -14,7 +14,7 @@ export async function buildWorld(scene,H,LK,S,Q,progress){
   const W={uWin:{value:0},uSun:{value:new THREE.Vector3(0.3,0.8,0.3)}};
   progress(0.01,'Echte Gebäude von swisstopo werden geladen');await tick();
   let RC=null;try{RC=await loadRealCity();}catch(e){console.warn('Echte Gebäude nicht geladen:',e.message);}
-  const inReal=coverTest(RC);W.inReal=inReal;W.inOrtho=inOrtho;
+  const inReal=coverTest(RC);W.inReal=inReal;W.inRealAp=coverTest(RC,true);W.inOrtho=inOrtho;
   const RWS=AIRPORTS.filter(a=>inOrtho(a.x,a.z,-2000)).map(a=>({x:a.x,z:a.z,dx:Math.sin(a.a),dz:-Math.cos(a.a),h:a.len/2}));
   const rwNear=(x,z,d)=>RWS.some(r=>{const px=x-r.x,pz=z-r.z,t=Math.max(-r.h,Math.min(r.h,px*r.dx+pz*r.dz));return Math.hypot(px-t*r.dx,pz-t*r.dz)<d;});
   // ---------- Hilfsgitter ----------

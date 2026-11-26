@@ -35,9 +35,10 @@ export async function loadRealCity(){
 }
 
 // Abdeckung: Vierecke (Kachelgrenzen) – dort werden keine generierten Häuser gebaut
-export function coverTest(RC){
+// apOnly: nur die Flugplatz-Quadrate (9. Wert) – dort stehen auch die echten Flughafengebäude
+export function coverTest(RC,apOnly){
   if(!RC)return ()=>false;
-  const Q=RC.H.cover.map(c=>{const p=[[c[0],c[1]],[c[2],c[3]],[c[4],c[5]],[c[6],c[7]]];
+  const Q=RC.H.cover.filter(c=>!apOnly||c.length>8).map(c=>{const p=[[c[0],c[1]],[c[2],c[3]],[c[4],c[5]],[c[6],c[7]]];
     const xs=p.map(v=>v[0]),zs=p.map(v=>v[1]);return {p,x0:Math.min(...xs),x1:Math.max(...xs),z0:Math.min(...zs),z1:Math.max(...zs)};});
   return (x,z)=>{for(const q of Q){if(x<q.x0||x>q.x1||z<q.z0||z>q.z1)continue;let s=0,ok=true;
     for(let i=0;i<4;i++){const a=q.p[i],b=q.p[(i+1)&3],c=(b[0]-a[0])*(z-a[1])-(b[1]-a[1])*(x-a[0]);if(c===0)continue;const sg=c>0?1:-1;if(!s)s=sg;else if(sg!==s){ok=false;break;}}
@@ -60,7 +61,7 @@ float t=vInfo.x/255.0;float k=vInfo.y;winLit=0.0;winMask=0.0;farLit=0.0;glassM=0
 vec3 c;
 if(abs(nW.y)<0.4&&k>15.5){
   // Flughafengebäude: Glasfassaden, Metallpaneele, Fensterbänder
-  float sub=floor((k-16.0)/48.0),hb=k-16.0-sub*48.0;float hA=vWP.y-(380.0+vInfo.x);
+  float sub=floor((k-16.0)/48.0),hb=k-16.0-sub*48.0;float hA=vWP.y-(200.0+vInfo.x*2.0);
   float u=abs(nW.x)>abs(nW.z)?vWP.z:vWP.x;float vr=hh(floor(vWP.xz/40.0));
   float top=step(hb-1.1,hA);cool=1.0;
   if(sub<0.5){
@@ -185,9 +186,9 @@ export function buildRealCity(scene,RC,S,lights){
       const gx=C.cx,gz=C.cz;let g=Infinity;
       for(const [px,pz] of [[x0,z0],[x1,z0],[x0,z1],[x1,z1],[(x0+x1)/2,(z0+z1)/2]])g=Math.min(g,S.heightAt(gx+px,gz+pz));
       g-=0.4;for(let j=v0;j<v;j++)pos[j*3+1]+=g;
-      // Flughafen Zürich: Gebäudeart aus Form/Höhe – k = 16 + Art*48 + Höhe (Art 0 Glas-Terminal/Dock, 1 Hangar, 2 Büro mit Fensterbändern, 3 Nebengebäude); tint = Bodenhöhe-380 m
+      // Flughafengebäude (Zürich, sonst am Vorfeldrand): Art aus Form/Höhe – k = 16 + Art*48 + Höhe (Art 0 Glas-Terminal/Dock, 1 Hangar, 2 Büro mit Fensterbändern, 3 Nebengebäude); tint = (Bodenhöhe-200 m)/2
       if(inAirportArea(gx+(x0+x1)/2,gz+(z0+z1)/2)){const w=x1-x0,d=z1-z0,hb=y1-y0,asp=Math.max(w,d)/Math.max(1,Math.min(w,d)),ar=w*d;
-        const sub=hb<7.5?3:asp>3.2?0:(ar>3500&&hb>13)?1:hb>17?0:2,at=16+sub*48+Math.min(47,Math.round(hb)),gt=Math.max(0,Math.min(255,Math.round(g+y0-380)));
+        const sub=hb<7.5?3:asp>3.2?0:(ar>3500&&hb>13)?1:hb>17?0:2,at=16+sub*48+Math.min(47,Math.round(hb)),gt=Math.max(0,Math.min(255,Math.round((g+y0-200)/2)));
         for(let j=v0;j<v;j++){info[j*2]=gt;info[j*2+1]=at;}}
       {const wx=gx+(x0+x1)/2,wz=gz+(z0+z1)/2;      for(const L of LANDMARKS)if(Math.abs(wx-L.x)<L.r&&Math.abs(wz-L.z)<L.r&&Math.hypot(wx-L.x,wz-L.z)<L.r&&y1-y0>=L.hMin){
         // Kirchen/Wahrzeichen: Art 8 (Kupferdach) bzw. 9 (Schieferdach), Art 6 = Basler Münster; x = Bodenhöhe (250 m + 2 m Schritte) für Fenster und Turmhelme im Shader

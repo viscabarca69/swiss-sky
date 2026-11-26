@@ -36,11 +36,12 @@ export function buildOsmTaxi({S,AIRPORTS,grpOf,L,nightMats}){
     const A0=AIRPORTS.find(a=>a.icao===ic);if(!A0)continue;const small=net.rws.every(R=>R.small||R.wasSmall);nets.push({ic,net,A0,small});}
   const sgnTxt=new Map();const cell=LOWMEM?[128,32]:[256,64];
   for(const {ic,net,A0,small} of nets){
-    const zO=ic==='LSZH'&&inOrtho(A0.x,A0.z),g=grpOf(A0),Y=(x,z,o)=>S.heightAt(x,z)+o,wOf=e=>BIG.has(ic)?e.w:Math.min(e.w,18);
+    const zO=inOrtho(A0.x,A0.z),g=grpOf(A0),Y=(x,z,o)=>S.heightAt(x,z)+o,wOf=e=>BIG.has(ic)?e.w:Math.min(e.w,18);
     const onRwy=(x,z,m)=>net.rws.some(R=>{const l=toLocal(R,x,z);return Math.abs(l.across)<R.w/2+(m||0)&&Math.abs(l.along)<R.len/2+(m||0);});
     const {X,Z,edges,adj}=net;
     if(!small){
-      // --- Belag (nicht in Zürich: dort zeigt das Luftbild die echten Flächen)
+      // --- Belag (nicht mit Luftbild: dort zeigt das Bild die echten Flächen und Linien)
+      if(zO)out.drawn[ic]=true;
       if(!zO){const B=Buf(),Ap=Buf();
         for(const e of edges){if(e.rwy)continue;const ax=X[e.a],az=Z[e.a],dx=(X[e.b]-ax)/e.len,dz=(Z[e.b]-az)/e.len,nx=-dz,nz=dx,h=wOf(e)/2,n=Math.max(1,Math.ceil(e.len/12));let pl=-1,pr=-1;
           for(let k=0;k<=n;k++){const s=e.len*k/n,x=ax+dx*s,z=az+dz*s,l=B.v(x+nx*h,Y(x+nx*h,z+nz*h,0.12),z+nz*h),r=B.v(x-nx*h,Y(x-nx*h,z-nz*h,0.12),z-nz*h);const sm=e.len*(k-0.5)/n;if(k&&!onRwy(ax+dx*sm,az+dz*sm,1))B.quad(pl,l,r,pr);pl=l;pr=r;}}
@@ -68,7 +69,7 @@ export function buildOsmTaxi({S,AIRPORTS,grpOf,L,nightMats}){
             for(const [a,b] of st){const p=(s,q)=>C.v(cx+nx*s+tx*q,Y(cx+nx*s,cz+nz*s,0.18),cz+nz*s+tz*q);C.quad(p(a,-0.15),p(b,-0.15),p(b,0.15),p(a,0.15));}});}
         const m3=C.mesh(mYel);if(m3)g.add(m3);out.drawn[ic]=true;}
       // --- Befeuerung
-      const green=zO,blue=!zO;let lit=0;const cap=LOWMEM?1500:6000;
+      const green=ic==='LSZH'||ic==='LSGG',blue=!green;let lit=0;const cap=LOWMEM?1500:6000;
       for(const e of edges){if(e.rwy||lit>cap)continue;const ax=X[e.a],az=Z[e.a],dx=(X[e.b]-ax)/e.len,dz=(Z[e.b]-az)/e.len;
         if(green){for(let s=15;s<e.len;s+=30){const x=ax+dx*s,z=az+dz*s;if(onRwy(x,z,5))continue;L({x,z},Y(x,z,0.3),[0.2,1,0.35],1.3);lit++;}}
         else if(blue&&!e.lane){const hw=wOf(e)/2+1.2;for(let s=20;s<e.len;s+=45){const x=ax+dx*s,z=az+dz*s;if(onRwy(x,z,8))continue;for(const q of [-1,1])L({x:x-dz*hw*q,z:z+dx*hw*q},Y(x,z,0.4),[0.25,0.35,1],1.5);lit+=2;}}}
