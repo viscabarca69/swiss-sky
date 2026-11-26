@@ -10,6 +10,16 @@ Artifact slug e3615a1f-7860-4277-b4c4-84ea1ba2abea · letzte veröffentlichte Ve
 Backup Etappe 1: /tmp/af_e1 (kann nach Neustart weg sein)
 Testen: /tmp/run.sh test/<x>.py (Playwright, SwiftShader) · node test/jobs.mjs (Routen) · node test/mis.mjs
 
+## Version 12.4 (26.11.2026) – Ruckeln
+- Messung auf Luis' Laptop (eingebauter Browser, Intel Iris Xe, ANGLE D3D11, DPR 2, Qualität «Hoch» → 2160×1350): Bild ~66 ms, davon composer.render ~50 ms (GTAO: zweiter Szenendurchgang + overrideVisibility über 5000 Objekte), direkt ~22–30 ms, fast alles CPU in renderer.render (~1000 Draw-Calls). Übrige Spiel-Logik < 5 ms. Messung im versteckten Fenster: rAF über MessageChannel ersetzt, gl.finish je Bild.
+- AO «Auto» nur noch Ultra ohne IGPU. IGPU-Erkennung über WEBGL_debug_renderer_info (Intel/Iris/UHD/Radeon Graphics/Mali/Adreno/SwiftShader …): pr ≤ 1 (Ultra 1,25), PCFShadowMap, Schattenkarte 2048.
+- perfTick Stufe 6 schaltet Schatten nicht mehr ab (Shader-Neuübersetzung = 1,1 s Hänger), sondern halbiert die Schattenkarte.
+- stream.js: Leeren per Framebuffer+Scissor (danach renderer.resetState()), Kacheln createImageBitmap(resizeWidth/Height) → texSubImage2D aus ImageBitmap mit UNPACK_SKIP_PIXELS/ROWS (nur Teil im Fenster), Budget 3 ms / 12 Kacheln je Bild. Getestet: Toroid-Umbruch und Ausrichtung stimmen (Dump der Ebenen).
+- ortho.js: scharfe Kacheln fetch → createImageBitmap(imageOrientation:'flipY'), Texture.flipY=false, needsUpdate=true (sonst schwarz!), renderer.initTexture höchstens eine je Bild.
+- Abgestellte Flugzeuge: Instanz-Gruppen 3 km statt 250 m (ZRH 247 → 159 Draws), FARC-Liste: Layers-Maske 0 ab 12 km (visible bleibt der Gate-Logik). traffic.js: lod() ab 14 km nur Lichter + Kondensstreifen. Attraktionen ab 20 km aus.
+- HUD ohne backdrop-filter (Weichzeichner jedes Bild unter jedem Feld).
+- Pause: Einheiten + Grafik (applyQuality: Auflösung, Bloom, AO sofort; Rest ab Neuladen). Fotomodus aus Pause → Weiter zeigt HUD wieder.
+
 ## Version 12.3 (26.11.2026)
 - **Anflug** (`approach.js`): neue `dubins()` (LSL/RSR/LSR/RSL/RLR/LRL, Radius R). `fly()` simuliert nur noch bis zum letzten Wegpunkt vor der Pistenachse (J = erster Punkt auf der Achse: IF, bei schrägem Zwischenanflug der FAF), dann Dubins-Kurve auf J mit Pistenkurs, danach exakt `at(d)` auf der Mittellinie bis zur Schwelle. Messung vorher: Endanflug bis 4 km neben der Achse, Kursfehler bis 16°; nachher 0 m / 0,0° an allen Plätzen. AP-Test GVA (Start über Lausanne): Querablage im Endanflug ≤ 3 m, Landung.
 - **Flugzeuge aus Luftbildern** (`tools/pipeline/ortho_clean.py`, OpenCV): Maske = OSM-Vorfelder + Rollwege (Breite+4 m, ohne Kanten auf Pisten) + Standplatz-Kreise 40 m − Pisten − Gebäude (swissBUILDINGS3D-Dreiecke aus buildings.txt + OSM-Grundrisse aus `osm_buildings.py`, nötig z. B. für Genf «Aile Est» 2021). Belag-Mittel (LAB, Gauss σ 12 m, nur heller grauer Beton, 2× Ausreisser weg); hell/farbig > Schwelle = Kandidat, dunkel nur ≤ 15 m neben Hellem; Öffnen 3×3, Schliessen 7×7; Komponenten 60–30000 px, Seitenverhältnis ≤ 4,5, Rechteckfüllung 0,12–0,78; Füllung Belagfarbe + Rauschen, weicher Rand. Quelle: Pipeline-Ausgabe ortho/ (unverändert), Ziel data/ortho. GVA ~64 000 m² entfernt.

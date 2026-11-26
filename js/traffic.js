@@ -120,7 +120,12 @@ export function createTraffic(scene,S,buildModel,animateModel,PLANES,HP){
   T.reset=()=>{for(const a of T.list)free(a);T.list.length=0;T.ga={};for(const H of T.hubs)H.t={arr:rnd(6,16),dep:rnd(25,45)};T.timer={ga:rnd(5,20),gl:rnd(10,30),rega:rnd(60,150),cruise:rnd(2,10)};};
   function drop(i){free(T.list[i]);T.list.splice(i,1);}
   let MENU_F=null;
-  T.update=(dt,F,t,night,glow)=>{
+  // weit weg (> 14 km) nur noch Positionslichter und Kondensstreifen zeichnen: spart je Flugzeug ~12 Zeichenaufrufe
+  const FAR2=14000*14000;
+  function lod(m,far){const u=m.userData;if(!u.lodM){const keep=new Set();if(u.trail)u.trail.traverse(o=>keep.add(o));if(u.parts&&u.parts.lights)u.parts.lights.traverse(o=>keep.add(o));
+      u.lodM=[];m.traverse(o=>{if((o.isMesh||o.isLine)&&!keep.has(o))u.lodM.push(o);});u.far=false;}
+    if(u.far===far)return;u.far=far;for(const o of u.lodM)o.layers.mask=far?0:1;}
+  T.update=(dt,F,t,night,glow,cp)=>{
     if(!T.on){if(T.list.length)T.reset();return;}
     // im Menü: Linienverkehr in Zürich als Kulisse
     const menu=!F;if(menu){const Z=T.hubs[0].C;F=MENU_F||(MENU_F={pos:new THREE.Vector3(Z.x,Z.elev+2000,Z.z),onGround:false});}
@@ -188,7 +193,7 @@ export function createTraffic(scene,S,buildModel,animateModel,PLANES,HP){
         if(a.m.userData.trail){a.m.userData.trail.scale.z=Math.max(0.01,Math.min(1,a.s/8000));a.m.userData.trailMat.opacity=0.8*Math.max(0,1-night*1.2);}
         animateModel(a.m,{flapPos:0,gearPos:0,rpm:0.8,groundSpeed:0,landingLight:false,night},t,dt);}
       const pl=a.m.userData.parts.lights;if(pl&&glow){pl.u.uScale.value=glow.s;pl.u.uFogD.value=glow.f;pl.u.uI.value=0.6+1.6*night;}
-      a.hdg=((-a.m.rotation.y/DEG)%360+360)%360;a.span=(P.wingTip||(P.rotorR||10))*2;}
+      a.hdg=((-a.m.rotation.y/DEG)%360+360)%360;a.span=(P.wingTip||(P.rotorR||10))*2;if(cp)lod(a.m,a.pos.distanceToSquared(cp)>FAR2);}
   };
   // Kollision mit dem Spieler
   T.hit=F=>{for(const a of T.list){const r=Math.max(8,a.span*0.42);if(Math.abs(a.pos.x-F.pos.x)<r+60&&a.pos.distanceTo(F.pos)<r)return a;}return null;};

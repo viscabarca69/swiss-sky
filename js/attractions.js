@@ -235,7 +235,7 @@ export function createAttractions(scene,S,opts){
   grp.updateMatrixWorld(true);for(const c of grp.children){if(mov.has(c)||c.isPoints||!(c.isMesh||c.isGroup||c.isLine)||c.userData.realHidden)continue;bx.setFromObject(c);if(bx.isEmpty())continue;CULL.push({c,p:bx.getCenter(new THREE.Vector3()),r:bx.getSize(cv).length()/2});}
   let cullT=0;A._cull=CULL;
   A.update=(dt,t,cam,night,glowS,wind)=>{
-    cullT-=dt;if(cullT<=0||dt===0){cullT=0.5;const cp=cam.position,far=32000+Math.max(0,cp.y-1500)*4;for(const o of CULL)o.c.visible=o.p.distanceTo(cp)-o.r<far;}
+    cullT-=dt;if(cullT<=0||dt===0){cullT=0.5;const cp=cam.position,far=20000+Math.max(0,cp.y-1500)*4;for(const o of CULL)o.c.visible=o.p.distanceTo(cp)-o.r<far;}
     for(const m of nightM)m.emissiveIntensity=night*0.9;nightM.forEach(m=>m.emissive.setScalar(night>0.3?0.8:0));
     if(A.liftCab)A.liftCab.position.y=5+(0.5-0.5*Math.cos(t*0.12))*143;
     for(const L of lifts){L.cabs.forEach((c,i)=>{const u=0.5-0.5*Math.cos(t*L.sp/L.len*Math.PI+L.ph*6+i*Math.PI);c.position.copy(i%2?L.pb:L.pa).lerp(i%2?L.pa:L.pb,u);});}

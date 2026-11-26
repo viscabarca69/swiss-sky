@@ -130,10 +130,17 @@ export function initOrtho(renderer){
     R.tex=tx;last=-1;slotDirty=true;
     for(const f of READY)f(R);});
 
-  const get=(ri,e,n)=>{const key=ri+'_'+e+'_'+n;let o=cache.get(key);if(!o){o={key,ri,e,n,tex:null,used:0};cache.set(key,o);
-      loader.load(url(e,n,'h'),t=>{t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=aniso;t.wrapS=t.wrapT=THREE.ClampToEdgeWrapping;o.tex=t;last=-1;});}
+  // scharfe Kacheln (2048²): im Hintergrund dekodieren, dann höchstens eine je Bild auf die Grafikkarte (sonst Hänger beim Nachladen)
+  const PEND=[],bitmapOK=typeof createImageBitmap==='function';
+  const done=(o,t)=>{t.needsUpdate=true;t.colorSpace=THREE.SRGBColorSpace;t.anisotropy=aniso;t.wrapS=t.wrapT=THREE.ClampToEdgeWrapping;PEND.push({o,t});};
+  const get=(ri,e,n)=>{const key=ri+'_'+e+'_'+n;let o=cache.get(key);if(!o){o={key,ri,e,n,tex:null,used:0};cache.set(key,o);const u=url(e,n,'h');
+      if(bitmapOK)fetch(u).then(r=>{if(!r.ok)throw new Error(r.status);return r.blob();}).then(b=>createImageBitmap(b,{imageOrientation:'flipY'}))
+        .then(bm=>{const t=new THREE.Texture(bm);t.flipY=false;done(o,t);}).catch(()=>loader.load(u,t=>done(o,t)));
+      else loader.load(u,t=>done(o,t));}
     o.used=performance.now();return o;};
-  return function update(cp,agl){const now=performance.now();if(now-last<400)return;last=now;
+  return function update(cp,agl){
+    if(PEND.length){const {o,t}=PEND.shift();if(cache.get(o.key)===o){renderer.initTexture(t);o.tex=t;last=-1;}else{t.dispose();if(t.image&&t.image.close)t.image.close();}}
+    const now=performance.now();if(now-last<400)return;last=now;
     // die zwei nächsten geladenen Gebiete in die Shader-Plätze (ein Gebiet behält seinen Platz)
     const near=ORTHO_REGIONS.filter(R=>R.tex).map(R=>({R,d:regionDist(R,cp.x,cp.z)})).sort((a,b)=>a.d-b.d).slice(0,2).map(o=>o.R);
     if(slotDirty||near.some(R=>!SLOT.includes(R))||SLOT.some(R=>R&&!near.includes(R))){slotDirty=false;
@@ -148,5 +155,5 @@ export function initOrtho(renderer){
     sel.forEach(o=>{if(next.includes(o)||!o.tex)return;const i=next.indexOf(null);if(i>=0)next[i]=o;});
     for(let i=0;i<4;i++){slots[i]=next[i];const o=next[i],H=ORU.orHT.value[i];ORU['orH'+i].value=o?o.tex:blank;const R=o&&ORTHO_REGIONS[o.ri],sl=R?SLOT.indexOf(R):-1;if(o&&sl>=0)H.set((o.e-R.e0)*1000,(o.n-R.n0)*1000,1,sl);else{H.set(0,0,0,0);ORU['orH'+i].value=blank;}}
     // Speicher: höchstens 8 scharfe Kacheln behalten
-    const KEEP=LOWMEM?3:8;if(cache.size>KEEP){const arr=[...cache.values()].filter(o=>!slots.includes(o)).sort((a,b)=>a.used-b.used);while(cache.size>KEEP&&arr.length){const o=arr.shift();if(o.tex)o.tex.dispose();cache.delete(o.key);}}};
+    const KEEP=LOWMEM?3:8;if(cache.size>KEEP){const arr=[...cache.values()].filter(o=>!slots.includes(o)).sort((a,b)=>a.used-b.used);while(cache.size>KEEP&&arr.length){const o=arr.shift();if(o.tex){o.tex.dispose();if(o.tex.image&&o.tex.image.close)o.tex.image.close();}cache.delete(o.key);}}};
 }

@@ -83,9 +83,14 @@ $('c').addEventListener('webglcontextlost',e=>{e.preventDefault();try{localStora
   d.style.cssText='position:fixed;inset:0;z-index:99;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:rgba(8,14,24,.92);color:#fff;font:16px system-ui;text-align:center;padding:24px';
   d.innerHTML='<b style="font-size:20px">Grafikspeicher voll</b><span>Das Gerät hat die 3D-Grafik abgebrochen. Beim Neuladen startet Swiss Sky im Sparmodus (kleinere Texturen, weniger Objekte).</span><button style="font:inherit;padding:10px 22px;border-radius:10px;border:0;background:#2f80ed;color:#fff">Neu laden</button>';
   d.querySelector('button').onclick=()=>location.reload();document.body.appendChild(d);},false);
+// Integrierte Grafik (Intel Iris/UHD, AMD-APU, Handy-GPU): Auflösung höchstens 1 (Ultra 1,25) – bei Bildschirm-Skalierung 200 % sonst 2,25-mal so viele Pixel
+const GPU=(()=>{try{const gl=renderer.getContext(),e=gl.getExtension('WEBGL_debug_renderer_info');return e?String(gl.getParameter(e.UNMASKED_RENDERER_WEBGL)):'';}catch(e){return '';}})();
+const IGPU=/Intel|Iris|UHD|HD Graphics|Radeon\(TM\) Graphics|Radeon Graphics|Vega \d+ Graphics|Mali|Adreno|PowerVR|SwiftShader|llvmpipe/i.test(GPU)&&!/NVIDIA|GeForce|Quadro|RTX|Radeon RX|Radeon Pro|Arc\(TM\) A|Arc A\d/i.test(GPU);
+const prFor=q=>{const b=(QUAL[q]||QUAL.high).pr;return IGPU?Math.min(b,q==='ultra'?1.25:1):b;};
+Q.pr=LOWMEM?QUAL.low.pr:prFor(save.settings.quality||'high');
 renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,Q.pr));
 renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.outputColorSpace=THREE.SRGBColorSpace;
-renderer.shadowMap.enabled=Q.shadows;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.shadowMap.enabled=Q.shadows;renderer.shadowMap.type=IGPU?THREE.PCFShadowMap:THREE.PCFSoftShadowMap;if(IGPU)Q.shadowMap=2048;
 const scene=new THREE.Scene();
 let composer=null,bloom=null,aoPass=null;
 // Umgebungsverdeckung (GTAO): nur feste Flächen in der Nähe der Kamera, Wolken/Wasser/Partikel bleiben aussen vor
@@ -96,7 +101,7 @@ class AOPass extends GTAOPass{constructor(sc,cm,w,h,res){super(sc,cm,Math.round(
 const aoBox=new THREE.Box3();
 // Auflösung des Umgebungsschattens: 1 = voll (Ultra am Computer), 0.5 = halb (Hoch am Computer, Handy auf «An»), 0 = aus
 function aoWanted(){const v=save.settings.ao||'auto',mob=MOBILE||LOWMEM,q=LOWMEM?'low':save.settings.quality;
-  if(v==='off')return 0;if(v==='on')return mob||q==='low'||q==='medium'?0.5:1;return mob?0:q==='ultra'?1:q==='high'?0.5:0;}
+  if(v==='off')return 0;if(v==='on')return mob||q==='low'||q==='medium'?0.5:1;return mob||IGPU?0:q==='ultra'?1:0;}// Auto: nur Ultra mit eigener Grafikkarte (AO rendert die Szene ein zweites Mal)
 function buildComposer(){composer=null;bloom=null;aoPass=null;const ao=aoWanted();if(!Q.bloom&&!ao)return;
   const rt=new THREE.WebGLRenderTarget(innerWidth,innerHeight,{type:THREE.HalfFloatType,samples:4});composer=new EffectComposer(renderer,rt);composer.setPixelRatio(renderer.getPixelRatio());composer.setSize(innerWidth,innerHeight);
   composer.addPass(new RenderPass(scene,cam));
@@ -164,12 +169,17 @@ function addParked(id,A,along,across,rot,nose,abs){const T=parkTemplate(id),m=ne
   if(abs){m.position.set(abs.x,S.heightAt(abs.x,abs.z)+PLANES[id].gearH,abs.z);m.rotation.y=-abs.h*DEG;scene.add(m);PARKED.push({id,m,A,along:2000,rot:0,abs:true});return{m};}if(nose){const nf=-T.box.min.z;across=Math.sign(nose)*(Math.abs(nose)-nf);info={nf,across};}const p=fromLocal(A,along,across);m.position.set(p.x,A.elev+PLANES[id].gearH,p.z);m.rotation.y=-A.a+rot;
   scene.add(m);PARKED.push({id,m,A,along,rot});return Object.assign(info||{},{m});}
 const PARKED=[];let parkT=0;
+// Entfernungs-Ausblendung (abgestellte Flugzeuge): über Layers statt «visible», damit Stand-/Gate-Logik unberührt bleibt
+const FARC=[];let farT=0;
+function farCull(cp,dt){farT-=dt;if(farT>0)return;farT=0.4;
+  for(const e of FARC){if(!e.c){e.o.updateMatrixWorld(true);e.c=e.o.boundingSphere.center.clone().applyMatrix4(e.o.matrixWorld);}
+    const far=e.c.distanceTo(cp)-e.r>e.d;if(far!==e.far){e.far=far;e.o.layers.mask=far?0:1;}}}
 // alle Platzhalter einer Gruppe und eines Typs zu Instanzen zusammenfassen (nach dem Bau der Flugplätze)
-function finalizeParked(){const by=new Map();for(const p of PARKED){if(p.inst)continue;const g=p.m.parent||scene,k=g.uuid+'|'+p.id+'|'+Math.floor(p.m.position.x/250)+'|'+Math.floor(p.m.position.z/250);/* Zellen à 250 m: Sicht- und Schattenkegel können einzelne Gruppen weglassen */if(!by.has(k))by.set(k,{g,id:p.id,list:[]});by.get(k).list.push(p);}
+function finalizeParked(){const by=new Map();for(const p of PARKED){if(p.inst)continue;const g=p.m.parent||scene,k=g.uuid+'|'+p.id+'|'+Math.floor(p.m.position.x/3000)+'|'+Math.floor(p.m.position.z/3000);/* Zellen à 3 km: wenige Zeichenaufrufe, Sichtkegel kann trotzdem Gruppen weglassen */if(!by.has(k))by.set(k,{g,id:p.id,list:[]});by.get(k).list.push(p);}
   const M=new THREE.Matrix4();
   for(const {g,id,list} of by.values()){const T=parkTemplate(id),ims=[];
     for(const part of T.parts){const im=new THREE.InstancedMesh(part.geometry,part.material,list.length);im.castShadow=part.castShadow;im.receiveShadow=true;im.userData.local=part.matrixWorld.clone();
-      list.forEach((p,i)=>{p.m.updateMatrixWorld(true);M.multiplyMatrices(p.m.matrixWorld,im.userData.local);im.setMatrixAt(i,M);});im.instanceMatrix.needsUpdate=true;im.computeBoundingSphere();g.add(im);ims.push(im);}
+      list.forEach((p,i)=>{p.m.updateMatrixWorld(true);M.multiplyMatrices(p.m.matrixWorld,im.userData.local);im.setMatrixAt(i,M);});im.instanceMatrix.needsUpdate=true;im.computeBoundingSphere();g.add(im);ims.push(im);FARC.push({o:im,c:null,r:im.boundingSphere.radius,far:false,d:12000});}
     list.forEach((p,i)=>{p.inst={ims,i};});}}
 // sichtbar/unsichtbar (Gate-Start versteckt das Flugzeug am eigenen Stand)
 const ZERO=new THREE.Matrix4().makeScale(0,0,0);
@@ -684,7 +694,7 @@ $('fGo').onclick=async()=>{audio.init();const f=save.free;
   startFlight({...f});};
 document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{document.querySelectorAll('.tabs button').forEach(x=>x.classList.toggle('sel',x===b));document.querySelectorAll('.tab').forEach(t=>t.classList.toggle('hidden',t.id!==b.dataset.t));audio.init();});
 $('qReload').onclick=()=>{try{location.reload();}catch(e){}};
-function togglePause(){if(state==='fly'){state='pause';renderPause();$('pause').classList.remove('hidden');nav.clear();try{speechSynthesis.pause();}catch(e){}}else if(state==='pause'){state='fly';$('pause').classList.add('hidden');nav.clear();try{speechSynthesis.resume();}catch(e){}}}
+function togglePause(){if(state==='fly'){state='pause';renderPause();$('pause').classList.remove('hidden');nav.clear();try{speechSynthesis.pause();}catch(e){}}else if(state==='pause'){state='fly';$('pause').classList.add('hidden');$('hud').classList.remove('hidden');nav.clear();try{speechSynthesis.resume();}catch(e){}}}
 function toggleMap(){if(state==='fly'){state='map';$('mapov').classList.remove('hidden');MV.cur=null;if(!G.mapSeen){G.mapSeen=true;mapFit();}else if(MV.z>1)mapCenter();mapHint();}else if(state==='map'){state='fly';$('mapov').classList.add('hidden');MV.drag=null;}}
 // ---------- Interaktive Karte: eigenes Ziel, Zoom, Verschieben ----------
 const MV={z:1,cx:0,cz:0,cur:null,drag:null,padCur:false};
@@ -916,11 +926,18 @@ function wpHud(F,cam){const el=$('wpmk'),info=$('wpInfo');if(!G.wp||F.crashed||G
 $('pResume').onclick=togglePause;$('pDesk').onclick=toDesktop;$('mDesk').onclick=toDesktop;$('pMap').onclick=()=>{togglePause();toggleMap();};
 $('pVol').oninput=e=>{save.settings.vol=parseFloat(e.target.value);audio.setVolume(save.settings.vol);persist();};
 const PADK={thrUp:'R2',thrDn:'L2',pUp:'L-Stick ↓',pDn:'L-Stick ↑',rL:'L-Stick ←',rR:'L-Stick →',yL:'L1',yR:'R1',fDn:'□',fUp:'△',gear:'○',brk:'✕',drop:'▼',cam:'R3',map:'▲ / Touchpad',pause:'Options',assist:'▶',ap:'◀',radio:'L3 / Create',photo:'–',push:'–'};
+// Grafik im Pausenmenü: Auflösung, Leuchten und Umgebungsschatten sofort, Bäume/Texturen/Schatten ab dem nächsten Start
+function applyQuality(q){if(!QUAL[q])return;const was=save.settings.quality||'high';save.settings.quality=q;persist();
+  Q.pr=prFor(q);Q.bloom=QUAL[q].bloom;perf.lvl=0;perf.hold=2;renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,Q.pr));buildComposer();resize();
+  if(was!==q)$('pQualH').textContent='Auflösung und Effekte sofort umgestellt – Bäume, Schatten und Texturen ab dem nächsten Laden der Seite.';}
 function renderPause(){if(!G)return;const o=G.obj[G.oi];$('pEye').textContent='PAUSE · '+(G.lesson?'LEKTION':G.mission?(G.mission.contract?'AUFTRAG':'MISSION'):'FREIER FLUG');
   const s=Math.floor(G.t),tt=`${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`;
   $('pStat').innerHTML=`<b>${esc(G.lesson?G.lesson.name:G.mission?G.mission.name:'Freier Flug · '+G.P.name)}</b><span>Flugzeit ${tt}${G.obj.length?` · Ziel ${Math.min(G.oi+1,G.obj.length)} von ${G.obj.length}`:''}${G.wp?' · Eigenes Ziel: '+esc(G.wp.name||'Kartenpunkt'):''}</span>`;
   $('pAssist').innerHTML=[['1','An'],['0','Aus']].map(([v,n])=>`<button class="chip ${(G.F.assist?'1':'0')===v?'sel':''}" data-v="${v}">${n}</button>`).join('');
   $('pAssist').querySelectorAll('button').forEach(b=>b.onclick=()=>{G.F.assist=b.dataset.v==='1';save.settings.assist=G.F.assist;persist();renderPause();});
+  const chips=(id,vals,cur,fn)=>{$(id).innerHTML=vals.map(([v,n])=>`<button class="chip ${cur===v?'sel':''}" data-v="${v}">${n}</button>`).join('');$(id).querySelectorAll('button').forEach(b=>b.onclick=()=>{fn(b.dataset.v);renderPause();});};
+  chips('pUnits',[['metric','Metrisch'],['aviation','Pilot (kt, ft)']],save.settings.units||'metric',v=>{save.settings.units=v;UNITS.mode=v;persist();});
+  chips('pQual',LOWMEM?[['low','Niedrig (Sparmodus)']]:[['low','Niedrig'],['medium','Mittel'],['high','Hoch'],['ultra','Ultra']],LOWMEM?'low':save.settings.quality||'high',v=>{if(!LOWMEM)applyQuality(v);});
   $('pVol').value=save.settings.vol??0.7;
   const k=save.settings.keys||{},gp=pad.connected,skip=gp?['photo','push']:[];
   $('pKeys').innerHTML=(gp?'<p class="hint">Controller</p>':'')+'<div class="kgrid">'+ACTS.filter(a=>!skip.includes(a[0])&&!(a[0]==='drop'&&!G.crates&&!G.P.amphib)&&!(a[0]==='push'&&!G.atGate)).map(([a,n,d])=>`<span>${n}</span><kbd>${gp?PADK[a]:keyName(k[a]||d)}</kbd>`).join('')+'</div>';}
@@ -1320,7 +1337,8 @@ function perfTick(raw){if(window.__noPerf)return;// Bild-Tests: volle Grafik
     if(perf.lvl===1&&X&&X.disableReflect&&X.reflector&&X.reflector.visible){X.disableReflect();did=true;}
     else if(perf.lvl===2&&composer){composer=null;did=true;}
     else if(perf.lvl>=3&&perf.lvl<=5&&renderer.getPixelRatio()>1){renderer.setPixelRatio(Math.max(1,renderer.getPixelRatio()-0.25));resize();did=true;}
-    else if(perf.lvl===6&&renderer.shadowMap.enabled){renderer.shadowMap.enabled=false;scene.traverse(o=>{if(o.material)(Array.isArray(o.material)?o.material:[o.material]).forEach(m=>m.needsUpdate=true);});did=true;}
+    // Schatten nicht abschalten (alle Shader neu übersetzen = Sekunden-Hänger), sondern Schattenkarte verkleinern
+    else if(perf.lvl===6&&renderer.shadowMap.enabled&&env&&env.sun&&env.sun.shadow.mapSize.x>1024){const sh=env.sun.shadow,n=sh.mapSize.x/2;sh.mapSize.set(n,n);if(sh.map){sh.map.dispose();sh.map=null;}did=true;}
     else if(perf.lvl===7&&renderer.getPixelRatio()>0.75&&fps<20){renderer.setPixelRatio(0.75);resize();did=true;}
     if(did)done++;}
   if(done){perf.hold=1.5;if(!perf.told&&state!=='menu'){perf.told=true;toast('Grafik automatisch angepasst, damit es flüssig läuft',3500);}}
@@ -1375,11 +1393,11 @@ function loop(now){
     env.update(F.pos,cam,P_shadow(G.P));flareTick();
     audio.update({silent:state!=='fly'&&state!=='map'||F.crashed,kind:G.P.heli?'heli':G.P.glider?'none':G.P.prop?(G.P.id==='alpina'?'piston':'turboprop'):'jet',rpm:G.P.heli?F.rotor*(0.6+0.4*F.eng):0.25+0.75*F.eng,speed:F.vel.length(),inside:G.cam===1,stall:F.stalled&&!F.onGround});
   }else if(state==='menu'){if(FLARE)FLARE.visible=false;menuCam(T);env.update(cam.position.clone().add(new THREE.Vector3(0,-60,0)),cam,120);audio.update({silent:true});}
-  if(traffic&&state!=='load')traffic.update(state==='pause'?0:dt,G&&state!=='menu'?G.F:null,T,env.night,{s:glowU.uScale.value,f:glowU.uFogD.value});
+  if(traffic&&state!=='load')traffic.update(state==='pause'?0:dt,G&&state!=='menu'?G.F:null,T,env.night,{s:glowU.uScale.value,f:glowU.uFogD.value},cam.position);
   if(attr&&state!=='load')attr.update(state==='pause'?0:dt,T,cam,env.night,glowU.uScale.value,wx.wind);
 
   ctxUpdate(performance.now()/1000);world.updateTrees(cam.position);{const agl=cam.position.y-S.groundAt(cam.position.x,cam.position.z);if(orthoUp)orthoUp(cam.position,agl);if(streamUp)streamUp.update(cam.position,agl);}
-  airports.update(G&&G.cam!==1?G.F.pos:cam.position,T,glowU.uScale.value,glowU.uFogD.value);
+  airports.update(G&&G.cam!==1?G.F.pos:cam.position,T,glowU.uScale.value,glowU.uFogD.value);farCull(cam.position,dt||0.016);
   cityU.uI.value=env.night*1.25;if(helipads){helipads.setNight(env.night);if(G&&G.F)helipads.update(G.F.pos,1/30);}cityU.uScale.value=glowU.uScale.value;cityU.uFogD.value=glowU.uFogD.value;
   world.waterTex.offset.x=T*0.006;world.waterTex.offset.y=T*0.004;
   nightU.value=env.night;setClockTime(G&&G.hour!=null?G.hour:12,env.night);airports.setNight(env.night);world.water.material.envMapIntensity=1.15*(1-0.8*env.night);const X=world.extras;if(X){if(X.updateWater)X.updateWater(cam,T,env);X.updateBoats(dt,T);}
