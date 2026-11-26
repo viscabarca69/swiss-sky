@@ -38,6 +38,7 @@ import {createCockpit} from './cockpit.js';
 import {createLogbook,SPECIAL_LIV,logGet} from './logbook.js';
 import {createCamera} from './camera.js';
 import {createMenus} from './menus.js';
+import {setClockTime} from './realcity.js';
 
 const _el={},$=id=>_el[id]&&_el[id].isConnected?_el[id]:(_el[id]=document.getElementById(id)),DEG=Math.PI/180;
 // gemeinsamer Zustand für die ausgelagerten Module (Getter liefern immer den aktuellen Wert, z. B. den laufenden Flug G)
@@ -1312,7 +1313,7 @@ function loop(now){
   airports.update(G&&G.cam!==1?G.F.pos:cam.position,T,glowU.uScale.value,glowU.uFogD.value);
   cityU.uI.value=env.night*1.25;if(helipads){helipads.setNight(env.night);if(G&&G.F)helipads.update(G.F.pos,1/30);}cityU.uScale.value=glowU.uScale.value;cityU.uFogD.value=glowU.uFogD.value;
   world.waterTex.offset.x=T*0.006;world.waterTex.offset.y=T*0.004;
-  nightU.value=env.night;airports.setNight(env.night);world.water.material.envMapIntensity=1.15*(1-0.8*env.night);const X=world.extras;if(X){if(X.updateWater)X.updateWater(cam,T,env);X.updateBoats(dt,T);}
+  nightU.value=env.night;setClockTime(G&&G.hour!=null?G.hour:12,env.night);airports.setNight(env.night);world.water.material.envMapIntensity=1.15*(1-0.8*env.night);const X=world.extras;if(X){if(X.updateWater)X.updateWater(cam,T,env);X.updateBoats(dt,T);}
   if(window.__camHold){const h=window.__camHold;cam.position.set(h[0],h[1],h[2]);cam.up.set(0,1,0);cam.lookAt(h[3],h[4],h[5]);cam.fov=h[6]||50;cam.near=1;cam.updateProjectionMatrix();}
   if(window.__dbgCam){const d=window.__dbgCam;cam.position.set(d[0],d[1],d[2]);cam.up.set(0,1,0);cam.lookAt(d[3],d[4],d[5]);cam.fov=d[6]||50;cam.near=0.5;cam.updateProjectionMatrix();}// Testkamera (nur für Bild-Tests)
   if(composer&&!window.__noComp){if(bloom)bloom.strength=0.22+0.5*env.night;if(aoPass){const p=cam.position;aoBox.min.set(p.x-700,p.y-700,p.z-700);aoBox.max.set(p.x+700,p.y+700,p.z+700);aoPass.setSceneClipBox(aoBox);}composer.render();}else renderer.render(scene,cam);

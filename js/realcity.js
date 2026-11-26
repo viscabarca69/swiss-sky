@@ -9,15 +9,15 @@ import {toXZ} from './worldgen.js';
 // tint < 128 → grünes Kupferdach, sonst dunkles Dach; nachts werden Kirchen und Wahrzeichen angestrahlt
 const LANDMARKS=[
   {n:'Bundeshaus',lat:46.94680,lon:7.44425,r:55,hMin:30,ty:2,tint:30},
-  {n:'Zytglogge',lat:46.94797,lon:7.44781,r:9,hMin:25,ty:2,tint:230},
+  {n:'Zytglogge',lat:46.94797,lon:7.44781,r:9,hMin:25,ty:2,tint:230,clock:{d:3.4,dy:11,h:30}},
   {n:'Basler Münster',lat:47.55642,lon:7.59231,r:45,hMin:20,ty:6,tint:60},
   {n:'Kathedrale St. Gallen',lat:47.42335,lon:9.37730,r:45,hMin:20,ty:2,tint:30},
   {n:'Prime Tower',lat:47.38617,lon:8.51726,r:30,hMin:80,ty:7,tint:128},
   {n:'Cathédrale Saint-Pierre',lat:46.20100,lon:6.14848,r:40,hMin:40,ty:2,tint:30},
   {n:'Grossmünster',lat:47.37002,lon:8.54403,r:32,hMin:22,ty:2,tint:230},
-  {n:'Fraumünster',lat:47.36962,lon:8.54127,r:26,hMin:18,ty:2,tint:30},
-  {n:'St. Peter',lat:47.37105,lon:8.54062,r:16,hMin:22,ty:2,tint:230},
-  {n:'Stadtkirche Zofingen',lat:47.28862,lon:7.94492,r:30,hMin:14,ty:2,tint:230}].map(L=>({...L,...toXZ(L.lat,L.lon)}));
+  {n:'Fraumünster',lat:47.36962,lon:8.54127,r:26,hMin:18,ty:2,tint:30,clock:{d:3.6,dy:3,h:70}},
+  {n:'St. Peter',lat:47.37112,lon:8.54097,r:30,hMin:22,ty:2,tint:230,clock:{d:8.7,dy:6,h:55}},
+  {n:'Stadtkirche Zofingen',lat:47.28884,lon:7.94527,r:22,hMin:14,ty:2,tint:230,clock:{d:2.6,dy:3,h:45}}].map(L=>({...L,...toXZ(L.lat,L.lon)}));
 
 export async function loadRealCity(){
   let u8;
@@ -83,6 +83,9 @@ if(abs(nW.y)<0.4&&k>15.5){
     win*=1.0-top;float w2=win*fade;
     c=vec3(0.86,0.87,0.88)-0.05*vr;c=mix(c,vec3(0.30,0.36,0.41),w2);c=mix(c,vec3(0.45,0.51,0.56),(1.0-fade)*0.5*(1.0-top));glassM=(1.0-fade)*0.45*(1.0-top);
     glassM=max(glassM,w2);winMask=w2;winLit=w2*step(0.5,hh(floor(g)+vec2(t*7.0,vr)));farLit=(1.0-fade)*0.07;
+    // aus der Ferne: einzelne Fenster nicht mehr auflösbar, Geschosse schon → durchgehende Fensterbänder statt weisser Wand
+    float fadeY=1.0-smoothstep(0.15,0.6,fwidth(g.y));float wb=step(0.27,f.y)*step(f.y,0.84)*(1.0-top)*step(4.2,hA)*fadeY*(1.0-fade)*0.85;
+    c=mix(c,vec3(0.34,0.40,0.46),wb);glassM=max(glassM,wb);winMask=max(winMask,wb);
   }else{
     float rb=u/0.5;float rs=1.0-smoothstep(0.1,0.5,fwidth(rb));
     c=mix(vec3(0.80,0.81,0.82),vec3(0.72,0.73,0.72),vr)*(1.0-0.06*rs*smoothstep(0.3,0.5,abs(fract(rb)-0.5)));
@@ -105,7 +108,7 @@ if(abs(nW.y)<0.4&&k>15.5){
     float arch=step(hG,10.0+0.55*sqrt(max(0.0,1.0-(fx/0.14)*(fx/0.14))))*step(3.2,hG)*step(fx,0.14);
     float bel=step(abs(fract(g.x*1.6)-0.5),0.12)*step(0.0,hG-22.0)*step(fract((hG-22.0)/9.0),0.32)*step(hG,60.0);
     float w=max(arch,bel*0.8)*fade;c=mix(c,vec3(0.13,0.14,0.19),w*0.85);winMask=w*0.5;winLit=arch*fade*0.45*step(0.35,hh(floor(g)+vec2(t*5.0,1.0)));
-    if(nW.y>0.12){c=k<8.5?vec3(0.32,0.52,0.43):vec3(0.29,0.29,0.31);winMask=0.0;winLit=0.0;}}
+    if(nW.y>0.04||hG>52.0){c=k<8.5?vec3(0.32,0.52,0.43):vec3(0.29,0.29,0.31);winMask=0.0;winLit=0.0;}}
   else if(k>4.5)c=vec3(0.62,0.60,0.56);
   // Kirchen und Wahrzeichen: nachts von unten angestrahlt
   if((k>1.5&&k<2.5)||(k>5.5&&k<9.5&&!(k>6.5&&k<7.5)))flood=0.5;
@@ -141,9 +144,30 @@ if(nW.y>0.4){vec4 o4=orthoAt(vWP.xz);if(o4.a>0.0)diffuseColor.rgb=mix(diffuseCol
   return m;
 }
 
+// Zifferblätter an Kirchtürmen: eine gemeinsame Canvas-Textur, Zeiger zeigen die Spielzeit, nachts beleuchtet
+const CLK={c:null,t:null,h:-1,mats:[]};
+function drawClock(h){const x=CLK.c.getContext('2d'),R=128;x.clearRect(0,0,256,256);x.fillStyle='#161a22';x.beginPath();x.arc(R,R,125,0,7);x.fill();
+  x.strokeStyle='#c9a54a';x.lineWidth=9;x.beginPath();x.arc(R,R,117,0,7);x.stroke();x.lineWidth=3;x.beginPath();x.arc(R,R,100,0,7);x.stroke();
+  for(let i=0;i<12;i++){x.save();x.translate(R,R);x.rotate(i/12*Math.PI*2);x.fillStyle='#ddb95c';x.fillRect(-5,-112,10,i%3===0?30:20);x.restore();}
+  const hand=(a,len,w)=>{x.save();x.translate(R,R);x.rotate(a);x.fillStyle='#e6c466';x.beginPath();x.moveTo(-w/2,14);x.lineTo(w/2,14);x.lineTo(w*0.3,-len);x.lineTo(-w*0.3,-len);x.closePath();x.fill();x.restore();};
+  hand((h%12)/12*Math.PI*2,60,14);hand(((h%1)*60)/60*Math.PI*2,94,9);x.fillStyle='#e6c466';x.beginPath();x.arc(R,R,10,0,7);x.fill();CLK.t.needsUpdate=true;CLK.h=h;}
+function clockMat(){if(!CLK.t){CLK.c=document.createElement('canvas');CLK.c.width=CLK.c.height=256;CLK.t=new THREE.CanvasTexture(CLK.c);CLK.t.colorSpace=THREE.SRGBColorSpace;CLK.t.anisotropy=4;drawClock(10.17);}
+  const m=new THREE.MeshStandardMaterial({map:CLK.t,emissiveMap:CLK.t,emissive:0xffffff,emissiveIntensity:0,roughness:0.5,metalness:0.2,polygonOffset:true,polygonOffsetFactor:-2});CLK.mats.push(m);return m;}
+export function setClockTime(h,night){if(!CLK.t)return;const r=Math.round(((h%24)+24)%24*60)/60;if(Math.abs(r-CLK.h)>0.001)drawClock(r);for(const m of CLK.mats)m.emissiveIntensity=0.85*(night||0);}
+// Turmschaft eines Gebäudes finden: höchste Höhenstufe unter der Spitze mit kleinem Grundriss
+function towerTop(pos,v0,v,tw){const ys=[];for(let j=v0;j<v;j++)ys.push(pos[j*3+1]);const lv=[...new Set(ys.map(y=>Math.round(y*2)/2))].sort((a,b)=>b-a);
+  // Kandidaten: Höhenstufen mit kleinem Grundriss; der Schaft oben hat den vollen Turmquerschnitt (Helm-Stufen sind schmaler) → grösste Fläche, davon die höchste
+  const cand=[];for(const L of lv.slice(1)){let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9,n=0;for(let j=v0;j<v;j++)if(Math.abs(pos[j*3+1]-L)<0.6){const x=pos[j*3],z=pos[j*3+2];n++;if(x<x0)x0=x;if(x>x1)x1=x;if(z<z0)z0=z;if(z>z1)z1=z;}
+    if(n>=3&&x1-x0>2.5&&z1-z0>2.5&&Math.max(x1-x0,z1-z0)<=tw)cand.push({y:L,x0,x1,z0,z1,a:(x1-x0)*(z1-z0)});}
+  if(!cand.length)return null;const amax=Math.max(...cand.map(c=>c.a));return cand.filter(c=>c.a>=0.85*amax).sort((a,b)=>b.y-a.y)[0];}
+
 // Gebäude-Meshes pro Kachel aufbauen; Häuser auf die Spiel-Geländehöhe setzen
 export function buildRealCity(scene,RC,S,lights){
   const {H,data,base}=RC,sc=H.sc,mat=cityMaterial(),meshes=[];let nb=0;
+  // Dachaufbauten (Flughafen Zürich): ein InstancedMesh für alle Geräte
+  const roofBoxes=(()=>{const max=2500,geo=new THREE.BoxGeometry(1,1,1),m=new THREE.MeshStandardMaterial({color:0xb9bec3,roughness:0.55,metalness:0.35});
+    const im=new THREE.InstancedMesh(geo,m,max);im.count=0;im.castShadow=true;im.receiveShadow=true;const M=new THREE.Matrix4(),Q=new THREE.Quaternion(),E=new THREE.Euler(),V=new THREE.Vector3(),SC=new THREE.Vector3(),col=new THREE.Color();
+    const R={max,n:0,im,add(x,y,z,sx,sy,sz,a,r){E.set(0,a,0);Q.setFromEuler(E);V.set(x,y,z);SC.set(sx,sy,sz);M.compose(V,Q,SC);im.setMatrixAt(R.n,M);col.setScalar(0.78+0.3*r);if(r>0.82)col.setRGB(0.45,0.47,0.5);im.setColorAt(R.n,col);R.n++;im.count=R.n;}};return R;})();
   for(const C of H.chunks){
     let o=base+C.o;const NB=C.nb,NV=C.nv,NI=C.ni;
     const bh=new DataView(data.buffer,data.byteOffset+o,NB*6);o+=NB*6;
@@ -165,17 +189,34 @@ export function buildRealCity(scene,RC,S,lights){
       if(inAirportArea(gx+(x0+x1)/2,gz+(z0+z1)/2)){const w=x1-x0,d=z1-z0,hb=y1-y0,asp=Math.max(w,d)/Math.max(1,Math.min(w,d)),ar=w*d;
         const sub=hb<7.5?3:asp>3.2?0:(ar>3500&&hb>13)?1:hb>17?0:2,at=16+sub*48+Math.min(47,Math.round(hb)),gt=Math.max(0,Math.min(255,Math.round(g+y0-380)));
         for(let j=v0;j<v;j++){info[j*2]=gt;info[j*2+1]=at;}}
-      {const wx=gx+(x0+x1)/2,wz=gz+(z0+z1)/2;for(const L of LANDMARKS)if(Math.abs(wx-L.x)<L.r&&Math.abs(wz-L.z)<L.r&&Math.hypot(wx-L.x,wz-L.z)<L.r&&y1-y0>=L.hMin){
+      {const wx=gx+(x0+x1)/2,wz=gz+(z0+z1)/2;      for(const L of LANDMARKS)if(Math.abs(wx-L.x)<L.r&&Math.abs(wz-L.z)<L.r&&Math.hypot(wx-L.x,wz-L.z)<L.r&&y1-y0>=L.hMin){
         // Kirchen/Wahrzeichen: Art 8 (Kupferdach) bzw. 9 (Schieferdach), Art 6 = Basler Münster; x = Bodenhöhe (250 m + 2 m Schritte) für Fenster und Turmhelme im Shader
         const ty=L.ty===2?(L.tint<128?8:9):L.ty,gx2=L.ty===2||L.ty===6?Math.max(0,Math.min(255,Math.round((g+y0-250)/2))):L.tint;
-        for(let j=v0;j<v;j++){info[j*2]=gx2;info[j*2+1]=ty;}}}
+        for(let j=v0;j<v;j++){info[j*2]=gx2;info[j*2+1]=ty;}
+        if(L.clock&&!L.clockDone&&y1-y0>=L.clock.h){const T=towerTop(pos,v0,v,16);if(T){L.clockDone=true;const cy=T.y-L.clock.dy,mx=(T.x0+T.x1)/2,mz=(T.z0+T.z1)/2,geo=new THREE.CircleGeometry(L.clock.d/2,40),mt=clockMat();
+          for(const [px,pz,ry] of [[T.x1+0.15,mz,Math.PI/2],[T.x0-0.15,mz,-Math.PI/2],[mx,T.z1+0.15,0],[mx,T.z0-0.15,Math.PI]]){const c=new THREE.Mesh(geo,mt);c.position.set(gx+px,cy,gz+pz);c.rotation.y=ry;c.matrixAutoUpdate=false;c.updateMatrix();scene.add(c);}}}}}
       if(lights&&(nb%3===0)&&nv>14)lights.push(gx+(x0+x1)/2,g+3,gz+(z0+z1)/2);
-      let hw=0;for(let j=0;j<nt*3;j++,ii++){const code=clo[ii]|(chi[ii]<<8);let l;if(code===0)l=hw++;else l=hw-code;idx[ii]=v0+l;}
+      const ii0=ii;let hw=0;for(let j=0;j<nt*3;j++,ii++){const code=clo[ii]|(chi[ii]<<8);let l;if(code===0)l=hw++;else l=hw-code;idx[ii]=v0+l;}
+      // Flughafen: Lüftungsgeräte und Aufbauten auf grossen Flachdächern (nur wo wirklich Dach ist: Punkt in einem Dach-Dreieck)
+      if(roofBoxes&&inAirportArea(gx+(x0+x1)/2,gz+(z0+z1)/2)&&(x1-x0)*(z1-z0)>1200&&y1-y0>6){
+        const top=y1+g-0.8,tris=[];let ang=0,best=0;
+        for(let q=ii0;q<ii;q+=3){const a=idx[q],b2=idx[q+1],c2=idx[q+2];if(pos[a*3+1]>top&&pos[b2*3+1]>top&&pos[c2*3+1]>top){tris.push([a,b2,c2]);
+          for(const [u,w] of [[a,b2],[b2,c2],[c2,a]]){const dx=pos[w*3]-pos[u*3],dz=pos[w*3+2]-pos[u*3+2],L=dx*dx+dz*dz;if(L>best){best=L;ang=Math.atan2(dx,dz);}}}}
+        const inside=(px,pz)=>{for(const [a,b2,c2] of tris){const ax=pos[a*3],az=pos[a*3+2],bx=pos[b2*3],bz=pos[b2*3+2],cx=pos[c2*3],cz=pos[c2*3+2];
+          const d1=(px-bx)*(az-bz)-(ax-bx)*(pz-bz),d2=(px-cx)*(bz-cz)-(bx-cx)*(pz-cz),d3=(px-ax)*(cz-az)-(cx-ax)*(pz-az);if(!((d1<0||d2<0||d3<0)&&(d1>0||d2>0||d3>0)))return pos[a*3+1];}return null;};
+        let seed=(nb*9301+49297)%233280;const rnd=()=>(seed=(seed*9301+49297)%233280)/233280;
+        const n=Math.min(14,Math.round((x1-x0)*(z1-z0)/900));
+        for(let t=0;t<n*3&&roofBoxes.n<roofBoxes.max;t++){const px=x0+(x1-x0)*(0.08+0.84*rnd()),pz=z0+(z1-z0)*(0.08+0.84*rnd());const ry=inside(px,pz);if(ry==null)continue;
+          // Abstand zum Dachrand: alle vier Ecken des Geräts müssen auch auf dem Dach liegen
+          const sx=2.2+rnd()*3.5,sz=1.8+rnd()*2.6,sy=1.1+rnd()*1.4,ca=Math.cos(ang),sa=Math.sin(ang);let ok=true;
+          for(const [ex,ez] of [[sx,sz],[-sx,sz],[sx,-sz],[-sx,-sz]]){if(inside(px+(ex*ca+ez*sa)*0.6,pz+(-ex*sa+ez*ca)*0.6)==null){ok=false;break;}}if(!ok)continue;
+          roofBoxes.add(gx+px,ry+sy/2,gz+pz,sx,sy,sz,ang,rnd());}}
       nb++;}
     const geo=new THREE.BufferGeometry();geo.setAttribute('position',new THREE.BufferAttribute(pos,3));geo.setAttribute('aInfo',new THREE.BufferAttribute(info,2));
     geo.setIndex(new THREE.BufferAttribute(idx,1));geo.computeBoundingSphere();
     const m=new THREE.Mesh(geo,mat);m.position.set(C.cx,0,C.cz);m.castShadow=true;m.receiveShadow=true;m.matrixAutoUpdate=false;m.updateMatrix();
     scene.add(m);meshes.push({m,cx:C.cx,cz:C.cz});}
+  if(roofBoxes.n){roofBoxes.im.instanceMatrix.needsUpdate=true;if(roofBoxes.im.instanceColor)roofBoxes.im.instanceColor.needsUpdate=true;roofBoxes.im.computeBoundingSphere();scene.add(roofBoxes.im);}
   // Kacheln weiter als ~25 km ausblenden
   const update=cp=>{for(const c of meshes){const d=Math.hypot(cp.x-c.cx,cp.z-c.cz);c.m.visible=d<25000+Math.max(0,cp.y-1500)*4;}};
   return {meshes:meshes.map(c=>c.m),update,count:nb};

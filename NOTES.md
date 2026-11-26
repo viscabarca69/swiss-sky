@@ -17,6 +17,9 @@ Testen: /tmp/run.sh test/<x>.py (Playwright, SwiftShader) · node test/jobs.mjs 
 - realcity.js: Kirchen Art 8 (Kupfer) / 9 (Schiefer), info.x = Bodenhöhe (250 + 2·x m) → Fenster nach Höhe über Grund, Turmhelme (nW.y > 0.12) in Dachfarbe; Basler Münster Turmhelme bunt
 - world3d.js: Alpweiden (alpF ab 1150–1450 m, Steilheit), Feldfarben in Bergtälern nur Wiese (mtnF)
 - AO: aoWanted() → 0 / 0.5 / 1 (Auflösung); AOPass.setSize skaliert
+- Turmuhren: LANDMARKS clock {d,dy,h}; towerTop() sucht den Turmschaft (grösste Fläche unter dem Helm), 4 Scheiben; setClockTime(G.hour, night) im Loop; St. Peter/Zofingen-Koordinaten auf den Turm korrigiert
+- Dachaufbauten: InstancedMesh (max 2500) auf Flughafen-Flachdächern, nur in Dach-Dreiecken; Bürofassaden: Fensterbänder in der Ferne (fadeY)
+- Kirchen: senkrechte Flächen über 52 m und Flächen mit nW.y > 0.04 = Turmhelm
 
 ## Version 11.6 (25.11.2026)
 - main.js aufgeteilt: groundops.js (Gate, Pushback, Rollweg-A*), cockpit.js (3D-Cockpit), camera.js (Kameras, Menü-Fahrten), logbook.js (Logbuch, besuchte Plätze, SPECIAL_LIV). Gemeinsamer Zustand über CTX-Getter in main.js, je Funktion `const {G,...}=ctx`
