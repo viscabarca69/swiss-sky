@@ -41,6 +41,7 @@ import {createMenus} from './menus.js';
 import {setClockTime} from './realcity.js';
 import {LOWMEM,MOBILE,CRASHED} from './device.js';
 import {taxiNet,holdFor,standsFor,planPushback,route} from './taxinet.js';
+import {UNITS,uTxt} from './units.js';
 import {initStream} from './stream.js';
 
 const _el={},$=id=>_el[id]&&_el[id].isConnected?_el[id]:(_el[id]=document.getElementById(id)),DEG=Math.PI/180;
@@ -548,7 +549,7 @@ function boom(p){const m=new THREE.Mesh(new THREE.SphereGeometry(6,20,14),new TH
 
 
 // ---------- HUD ----------
-let toastT;function toast(t,ms){const el=$('toast');el.textContent=t;el.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),ms||2400);}
+let toastT;function toast(t,ms){const el=$('toast');el.textContent=uTxt(t);el.classList.add('show');clearTimeout(toastT);toastT=setTimeout(()=>el.classList.remove('show'),ms||2400);}
 const fmtD=d=>d>=1000?(d/1000).toFixed(1)+' km':Math.round(d)+' m';
 function updateHUD(dt){
   const F=G.F,P=G.P,e=new THREE.Euler().setFromQuaternion(F.q,'YXZ');const V=F.ias??F.vel.length();
@@ -607,7 +608,7 @@ function updateHUD(dt){
   if(G.P.amphib)txt+=` · Tank ${G.tank?'voll':'leer'}`;
   {const w=wx.cur;if(w&&w.spd>0.8){const um=save.settings.units==='metric';setSty('windInd','display','');const rel=Math.round((w.dir-hdg)/3)*3*DEG;
     setHTML('windInd',`<i style="transform:rotate(${rel+Math.PI}rad)">➤</i><b>${String(Math.round(w.dir/10)*10||360).padStart(3,'0')}° · ${um?Math.round(w.spd*3.6)+' km/h':Math.round(w.spd*1.944)+' kt'}</b>${wx.mtn&&wx.mtn.txt?' · <span style="color:#ffd23f">'+wx.mtn.txt+'</span>':''}`);}else setSty('windInd','display','none');}
-  setTxt('objtitle',title);setTxt('objtext',txt);setTxt('objdist',dist);setHTML('glide',glide);setSty('glide','display',glide?'':'none');
+  UNITS.mode=save.settings.units||'metric';setTxt('objtitle',uTxt(title));setTxt('objtext',uTxt(txt));setTxt('objdist',uTxt(dist));setHTML('glide',uTxt(glide));setSty('glide','display',glide?'':'none');
   // Warnungen
   let w='';const vs=stallSpeed(F);
   if(!F.onGround&&(F.stalled||(V<vs*1.04&&V>5)))w='ÜBERZOGEN – NASE RUNTER, SCHUB!';
@@ -689,7 +690,7 @@ function toggleMap(){if(state==='fly'){state='map';$('mapov').classList.remove('
 const MV={z:1,cx:0,cz:0,cur:null,drag:null,padCur:false};
 const mapXf=()=>hud.mapXf($('mapc').width,HALF,MV);
 function mapClamp(){const h=HALF/MV.z;MV.cx=clamp(MV.cx,-HALF+h,HALF-h);MV.cz=clamp(MV.cz,-HALF+h,HALF-h);}
-function mapZoom(f,px,py){const S=$('mapc').width;if(px==null){px=py=S/2;}const w=mapXf().inv(px,py);MV.z=clamp(MV.z*f,1,8);const k=mapXf().k;MV.cx=w.x-(px-S/2)/k;MV.cz=w.z-(py-S/2)/k;mapClamp();}
+function mapZoom(f,px,py){const S=$('mapc').width;if(px==null){px=py=S/2;}const w=mapXf().inv(px,py);MV.z=clamp(MV.z*f,1,14);const k=mapXf().k;MV.cx=w.x-(px-S/2)/k;MV.cz=w.z-(py-S/2)/k;mapClamp();}
 // beim ersten Öffnen: Flugzeug, restliche Ziele und eigenes Ziel ins Bild
 function mapFit(){const F=G.F,pts=[[F.pos.x,F.pos.z],...G.obj.slice(G.oi).map(o=>[o.x,o.z])];if(G.wp)pts.push([G.wp.x,G.wp.z]);let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9;for(const[x,z]of pts){x0=Math.min(x0,x);x1=Math.max(x1,x);z0=Math.min(z0,z);z1=Math.max(z1,z);}
   const ext=Math.max(4000,(x1-x0)/2*1.35,(z1-z0)/2*1.35);MV.z=clamp(HALF/ext,1,4);MV.cx=(x0+x1)/2;MV.cz=(z0+z1)/2;mapClamp();}

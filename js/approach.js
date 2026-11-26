@@ -18,6 +18,32 @@ export function approachOptions(icao){const out=[],seen=new Set();const T=APT[ic
     out.push({A,rev,rwy:rev?A.rwyB:A.rwyA,faf:A.small?1800:A.len>3000?7000:4000,gs:A.small?0.06:0.0524,safe:!T});}
   return out;}
 
+// Kürzeste Bahn mit Mindestradius R von (x0,z0,Kurs h0) nach (x1,z1,Kurs h1) – Dubins: Kurve·Gerade·Kurve oder drei Kurven.
+// So kommt der Anflug immer genau auf der verlängerten Pistenachse und mit Pistenkurs an (vorher: bis 4 km daneben).
+// Kurs h wie im Spiel: Richtung (sin h, cos h) in (x, z). Rückgabe: Punkte im Abstand ds (ohne Startpunkt).
+const M2=a=>{a%=2*Math.PI;return a<0?a+2*Math.PI:a;};
+export function dubins(x0,z0,h0,x1,z1,h1,R,ds){
+  const t0=Math.PI/2-h0,t1=Math.PI/2-h1,dx=(x1-x0)/R,dy=(z1-z0)/R,d=Math.hypot(dx,dy),ph=Math.atan2(dy,dx),a=M2(t0-ph),b=M2(t1-ph);
+  const sa=Math.sin(a),sb=Math.sin(b),ca=Math.cos(a),cb=Math.cos(b),cab=Math.cos(a-b),W=[];
+  {const p2=2+d*d-2*cab+2*d*(sa-sb);if(p2>=0){const t1_=Math.atan2(cb-ca,d+sa-sb);W.push(['LSL',M2(-a+t1_),Math.sqrt(p2),M2(b-t1_)]);}}
+  {const p2=2+d*d-2*cab+2*d*(sb-sa);if(p2>=0){const t1_=Math.atan2(ca-cb,d-sa+sb);W.push(['RSR',M2(a-t1_),Math.sqrt(p2),M2(-b+t1_)]);}}
+  {const p2=-2+d*d+2*cab+2*d*(sa+sb);if(p2>=0){const p=Math.sqrt(p2),t2=Math.atan2(-ca-cb,d+sa+sb)-Math.atan2(-2,p);W.push(['LSR',M2(-a+t2),p,M2(-M2(b)+t2)]);}}
+  {const p2=d*d-2+2*cab-2*d*(sa+sb);if(p2>=0){const p=Math.sqrt(p2),t2=Math.atan2(ca+cb,d-sa-sb)-Math.atan2(2,p);W.push(['RSL',M2(a-t2),p,M2(b-t2)]);}}
+  {const tm=(6-d*d+2*cab+2*d*(sa-sb))/8;if(Math.abs(tm)<=1){const p=M2(2*Math.PI-Math.acos(tm)),t=M2(a-Math.atan2(ca-cb,d-sa+sb)+p/2);W.push(['RLR',t,p,M2(a-b-t+p)]);}}
+  {const tm=(6-d*d+2*cab+2*d*(-sa+sb))/8;if(Math.abs(tm)<=1){const p=M2(2*Math.PI-Math.acos(tm)),t=M2(-a-Math.atan2(ca-cb,d+sa-sb)+p/2);W.push(['LRL',t,p,M2(M2(b)-a-t+p)]);}}
+  if(!W.length)return null;W.sort((u,v)=>(u[1]+u[2]+u[3])-(v[1]+v[2]+v[3]));const [w,...L]=W[0];
+  let X=x0,Y=z0,T=t0;const out=[];
+  for(let k=0;k<3;k++){const ty=w[k],len=L[k]*R,n=Math.max(1,Math.ceil(len/ds));
+    for(let i=1;i<=n;i++){const sl=len*i/n;let x,y;
+      if(ty==='S'){x=X+Math.cos(T)*sl;y=Y+Math.sin(T)*sl;}
+      else if(ty==='L'){x=X+R*(Math.sin(T+sl/R)-Math.sin(T));y=Y-R*(Math.cos(T+sl/R)-Math.cos(T));}
+      else{x=X-R*(Math.sin(T-sl/R)-Math.sin(T));y=Y+R*(Math.cos(T-sl/R)-Math.cos(T));}
+      out.push({x,z:y});}
+    if(ty==='S'){X+=Math.cos(T)*len;Y+=Math.sin(T)*len;}
+    else if(ty==='L'){X+=R*(Math.sin(T+len/R)-Math.sin(T));Y-=R*(Math.cos(T+len/R)-Math.cos(T));T+=len/R;}
+    else{X-=R*(Math.sin(T-len/R)-Math.sin(T));Y+=R*(Math.cos(T-len/R)-Math.cos(T));T-=len/R;}}
+  return out;}
+
 // Bahn planen. F: Flugzustand, P: Flugzeugdaten, opt: Eintrag aus approachOptions
 // Wie steil muss der Endanflug auf diese Piste sein? (gleiche Regel wie im Planer: Gleitpfad überall über dem Gelände)
 // → {deg, D} mit dem flachsten möglichen Gleitwinkel; deg > 3.5 heisst: für Jets ein steiler Bergflugplatz-Anflug
@@ -77,18 +103,29 @@ export function planApproach(F,P,opt,S){
   if(best){best.unsafe=!best.ok;best.tries=tries;}
   return best;
 
-  function fly({W:W0,R,v,Dif,IF,yIF}){const W=[...W0,{x:TH.x,z:TH.z,y:yTH}];
-  // Bahn abfliegen wie ein Flugmanagement-System: Kurven mit Radius R, Vorhalt beim Leg-Wechsel, Rückkehr auf die Linie
-    const ds=40,pts=[];let x=P0.x,z=P0.z,h=Math.atan2(F.vel.x,F.vel.z);if(F.vel.length()<5){h=Math.atan2(IF.x-x,IF.z-z);}
+  function fly({W:W0,R,v,Dif,IF,yIF}){
+  // Bahn abfliegen wie ein Flugmanagement-System: Kurven mit Radius R, Vorhalt beim Leg-Wechsel, Rückkehr auf die Linie –
+  // bis zum letzten Punkt vor der Pistenachse; dann eine Dubins-Kurve, die genau auf der Achse mit Pistenkurs ankommt,
+  // und ab dort exakt auf der verlängerten Mittellinie bis zur Schwelle.
+    const onCL=p=>{const l=toLocal(A,p.x,p.z);return Math.abs(l.across)<5&&-s*l.along>A.len/2-1;};
+    let jI=W0.findIndex((p,i)=>i>0&&onCL(p));if(jI<0)jI=W0.length-1;const J=W0[jI],W=W0.slice(0,jI);
+    const crsF=Math.atan2(cx,cz),dTH=p=>Math.hypot(p.x-TH.x,p.z-TH.z);
+    const ds=40,pts=[];let x=P0.x,z=P0.z,h=Math.atan2(F.vel.x,F.vel.z);if(F.vel.length()<5){h=Math.atan2(J.x-x,J.z-z);}
     let cur=1,sum=0,iIF=-1,iFAF=-1;pts.push({x,z,s:0});
-    for(let n=0;n<8000;n++){const a=W[cur-1],b=W[cur],lx=b.x-a.x,lz=b.z-a.z,ll=Math.hypot(lx,lz)||1,ux=lx/ll,uz=lz/ll,crs=Math.atan2(ux,uz);
+    for(let n=0;n<8000&&cur<W.length;n++){const a=W[cur-1],b=W[cur],lx=b.x-a.x,lz=b.z-a.z,ll=Math.hypot(lx,lz)||1,ux=lx/ll,uz=lz/ll,crs=Math.atan2(ux,uz);
       const dtg=(b.x-x)*ux+(b.z-z)*uz,xt=(x-a.x)*uz-(z-a.z)*ux;
-      if(cur<W.length-1){const c2=W[cur+1],c2c=Math.atan2(c2.x-b.x,c2.z-b.z),dl=Math.abs(wrap(c2c-crs)),lead=Math.min(R*Math.tan(Math.min(dl,2.6)/2),Math.hypot(c2.x-b.x,c2.z-b.z)*0.9);
-        // Wegpunkt erst abhaken, wenn man in seiner Nähe ist – sonst würde eine Bahn von der falschen Seite IF und FAF überspringen
-        const dB=Math.hypot(b.x-x,b.z-z);if((dtg<=lead&&dB<lead+2.5*R)||dB<ds){if(W[cur]===IF)iIF=pts.length-1;if(W[cur]===FAF)iFAF=pts.length-1;cur++;continue;}}
-      else if(dtg<=0)break;
+      const nx=cur<W.length-1?W[cur+1]:J,c2c=Math.atan2(nx.x-b.x,nx.z-b.z),dl=Math.abs(wrap(c2c-crs)),lead=Math.min(R*Math.tan(Math.min(dl,2.6)/2),Math.hypot(nx.x-b.x,nx.z-b.z)*0.9);
+      // Wegpunkt erst abhaken, wenn man in seiner Nähe ist – sonst würde eine Bahn von der falschen Seite Punkte überspringen
+      const dB=Math.hypot(b.x-x,b.z-z);if((dtg<=lead&&dB<lead+2.5*R)||dB<ds){if(W[cur]===IF)iIF=pts.length-1;cur++;continue;}
       let des;if(cur===1||dtg<0||Math.abs(xt)>3*R)des=Math.atan2(b.x-x,b.z-z);else des=crs-clamp(xt/(R*0.9),-0.8,0.8);
       const e=wrap(des-h),mx=ds/R;h+=clamp(e,-mx,mx);x+=Math.sin(h)*ds;z+=Math.cos(h)*ds;sum+=ds;pts.push({x,z,s:sum});}
+    // Eindrehen: Dubins bis J (auf der Achse, Pistenkurs)
+    const dub=dubins(x,z,h,J.x,J.z,crsF,R,ds);if(!dub)return null;
+    for(const q of dub){sum+=Math.hypot(q.x-x,q.z-z);x=q.x;z=q.z;pts.push({x,z,s:sum});}
+    if(J===IF||iIF<0)iIF=pts.length-1;if(J===FAF)iFAF=pts.length-1;
+    // Endanflug: exakt auf der verlängerten Mittellinie (Abstände von der Schwelle)
+    for(let d=dTH(J)-ds;d>0;d-=ds){const q=at(d);sum+=Math.hypot(q.x-x,q.z-z);x=q.x;z=q.z;if(iFAF<0&&d<=Dfaf+1e-6)iFAF=pts.length;pts.push({x,z,s:sum});}
+    sum+=Math.hypot(TH.x-x,TH.z-z);x=TH.x;z=TH.z;pts.push({x,z,s:sum});
     if(iIF<0)iIF=Math.max(0,pts.length-Math.ceil((Dif)/ds));if(iFAF<0)iFAF=Math.max(0,pts.length-Math.ceil(Dfaf/ds));
     const L=sum,sIF=pts[iIF].s,sFAF=pts[iFAF].s;
     // Höhenprofil wie ein Flugmanagement-System: gleichmässig steigen auf eine Reiseflughöhe, diese halten,
