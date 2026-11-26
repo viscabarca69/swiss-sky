@@ -1,4 +1,5 @@
 // 3D-Welt: Gelände (echte Höhendaten), Satellitenbild, Seen, Wälder, Orte
+import {LOWMEM} from './device.js';
 import * as THREE from 'three';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {buildExtras,windowShader} from './gfx.js';
@@ -201,7 +202,7 @@ ${ORTHO_GLSL_BODY}`)
   // Kacheln mit Detailstufen: nah fein, weit grob; Schürzen verdecken Spalten zwischen den Stufen
   const CHN=128,NC=G/CHN,IDX={},GC=new Map(),terrain=new THREE.Group();scene.add(terrain);W.terrain=terrain;
   // Stufe s gilt bis LODT[s] m (danach 2s); die Ecken sind dort schon ganz auf die gröbere Stufe geglitten
-  const LODD=[[1,6000],[2,14000],[4,32000]],LODT={1:6000,2:14000,4:32000};
+  const LODD=LOWMEM?[[1,4500],[2,11000],[4,26000]]:[[1,6000],[2,14000],[4,32000]],LODT=Object.fromEntries(LODD);
   function idxFor(s){if(IDX[s])return IDX[s];const n=CHN/s,v=n+1,ix=[];
     for(let j=0;j<n;j++)for(let i=0;i<n;i++){const a=j*v+i,b=a+1,c=a+v,d=c+1;ix.push(a,c,b,b,c,d);}
     const E=[[],[],[],[]];for(let k=0;k<v;k++){E[0].push(k);E[1].push(k*v+n);E[2].push(n*v+k);E[3].push(k*v);}

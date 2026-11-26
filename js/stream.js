@@ -36,7 +36,7 @@ export function initStream(renderer,opt={}){
   // Mipmaps nicht nach jeder Kachel, sondern einmal je Durchgang neu rechnen (sonst 2048² pro Kachel)
   const gl=renderer.getContext();
   function ready(L){if(L.init)return;renderer.initTexture(L.tex);L.tex.generateMipmaps=false;L.init=true;}
-  function mips(L){if(!L.dirty)return;L.dirty=false;const p=renderer.properties.get(L.tex);if(!p.__webglTexture)return;
+  function mips(L){if(!L.dirty&&!L.urgent)return;L.dirty=false;L.urgent=false;const p=renderer.properties.get(L.tex);if(!p.__webglTexture)return;
     renderer.state.bindTexture(gl.TEXTURE_2D,p.__webglTexture);gl.generateMipmap(gl.TEXTURE_2D);renderer.state.unbindTexture();}
   function put(L,x0,z0,x1,z1,draw){ready(L);L.dirty=true;const X0=Math.round(px(L,x0)),Z0=Math.round(px(L,z0)),X1=Math.round(px(L,x1)),Z1=Math.round(px(L,z1)),w=X1-X0,h=Z1-Z0;if(w<1||h<1)return;
     const mx=((X0%S)+S)%S,mz=((Z0%S)+S)%S;
@@ -55,7 +55,7 @@ export function initStream(renderer,opt={}){
       const xa=Math.max(N[0],O[0]),xb=Math.min(N[2],O[2]);if(xb>xa){if(N[1]<O[1])put(L,xa,N[1],xb,O[1],'clear');if(N[3]>O[3])put(L,xa,O[3],xb,N[3],'clear');}
       // Kacheln, die in die geleerten Streifen reichen, neu zeichnen
       for(const [k,t] of L.tiles){const inO=t.x0>=O[0]&&t.x1<=O[2]&&t.z0>=O[1]&&t.z1<=O[3];if(!inO)L.tiles.delete(k);}}
-    L.c=[nx,nz];L.N=N;return true;}
+    L.c=[nx,nz];L.N=N;L.urgent=true;return true;}
   function want(L,cx,cz){const n=2**L.z,[x0,z0,x1,z1]=L.N;const a=Math.floor(tx(lonOf(x0),n)),b=Math.floor(tx(lonOf(x1),n)),c=Math.floor(ty(latOf(z0),n)),d=Math.floor(ty(latOf(z1),n));
     const list=[];for(let X=a;X<=b;X++)for(let Y=c;Y<=d;Y++){const k=X+'_'+Y;if(L.tiles.has(k))continue;
       const wx0=(lonT(X,n)-GEO.lon0)*GEO.kx,wx1=(lonT(X+1,n)-GEO.lon0)*GEO.kx,wz0=-(latT(Y,n)-GEO.lat0)*GEO.kz,wz1=-(latT(Y+1,n)-GEO.lat0)*GEO.kz;
@@ -71,9 +71,13 @@ export function initStream(renderer,opt={}){
         .catch(()=>{st.fail++;L.tiles.delete(t.k);if(st.ok===0&&st.fail>=6&&!st.dead){st.dead=true;st.queue.length=0;LV.forEach(l=>{l.on=false;STU.stL.value[l.i].w=0;});if(st.onDead)st.onDead();}})
         .finally(()=>{st.inflight--;});}}
   let last=0,firstTex=false,aglS=null,lastF=0;
-  // Gegen «wechselnde Bilder»: Mipmaps jedes Bild sofort nachziehen (sonst zeigen die kleinen Stufen kurz Bild von einer anderen Stelle
-  // der Ringtextur), Ebenen weich ein- und ausblenden statt hart umschalten, Höhe über Grund geglättet (Berge!), beim Ausblenden nichts löschen
-  function update(cam,agl){if(st.dead||!st.enabled)return;const now=performance.now(),dt=Math.min(0.2,(now-(lastF||now))/1000);lastF=now;pump();LV.forEach(mips);
+  // Gegen «wechselnde Bilder»: Ebenen weich ein- und ausblenden statt hart umschalten, Höhe über Grund geglättet (Berge!), beim Ausblenden nichts löschen
+  // Mipmaps (2048² neu rechnen ist teuer): sofort nur nach dem Leeren von Streifen (sonst blitzt Bild einer anderen Stelle auf),
+  // für neu gezeichnete Kacheln höchstens eine Ebene je 120 ms im Wechsel
+  let mipT=0,mipI=0;
+  function update(cam,agl){if(st.dead||!st.enabled)return;const now=performance.now(),dt=Math.min(0.2,(now-(lastF||now))/1000);lastF=now;pump();
+    for(const L of LV)if(L.urgent)mips(L);
+    if(now-mipT>120){mipT=now;for(let k=0;k<4;k++){const L=LV[(mipI+k)%4];if(L.dirty){mips(L);mipI=(mipI+k+1)%4;break;}}}
     for(const L of LV){const v=STU.stL.value[L.i];L.w+=((L.on&&L.c?1:0)-L.w)*Math.min(1,dt*1.5);if(L.w<0.003)L.w=0;v.w=L.w;}
     aglS=aglS===null?agl:aglS+(agl-aglS)*Math.min(1,dt*0.25);
     if(now-last<250)return;last=now;
