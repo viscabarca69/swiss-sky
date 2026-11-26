@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import {fromLocal,toLocal} from './worldgen.js';
 import {makeGlow} from './env.js';
 import {orthoPaved} from './ortho.js';
-import {taxiNet,planPushback,smoothPath} from './taxinet.js';
+import {taxiNet,planPushback,smoothPath,holdFor,route} from './taxinet.js';
 import {AIRLINER} from './aircraft.js';
 export function createGroundOps(ctx){
 function setupGate(){const {G,AP,scene}=ctx;const F=G.F;G.tug=new THREE.Group();const tb=new THREE.Mesh(new THREE.BoxGeometry(2.6,1.3,5.2),new THREE.MeshStandardMaterial({color:0xf2c200,roughness:0.5}));tb.position.y=0.95;G.tug.add(tb);
@@ -68,10 +68,15 @@ function planTaxi(x0,z0,x1,z1,half){const {world}=ctx;const C=6,pad=450,X0=Math.
   const lineOK=(a,b)=>{const L=Math.hypot(b[0]-a[0],b[1]-a[1]),n=Math.ceil(L/(C*0.5));for(let q=1;q<n;q++){const x=a[0]+(b[0]-a[0])*q/n,z=a[1]+(b[1]-a[1])*q/n,k=idx(Math.floor((x-X0)/C),Math.floor((z-Z0)/C));if(!(cost[k]<=1.01))return false;}return true;};
   const out=[P2[0]];let cur=0;while(cur<P2.length-1){let nx=cur+1;for(let q=Math.min(P2.length-1,cur+120);q>cur+1;q--)if(lineOK(P2[cur],P2[q])){nx=q;break;}out.push(P2[nx]);cur=nx;}
   return out;}
-function buildTaxiDots(){const {G,S,AP,scene}=ctx;const o=G.obj.find(q=>q.type==='taxi');if(!o)return;const F=G.F,A=AP.ZRH16,l0=toLocal(A,F.pos.x,F.pos.z),lh=toLocal(A,o.x,o.z),corner=fromLocal(A,lh.along,l0.across);
-  let segs=[[F.pos.x,F.pos.z,corner.x,corner.z],[corner.x,corner.z,o.x,o.z]];const pos=[],col=[],sz=[];
+// Rollweg zur Startpiste über das echte Netz (alle Flugplätze mit OSM-Daten), z. B. wenn der Funk um Rollfreigabe gebeten wird
+function routeToRunway(){const {G}=ctx;const F=G.F,A=G.startAP;if(!A||!F)return null;const net=taxiNet(A.icao);if(!net)return null;const h=holdFor(net,A,G.startRev?-1:1);if(!h)return null;
+  const e=new THREE.Euler().setFromQuaternion(F.q,'YXZ');let r=route(net,F.pos.x,F.pos.z,h.n,{jet:F.P.cls==='jet',maxD:150,heading:[-Math.sin(e.y),-Math.cos(e.y)]});
+  if(!r)r=route(net,F.pos.x,F.pos.z,h.n,{jet:F.P.cls==='jet',maxD:150});if(!r)return null;G.taxiRoute=r;G.taxiHold=h;return r;}
+function buildTaxiDots(){const {G,S,AP,scene}=ctx;const o=G.obj.find(q=>q.type==='taxi');if(!o&&!G.taxiRoute)return;const F=G.F;
+  if(G.taxiDots){scene.remove(G.taxiDots);G.taxiDots=null;}
+  let segs=[];if(o){const A=AP.ZRH16,l0=toLocal(A,F.pos.x,F.pos.z),lh=toLocal(A,o.x,o.z),corner=fromLocal(A,lh.along,l0.across);segs=[[F.pos.x,F.pos.z,corner.x,corner.z],[corner.x,corner.z,o.x,o.z]];}const pos=[],col=[],sz=[];
   if(G.taxiRoute&&G.taxiRoute.pts.length>1){const R=smoothPath([[F.pos.x,F.pos.z],...G.taxiRoute.pts.slice(1)],30,4);segs=[];for(let i=0;i<R.length-1;i++)segs.push([R[i][0],R[i][1],R[i+1][0],R[i+1][1]]);G.taxiPath=R;}
-  else try{const t0=performance.now(),path=planTaxi(F.pos.x,F.pos.z,o.x,o.z,(F.P.wingTip||18));if(path&&path.length>1){segs=[];for(let i=0;i<path.length-1;i++)segs.push([path[i][0],path[i][1],path[i+1][0],path[i+1][1]]);}G.taxiPath=path;G.taxiMs=Math.round(performance.now()-t0);}catch(e){console.warn('Rollweg',e);}
+  else if(o)try{const t0=performance.now(),path=planTaxi(F.pos.x,F.pos.z,o.x,o.z,(F.P.wingTip||18));if(path&&path.length>1){segs=[];for(let i=0;i<path.length-1;i++)segs.push([path[i][0],path[i][1],path[i+1][0],path[i+1][1]]);}G.taxiPath=path;G.taxiMs=Math.round(performance.now()-t0);}catch(e){console.warn('Rollweg',e);}
   for(const [ax,az,bx,bz] of segs){const L=Math.hypot(bx-ax,bz-az),n=Math.ceil(L/12);for(let k=0;k<=n;k++){const x=ax+(bx-ax)*k/n,z=az+(bz-az)*k/n;pos.push(x,S.heightAt(x,z)+0.3,z);col.push(0.15,1,0.35);sz.push(1.1);}}
   const d=makeGlow(pos,col,sz);scene.add(d);G.dyn.push(d);G.taxiDots=d;}
-return {setupGate,noseDist,placeTug,startPushback,pushTick,planTaxi,buildTaxiDots};}
+return {setupGate,noseDist,placeTug,startPushback,pushTick,planTaxi,buildTaxiDots,routeToRunway};}

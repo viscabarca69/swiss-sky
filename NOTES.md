@@ -10,6 +10,13 @@ Artifact slug e3615a1f-7860-4277-b4c4-84ea1ba2abea · letzte veröffentlichte Ve
 Backup Etappe 1: /tmp/af_e1 (kann nach Neustart weg sein)
 Testen: /tmp/run.sh test/<x>.py (Playwright, SwiftShader) · node test/jobs.mjs (Routen) · node test/mis.mjs
 
+## Version 11.9 (26.11.2026)
+- **`js/taxirender.js`**: zeichnet das OSM-Netz an allen Plätzen ausser den kleinen (oft Gras): Rollweg-Bänder (Breite OSM, an Regionalplätzen höchstens 18 m) mit runden Knoten, Vorfelder (triangulierte Polygone, auf 30 m unterteilt, Betonplatten 5 m), gelbe Mittellinien, Haltemarkierung (2 durchgezogen, 2 gestrichelt auf der Pistenseite), Lichter (Zürich grüne Mittellinie alle 30 m, sonst blaue Randlichter alle 45 m, Stoppbalken rot an LSZH/LSGG/LFSB), Schilder (Atlas: rot «14-32» + schwarz/gelb Haltepunktname). In Zürich nur Lichter und Schilder (Luftbild zeigt den Belag). Belag mit `polygonOffset` −2/−22…−34 und auf der Piste ausgespart.
+- **`airports3d.js`**: keine erfundenen Parallel-Rollwege/Vorfelder, wo OSM gezeichnet wird; Terminal-Komplex hinter das grösste OSM-Vorfeld (`apronAnchor`), danach `clearOf` (jedes Objekt: frei von Belag, See, Fluss; Suche nach aussen, längs und schräg bis 420 m; Höhe ans Gelände); `parkOnStands` (Standplätze mit genau einer Zufahrt, Abstand ≥ 45 m, Typ nach Platz zum Nachbarn).
+- **`gfx.js` `keepOffAirports`**: nach dem Einrasten der Flüsse betroffene Abschnitte auf eine Seite schieben (Seite mit kleinerem Höchstversatz, weich auslaufend).
+- **Funk/Rollen** (`groundops.routeToRunway`): T am Boden abseits der Piste plant den Weg zum Haltepunkt der Startpiste, grüne Punkte, Funk nennt die Rollwege; am Haltepunkt Hinweis.
+- **«Am Rollhalt»** (`holdStart`): Start auf dem OSM-Haltepunkt, 12 m (Propeller) bzw. 30 m (Jet) davor, Nase zur Piste.
+
 ## Version 11.8 (26.11.2026)
 - **Sparmodus** (`js/device.js`): `LOWMEM` auf Handys/Tablets (UA, iPad mit Desktop-UA), bei `navigator.deviceMemory<=4`, nach einem Absturz (Merker `swissSky-alive` beim Start gesetzt, bei `pagehide` gelöscht; steht er beim nächsten Start noch → `swissSky-lite`), per `?lite` / `?full` oder Einstellung (auto/an/aus). Wirkung: `TEXS=0.5` für alle Flugzeug-Texturen (`canvasTex`, `maskTex`, `softTex`) und Pistentexturen, Qualität «Niedrig», nur jeder zweite ZRH-Standplatz belegt, höchstens 2 Parkflugzeuge je Regionalflughafen, 2 statt 4 scharfe Luftbild-Kacheln (Cache 3 statt 8). Gemessen (Headless, Menü): Texturen 742 → 200 MB, Geometrie 244 → 199 MB.
 - **WebGL-Kontextverlust**: `webglcontextlost` → Hinweis mit «Neu laden», setzt `swissSky-lite`.

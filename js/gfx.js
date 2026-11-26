@@ -2,7 +2,8 @@
 import * as THREE from 'three';
 import {Reflector} from 'three/addons/objects/Reflector.js';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
-import {HALF,WORLD,G,N1,CELL,ROADS,RIVERS,LAKES,TOWNS,FLATS,toLocal} from './worldgen.js';
+import {HALF,WORLD,G,N1,CELL,ROADS,RIVERS,LAKES,TOWNS,FLATS,toLocal,AIRPORTS} from './worldgen.js';
+import {taxiNet,nearestEdge} from './taxinet.js';
 import {makeSimplex,mulberry,clamp,sstep} from './noise.js';
 
 export const nightU={value:0};
@@ -28,7 +29,26 @@ export function snapRivers(S){for(const R of RIVERS){if(R.snapped)continue;R.sna
   const off=pts.map(([x,z],i)=>{const a=pts[Math.max(0,i-1)],b=pts[Math.min(pts.length-1,i+1)];let dx=b[0]-a[0],dz=b[1]-a[1];const l=Math.hypot(dx,dz)||1;const nx=-dz/l,nz=dx/l;
     let best=0,bh=S.heightAt(x,z)-4;for(let o=-1400;o<=1400;o+=100){const h=S.heightAt(x+nx*o,z+nz*o)+Math.abs(o)*0.004;if(h<bh){bh=h;best=o;}}return[best,nx,nz];});
   const sm=off.map((_,i)=>{let s2=0,n=0;for(let k=Math.max(0,i-3);k<=Math.min(off.length-1,i+3);k++){s2+=off[k][0];n++;}return s2/n;});
-  R.pts=pts.map(([x,z],i)=>[Math.round(x+off[i][1]*sm[i]),Math.round(z+off[i][2]*sm[i])]);}}
+  R.pts=pts.map(([x,z],i)=>[Math.round(x+off[i][1]*sm[i]),Math.round(z+off[i][2]*sm[i])]);
+  keepOffAirports(R);}}
+// Flüsse nicht über echte Rollwege/Vorfelder/Pisten (OSM) legen: betroffene Punkte quer zur Fliessrichtung wegschieben
+const NETS=[...new Set(AIRPORTS.map(a=>a.icao))].map(ic=>taxiNet(ic)).filter(Boolean);
+function pavedNear(x,z,m){for(const net of NETS){const R0=net.rws[0];if(Math.hypot(x-R0.x,z-R0.z)>R0.len/2+2500)continue;
+    if(net.rws.some(R=>{const l=toLocal(R,x,z);return Math.abs(l.across)<R.w/2+m+15&&Math.abs(l.along)<R.len/2+m+60;}))return true;
+    if(nearestEdge(net,x,z,m+12))return true;
+    for(const P of net.aprons){let c=false;for(let i=0,j=P.length-1;i<P.length;j=i++){const [xi,zi]=P[i],[xj,zj]=P[j];if((zi>z)!==(zj>z)&&x<(xj-xi)*(z-zi)/(zj-zi)+xi)c=!c;}if(c)return true;}}
+  return false;}
+function keepOffAirports(R){if(!NETS.length)return;const pts=smoothPts(R.pts,40),n=pts.length,N=[],bad=new Uint8Array(n),mg=Math.max(18,R.w/2)+20;
+  for(let i=0;i<n;i++){const [x,z]=pts[i],a=pts[Math.max(0,i-1)],b=pts[Math.min(n-1,i+1)];let dx=b[0]-a[0],dz=b[1]-a[1];const l=Math.hypot(dx,dz)||1;N.push([-dz/l,dx/l]);bad[i]=pavedNear(x,z,mg)?1:0;}
+  if(!bad.some(v=>v))return;const sh=new Float64Array(n);
+  // zusammenhängende betroffene Abschnitte: beide Seiten prüfen, die mit dem kleineren Höchstversatz nehmen (kein Zickzack)
+  for(let i=0;i<n;){if(!bad[i]){i++;continue;}let j=i;while(j<n&&bad[j])j++;let best=null;
+    for(const sg of [1,-1]){const o=[];let mx=0,ok=true;for(let k=i;k<j;k++){let d=0;for(let q=30;q<=1500;q+=30)if(!pavedNear(pts[k][0]+N[k][0]*q*sg,pts[k][1]+N[k][1]*q*sg,mg)){d=q;break;}if(!d){ok=false;break;}o.push(d*sg);mx=Math.max(mx,d);}
+      if(ok&&(!best||mx<best.mx))best={mx,o};}
+    if(best)for(let k=i;k<j;k++)sh[k]=best.o[k-i];i=j;}
+  // weich verlaufen lassen: Nachbarn mitziehen (grösster Betrag im Fenster, abklingend)
+  const out=pts.map(([x,z],i)=>{let v=0;for(let k=Math.max(0,i-8);k<=Math.min(n-1,i+8);k++){const w=1-Math.abs(k-i)/9;if(Math.abs(sh[k]*w)>Math.abs(v))v=sh[k]*w;}return[Math.round(x+N[i][0]*v),Math.round(z+N[i][1]*v)];});
+  R.pts=out;}
 function ribbon(list,S,widthOf,yOff,skip,water){
   const P=[],UV=[],I=[];
   for(const R of list){let pts=smoothPts(R.pts,30);const w0=widthOf(R);let run=false,v=0;

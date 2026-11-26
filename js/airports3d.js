@@ -5,6 +5,8 @@ import {inOrtho,lv95ToXZ} from './ortho.js';
 const ZRH_STANDS=[["l380",2683861.8,1257401.9,156,0],["l350",2683939.9,1257401.9,186,56.75],["l340",2684013.2,1257399.4,186,60.75],["l747",2684096.2,1257394.5,186,63.25],["l350",2684164.6,1257389.6,186,64.5],["l330",2684242.7,1257382.3,186,64.5],["l350",2684313.5,1257375.0,186,63.75],["l340",2684384.3,1257372.6,186,67.25],["l340",2683981.4,1257250.5,6,57.0],["l330",2684052.2,1257243.2,6,57.75],["l350",2684123.0,1257238.3,6,56.25],["l330",2684198.7,1257231.0,6,56.5],["l350",2684269.5,1257223.6,6,57.5],["l747",2684352.5,1257216.3,6,57.5],["l330",2684425.8,1257216.3,6,0],["l320",2684336.6,1256292.0,184.5,0],["l32n",2684377.6,1256285.5,184.5,46.25],["l320",2684419.9,1256279.0,184.5,56.5],["l32n",2684518.9,1256272.5,184.5,59.25],["l320",2684559.9,1256262.7,184.5,52.75],["l32n",2684296.2,1256458.0,4.5,35.75],["l320",2684337.2,1256458.0,4.5,32.25],["l32n",2684377.6,1256448.2,4.5,38.25],["l320",2684418.6,1256441.7,4.5,40.75],["l32n",2684459.0,1256454.8,4.5,24.25],["l320",2684518.9,1256435.2,4.5,38.25],["l330",2684462.2,1256103.2,4.5,66.25]];
 import {bakeStatic} from './bake.js';
 import {LOWMEM,TEXS} from './device.js';
+import {buildOsmTaxi} from './taxirender.js';
+import {toLocal,RIVERS} from './worldgen.js';
 import {AIRPORTS,fromLocal} from './worldgen.js';
 import {mulberry} from './noise.js';
 import {makeGlow} from './env.js';
@@ -149,13 +151,41 @@ export function buildAirports(scene,S,addParked){
     // Stromaggregat (GPU) unter der Nase
     const gp=at(L/2-3,-(R+1.5),0);blk(g,gp.x,gy,gp.z,1.6,1.3,2.4,ry,vW);
     }
+  // Rollwege, Vorfelder, Schilder und Rollweg-Lichter aus OpenStreetMap
+  const OSM=buildOsmTaxi({S,AIRPORTS,grpOf,L,nightMats});out.osm=OSM;
+  // grösstes OSM-Vorfeld als Anker für Terminal, Tower und Hallen: Seite, Längsposition, äusserer Rand
+  const apronAnchor=A=>{const net=OSM.nets[A.icao];if(!net)return null;let best=null;
+    for(const P of net.aprons){let ar=0,cx=0,cz=0;for(let i=0,j=P.length-1;i<P.length;j=i++){const f=P[j][0]*P[i][1]-P[i][0]*P[j][1];ar+=f;cx+=(P[j][0]+P[i][0])*f;cz+=(P[j][1]+P[i][1])*f;}
+      if(Math.abs(ar)<1)continue;cx/=3*ar;cz/=3*ar;const l=toLocal(A,cx,cz);if(Math.abs(l.along)>A.len/2+600||Math.abs(l.across)>900)continue;if(!best||Math.abs(ar)>best.ar)best={ar:Math.abs(ar),P,l};}
+    if(!best)return null;const sd=Math.sign(best.l.across)||A.side;let far=0;for(const p of best.P)far=Math.max(far,sd*toLocal(A,p[0],p[1]).across);return{s:sd,al:best.l.along,far};};
+  // Gebäude, die auf Rollweg/Vorfeld/Piste stehen, quer zur Piste nach aussen schieben und auf das Gelände setzen
+  // Flussabschnitte in der Nähe eines Flugplatzes (einmal je Platz gesammelt)
+  let wetSegs=[];const wetFor=A=>{wetSegs=[];for(const R of RIVERS){const P=R.pts;for(let i=0;i+1<P.length;i++){const [ax,az]=P[i],[bx,bz]=P[i+1];if(Math.hypot(ax-A.x,az-A.z)<A.len/2+4000)wetSegs.push([ax,az,bx,bz,Math.max(18,R.w)/2+25]);}}};
+  const wet=(x,z)=>{for(const [ax,az,bx,bz,r] of wetSegs){const ex=bx-ax,ez=bz-az,L2=ex*ex+ez*ez||1;let t=((x-ax)*ex+(z-az)*ez)/L2;t=Math.max(0,Math.min(1,t));if(Math.hypot(ax+ex*t-x,az+ez*t-z)<r)return true;}return false;};
+  const clearOf=(A,objs,sd)=>{if(!OSM.drawn[A.icao])return;wetFor(A);if(!OSM.drawn[A.icao])return;const ux=A.cos*sd,uz=A.sin*sd,bb=new THREE.Box3();
+    for(const o of objs){o.updateMatrixWorld(true);bb.setFromObject(o);if(bb.isEmpty())continue;const x0=bb.min.x,x1=bb.max.x,z0=bb.min.z,z1=bb.max.z,sx=Math.max(4,(x1-x0)/6),sz=Math.max(4,(z1-z0)/6);
+      // frei = kein Belag, kein See, kein Fluss; gesucht wird nach aussen, entlang der Piste und schräg
+      const hit=(ox,oz)=>{for(let x=x0;x<=x1+0.1;x+=sx)for(let z=z0;z<=z1+0.1;z+=sz){const px=x+ox,pz=z+oz;if(OSM.paved(A.icao,px,pz,3)||S.isLake(px,pz)||wet(px,pz))return true;}return false;};
+      let dx=0,dz=0;if(hit(0,0)){let f=null;for(let r=10;r<=420&&!f;r+=10)for(const [a,b] of [[1,0],[0,1],[0,-1],[0.7,0.7],[0.7,-0.7],[-0.5,1],[-0.5,-1]]){const ox=ux*a*r+A.sin*b*r,oz=uz*a*r-A.cos*b*r;if(!hit(ox,oz)){f=[ox,oz];break;}}if(f){[dx,dz]=f;o.position.x+=dx;o.position.z+=dz;}}
+      let mn=Infinity;for(const [x,z] of [[x0,z0],[x1,z0],[x0,z1],[x1,z1],[(x0+x1)/2,(z0+z1)/2]])mn=Math.min(mn,S.heightAt(x+dx,z+dz));if(isFinite(mn)&&Math.abs(mn-A.elev)>0.3)o.position.y+=mn-A.elev-0.2;
+      o.updateMatrixWorld(true);}};
+  // abgestellte Flugzeuge auf echte OSM-Standplätze (Nase entlang der Zufahrt)
+  const parkOnStands=(A,max,bigOK)=>{const net=OSM.nets[A.icao];if(!net||!addParked||!OSM.drawn[A.icao])return 0;const {X,Z,adj,edges}=net,cand=[];
+    for(const st of net.stands){const n=st.n;if(n<0||adj[n].length!==1)continue;const e=edges[adj[n][0]],m=e.a===n?e.b:e.a,dl=Math.hypot(X[n]-X[m],Z[n]-Z[m])||1;
+      let nn=1e9;for(const o of net.stands)if(o!==st)nn=Math.min(nn,Math.hypot(o.x-st.x,o.z-st.z));cand.push({x:X[n],z:Z[n],fx:(X[n]-X[m])/dl,fz:(Z[n]-Z[m])/dl,nn});}
+    const pick=[],rr=mulberry(A.len|0);cand.sort((a,b)=>b.nn-a.nn);
+    for(const c of cand){if(pick.length>=max)break;if(pick.some(p=>Math.hypot(p.x-c.x,p.z-c.z)<45))continue;pick.push(c);}
+    let k=0;for(const c of pick){const id=bigOK&&c.nn>=40?(rr()<0.5?'l320':'l32n'):c.nn>=20?(rr()<0.5?'foehn':'titlis'):(rr()<0.5?'alpina':'saentis');
+      const Lh=id[0]==='l'?14:id==='foehn'||id==='titlis'?6:3,h=Math.atan2(c.fx,-c.fz)*180/Math.PI;const r=addParked(id,A,0,0,0,0,{x:c.x-c.fx*Lh,z:c.z-c.fz*Lh,h});if(r&&r.m)grpOf(A).add(r.m);k++;}
+    return k;};
   for(const A of AIRPORTS){
     const rw=new THREE.Mesh(new THREE.PlaneGeometry(A.w,A.len).rotateX(-Math.PI/2),new THREE.MeshStandardMaterial({map:runwayTexture(A),roughness:0.9,polygonOffset:true,polygonOffsetFactor:-3-(A.id==='ZRH14'?1:A.id==='ZRH10'?2:0),polygonOffsetUnits:-3-(A.id==='ZRH14'?1:A.id==='ZRH10'?2:0)}));
     rw.receiveShadow=true;place(A,rw,0,0,A.elev+0.06);scene.add(rw);
     const sh=new THREE.Mesh(new THREE.PlaneGeometry(A.w+(A.small?6:16),A.len+(A.small?20:80)).rotateX(-Math.PI/2),asph);sh.receiveShadow=true;place(A,sh,0,0,A.elev+0.03);scene.add(sh);
     const s=A.side;const zrh=A.icao==='LSZH';
     const zO=zrh&&inOrtho(A.x,A.z);// Zürich mit Luftbild: Rollwege, Vorfeld und Gebäude sind echt (Luftbild + swisstopo-Gebäude)
-    const tx=zO?0:A.id==='ZRH16'?190:zrh?0:A.small?0:85,tw=zrh?25:16;
+    const osmD=!!OSM.drawn[A.icao];// echte Rollwege vorhanden: keine erfundenen Parallel-Rollwege
+    const tx=zO||osmD?0:A.id==='ZRH16'?190:zrh?0:A.small?0:85,tw=zrh?25:16;
     if(tx){
       flat(A,0,s*(A.w/2+tx),tw,A.len*0.92,asph2);
       const cons=zrh?[-A.len*0.45,-A.len*0.22,A.len*0.05,A.len*0.3,A.len*0.45]:[-A.len*0.45,0,A.len*0.45];
@@ -227,17 +257,19 @@ export function buildAirports(scene,S,addParked){
       for(let al=900;al<=1720;al+=135){const ms=new THREE.Mesh(new THREE.CylinderGeometry(0.4,0.6,30,8),metal);place(A,ms,al+20,s*600,A.elev+15);const hd=new THREE.Mesh(new THREE.BoxGeometry(4,1.6,1),metal);place(A,hd,al+20,s*600,A.elev+30.5);
         for(const o of [-1.4,0,1.4])L(fromLocal(A,al+20+o,s*600),A.elev+29.8,[1,0.92,0.75],6);}
       if(addParked){addParked('foehn',A,1630,s*720,parkRot(s));addParked('titlis',A,1690,s*735,parkRot(s));addParked('alpina',A,1790,s*580,0.3);addParked('saentis',A,1815,s*600,0.3);}
-    }else if(A.mil){
-      flat(A,-A.len*0.2,s*(A.w/2+tx+90),160,520,asph2);
+    }else if(A.mil){const n0=grpOf(A).children.length;
+      if(!osmD)flat(A,-A.len*0.2,s*(A.w/2+tx+90),160,520,asph2);
       for(let k=0;k<4;k++){const g=new THREE.Group();const R=14;const sc=new THREE.Mesh(new THREE.CylinderGeometry(R,R,30,16,1,false,-Math.PI/2,Math.PI),new THREE.MeshStandardMaterial({color:0x6f7465,roughness:0.9}));sc.rotation.x=Math.PI/2;g.add(sc);g.children.forEach(m=>m.castShadow=true);place(A,g,-A.len*0.2-180+k*110,s*(A.w/2+tx+150),A.elev,0);}
       hangar(A,-A.len*0.2+260,s*(A.w/2+tx+120),70,60,18);
       const tw2=new THREE.Group();const s1=new THREE.Mesh(new THREE.BoxGeometry(7,18,7),concrete);s1.position.y=9;tw2.add(s1);const c2=new THREE.Mesh(new THREE.BoxGeometry(10,5,10),glass);c2.position.y=20.5;tw2.add(c2);place(A,tw2,A.len*0.1,s*(A.w/2+tx+60));
-      if(addParked){addParked('titlis',A,-A.len*0.2+120,s*(A.w/2+tx+60),parkRot(s));addParked('titlis',A,-A.len*0.2+150,s*(A.w/2+tx+60),parkRot(s));}
+      clearOf(A,grpOf(A).children.slice(n0),s);
+      if(addParked&&!parkOnStands(A,LOWMEM?1:3,false)){addParked('titlis',A,-A.len*0.2+120,s*(A.w/2+tx+60),parkRot(s));addParked('titlis',A,-A.len*0.2+150,s*(A.w/2+tx+60),parkRot(s));}
     }else if(zrh){/* Nebenpisten in Zürich: Gebäude stehen beim Hauptterminal */
     }else if(!A.small){
       // Regionalflughafen: Vorfeld mit Standplätzen, Terminal mit Glasfront und Namen, Tower, Hangars, Tanklager, Parkplatz, Fahrzeuge
-      const G0=grpOf(A),aC=-A.len*0.12,acA=s*(A.w/2+tx+95),big=['LSZB','LSGS','LSME','LSZG','LSGG','LFSB','LSMP','LSZA'].includes(A.icao);
-      flat(A,aC,acA,150,440,regApron(A),0.05);flat(A,aC,s*(A.w/2+tx/2+8),tx-10,36,asph2,0.045);
+      const an=osmD?apronAnchor(A):null,s=an?an.s:A.side;// mit OSM: Gebäude hinter das echte Vorfeld
+      const G0=grpOf(A),n0=G0.children.length,aC=an?an.al:-A.len*0.12,acA=an?s*(an.far-69):s*(A.w/2+tx+95),big=['LSZB','LSGS','LSME','LSZG','LSGG','LFSB','LSMP','LSZA'].includes(A.icao);
+      if(!an){flat(A,aC,acA,150,440,regApron(A),0.05);flat(A,aC,s*(A.w/2+tx/2+8),tx-10,36,asph2,0.045);}
       // Terminal
       {const tb=new THREE.Group(),TL=big?150:90,TH=big?12:9,TW=24,f1=facadeMat(TL/8,TH/4),f2=facadeMat(TW/8,TH/4);nightMats.push(f1.mat,f2.mat);
         const b=new THREE.Mesh(new THREE.BoxGeometry(TW,TH,TL),[f1.mat,f1.mat,concrete,concrete,f2.mat,f2.mat]);b.position.y=TH/2;tb.add(b);
@@ -275,8 +307,9 @@ export function buildAirports(scene,S,addParked){
       // Bodenfahrzeuge
       const veh=(al,ac,w,h,l,col)=>{const v=new THREE.Mesh(new THREE.BoxGeometry(w,h,l),new THREE.MeshStandardMaterial({color:col,roughness:0.6}));v.castShadow=true;place(A,v,al,ac,A.elev+h/2+0.3);};
       veh(aC-40,acA+s*30,2.6,2.8,8,0xf2c200);veh(aC+60,acA+s*35,2.4,2.2,6,0xe8e8e8);veh(aC+110,acA+s*20,2.2,1.4,4,0xf2c200);
-      // geparkte Flugzeuge auf dem Vorfeld
-      if(addParked){let np=0;const P2=(id,al,ac)=>{if(LOWMEM&&np++>=2)return;const r=addParked(id,A,al,ac,parkRot(s));if(r&&r.m)G0.add(r.m);};
+      clearOf(A,G0.children.slice(n0),s);
+      // geparkte Flugzeuge: auf echten Standplätzen, sonst auf dem erfundenen Vorfeld
+      if(addParked&&!parkOnStands(A,LOWMEM?2:big?6:4,big)){let np=0;const P2=(id,al,ac)=>{if(LOWMEM&&np++>=2)return;const r=addParked(id,A,al,ac,parkRot(s));if(r&&r.m)G0.add(r.m);};
         if(big){P2('l320',aC-120,acA+s*30);P2('foehn',aC-20,acA+s*25);P2('titlis',aC+70,acA+s*20);}
         else{P2('foehn',aC-60,acA+s*25);P2('titlis',aC+30,acA+s*20);}
         P2('alpina',aC-200,acA+s*10);P2('saentis',aC-230,acA+s*10);}

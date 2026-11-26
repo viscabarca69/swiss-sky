@@ -40,12 +40,13 @@ import {createCamera} from './camera.js';
 import {createMenus} from './menus.js';
 import {setClockTime} from './realcity.js';
 import {LOWMEM,MOBILE,CRASHED} from './device.js';
+import {taxiNet,holdFor} from './taxinet.js';
 
 const _el={},$=id=>_el[id]&&_el[id].isConnected?_el[id]:(_el[id]=document.getElementById(id)),DEG=Math.PI/180;
 // gemeinsamer Zustand für die ausgelagerten Module (Getter liefern immer den aktuellen Wert, z. B. den laufenden Flug G)
 const CTX={get G(){return G;},get S(){return S;},get AP(){return AP;},get atc(){return atc;},get audio(){return audio;},get scene(){return scene;},get hud(){return hud;},get career(){return career;},get save(){return save;},get attr(){return attr;},get renderer(){return renderer;},get MISSIONS(){return MISSIONS;},buildComposer:(...a)=>buildComposer(...a),checkBadges:(...a)=>checkBadges(...a),ewIds:(...a)=>ewIds(...a),fmtH:(...a)=>fmtH(...a),hourName:(...a)=>hourName(...a),liveWeather:(...a)=>liveWeather(...a),myLivery:(...a)=>myLivery(...a),renderLog:(...a)=>renderLog(...a),showBrief:(...a)=>showBrief(...a),starsHtml:(...a)=>starsHtml(...a),totalStars:(...a)=>totalStars(...a),get cam(){return cam;},get drag(){return drag;},get lastDrag(){return lastDrag;},get SHOW(){return SHOW;},get wx(){return wx;},get clamp(){return clamp;},get state(){return state;},get env(){return env;},get pad(){return pad;},get K(){return K;},get T(){return T;},ZS,applyShake:(...a)=>applyShake(...a),rpClear:(...a)=>rpClear(...a),showroomOn:(...a)=>showroomOn(...a),get world(){return world;},$,DEG,esc:(...a)=>esc(...a),
   award:(...a)=>award(...a),fmtT:(...a)=>fmtT(...a),nearestAP:(...a)=>nearestAP(...a),persist:(...a)=>persist(...a),toast:(...a)=>toast(...a)};
-const {setupGate,noseDist,placeTug,startPushback,pushTick,planTaxi,buildTaxiDots}=createGroundOps(CTX);
+const {setupGate,noseDist,placeTug,startPushback,pushTick,planTaxi,buildTaxiDots,routeToRunway}=createGroundOps(CTX);
 const {buildCockpit,updateCockpit}=createCockpit(CTX);
 const {renderLog,logCommit,markVisit}=createLogbook(CTX);
 const {updateCam,menuShots,menuCam,setMFade,MSH}=createCamera(CTX);
@@ -193,7 +194,9 @@ function keyAction(code){
     case'KeyR':startFlight(G.cfg);break;
     case'KeyO':if(F.P.heli||F.P.cls==='small'){toast('Autobrake gibt es nur bei Jets und Turboprops');break;}F.autobrake=((F.autobrake|0)+1)%4;audio.click();toast('Autobrake '+['AUS','LO','MED','MAX'][F.autobrake]+(F.autobrake?' – bremst nach dem Aufsetzen von selbst':''));break;
     case'KeyI':save.settings.units=save.settings.units==='metric'?'aviation':'metric';persist();audio.click();toast(save.settings.units==='metric'?'Einheiten: km/h und Meter':'Einheiten: Knoten und Fuss (wie im Cockpit)');break;
-    case'KeyT':atc.press(atcCtx());break;
+    case'KeyT':{// am Boden abseits der Piste: Rollweg über das echte Netz planen, dann nennt der Funk die Rollwege
+      const F=G&&G.F;if(F&&F.onGround&&!G.taxiRoute&&!G.atGate&&!G.push&&F.vel.length()<6&&!WF.runwayAt(F.pos.x,F.pos.z)){try{if(routeToRunway())buildTaxiDots();}catch(e){console.warn('Rollweg',e);}}
+      atc.press(atcCtx());break;}
   }
 }
 addEventListener('keyup',e=>K.delete(REMAP[e.code]??e.code));
@@ -211,6 +214,11 @@ const ringHalo=(r,col)=>{const h=new THREE.Mesh(new THREE.TorusGeometry(r,3.0,8,
 const crateGeo=new THREE.BoxGeometry(1.4,1.4,1.4),crateMat=new THREE.MeshStandardMaterial({color:0x9a6a36,roughness:0.85});
 const chuteGeo=new THREE.SphereGeometry(4,16,8,0,Math.PI*2,0,Math.PI/2),chuteMat=new THREE.MeshStandardMaterial({color:0xff6a1a,roughness:0.7,side:THREE.DoubleSide});
 function cleanup(){try{logCommit();}catch(e){console.warn('Logbuch',e);}{const b=$('tdb');if(b)b.className='';}if(G&&G.cshadow){try{G.cshadow.userData.rt.dispose();}catch(e){}}atc.stop();PARKED.forEach(p=>{p.gate=false;p.m.visible=true;});wx.set({dir:240},0);audio.setRain&&audio.setRain(0);if(!G)return;for(const o of G.dyn){scene.remove(o);}if(G.rfx)G.rfx.forEach(f=>scene.remove(f.m));G=null;}
+// echter Rollhalt (OSM): auf dem Rollweg kurz vor der Haltelinie, Nase zur Piste
+function holdStart(A,s,P){const net=taxiNet(A.icao),h=net&&holdFor(net,A,s);if(!h||!net.adj[h.n].length)return null;let best=null;
+  for(const k of net.adj[h.n]){const e=net.edges[k],m=e.a===h.n?e.b:e.a,d=Math.abs(toLocal(A,net.X[m],net.Z[m]).across);if(!best||d>best.d)best={m,d,len:e.len};}
+  const ux=net.X[best.m]-net.X[h.n],uz=net.Z[best.m]-net.Z[h.n],ul=Math.hypot(ux,uz)||1,back=Math.min(best.len,P.prop?12:30);
+  return{x:net.X[h.n]+ux/ul*back,z:net.Z[h.n]+uz/ul*back,yaw:Math.atan2(ux/ul,uz/ul)};}
 function startFlight(cfg){
   perf.hold=3;cleanup();audio.init();
   const mission=cfg.dyn||(cfg.mission?MISSIONS.find(m=>m.id===cfg.mission):null);
@@ -224,6 +232,7 @@ function startFlight(cfg){
     if(air){const aa=lesson&&lesson.airAt||(mAir&&[mAir.dist,mAir.agl]),dist=aa?aa[0]:P.prop?6000:10000;const p=fromLocal(A,-s*(A.len/2+dist),0);let alt=A.elev+(aa?aa[1]:P.prop?420:560);
       for(let d=0;d<=dist+800;d+=150){const q=fromLocal(A,-s*(A.len/2+d),0);alt=Math.max(alt,S.groundAt(q.x,q.z)+(d>dist-1500?280:150));}
       pos=new THREE.Vector3(p.x,alt,p.z);}
+    else if(!mission&&!lesson&&cfg.hold&&!P.heli&&holdStart(A,s,P)){const hs=holdStart(A,s,P);pos=new THREE.Vector3(hs.x,S.heightAt(hs.x,hs.z)+P.gearH,hs.z);yaw=hs.yaw;}
     else if(!mission&&!lesson&&cfg.hold&&!P.heli){// Rollhalt: neben der Piste vor der Haltelinie, Nase zur Piste
       const sd=A.side||1,p=fromLocal(A,-s*(A.len/2-110),sd*(A.w/2+60));pos=new THREE.Vector3(p.x,S.heightAt(p.x,p.z)+P.gearH,p.z);const dx=-sd*Math.cos(A.a),dz=-sd*Math.sin(A.a);yaw=Math.atan2(-dx,-dz);}
     else{const p=fromLocal(A,-s*(A.len/2-25-(P.prop?0:30)),0);pos=new THREE.Vector3(p.x,A.elev+P.gearH,p.z);}}
@@ -436,6 +445,7 @@ function step(dt){
   {const agl0=F.pos.y-S.groundAt(F.pos.x,F.pos.z);wx.terrain(dt,F.pos,S,G.hour);WF.wind=wx.update(dt,agl0);wx.kick(F,dt);if(G.therm){G.lift=thermalLift(F.pos.x,F.pos.y,F.pos.z,agl0);WF.wind.y+=G.lift;}}
   const wasGround=F.onGround;
   F.apIn=!!G.ap;liveTick(dt);
+  if(G.taxiDots&&G.taxiDots.visible&&G.taxiHold&&F.onGround&&Math.hypot(F.pos.x-G.taxiHold.x,F.pos.z-G.taxiHold.z)<28){G.taxiDots.visible=false;audio.chime();toast('Rollhalt erreicht – T: Startfreigabe anfordern, dann auf die Piste rollen.',4500);}
   if(G.push)pushTick(F,dt);else if(F.P.heli){ctl.coll=thrUp-thrDn;const n=Math.ceil(dt/(1/120));for(let i=0;i<n;i++)stepHeli(F,ctl,dt/n,WF);}else{const n=Math.ceil(dt/(1/120));for(let i=0;i<n;i++)stepFlight(F,ctl,dt/n,WF);}
   // Kisten
   for(const b of G.boxes){if(b.landed){b.t+=dt;if(b.t>12)b.g.visible=false;continue;}b.t+=dt;crateStep(b.g.position,b.v,b.t,dt);const chute=b.t>0.9;b.ch.visible=b.lines.visible=chute;
@@ -1189,7 +1199,7 @@ function checkBadges(r){
     if(G.P.id==='l380'&&lt)award('gross');if(r.m.id==='m18')award('loesch');if(['m25','m26','m27'].every(id=>save.stars[id]))award('rega');if(r.m.id==='m21')award('segel');if(['m15','m16','m17'].every(id=>save.stars[id]))award('notfall');if(r.m.contest&&G.spots&&G.spots.length&&G.spots.reduce((a,b)=>a+b,0)/G.spots.length<10)award('ziel');const j=r.m.contract;if(j&&j.daily)award('tages');if(j&&!j.daily&&career.C.done>=10)award('auftrag');}
   if(totalStars()>=30)award('kapitaen');if(career.C.earned>=1e6)award('unter');if(ORDER.every(id=>career.owns(id)))award('flotte');}
 const fmtT=s=>`${Math.floor(s/60)}:${String(Math.floor(s%60)).padStart(2,'0')}`;
-function atcCtx(){const F=G.F,A=G.startAP,tx=G.obj&&G.obj.find(o=>o.type==='taxi');return{F,taxiVia:G.taxiRoute?G.taxiRoute.names:null,taxiHold:tx&&tx.ref||'',metric:save.settings.units==='metric',wind:{...wx.cur,gustTxt:wx.cfg.gust>3},traffic,startRwy:A?(G.startRev?A.rwyB:A.rwyA):'',startRwyObj:A,pad:pad.connected,agl:F.pos.y-S.groundAt(F.pos.x,F.pos.z)-F.P.gearH,onRwy:!!WF.runwayAt(F.pos.x,F.pos.z),temp:G.live&&LIVE&&LIVE.T!=null?LIVE.T:null,vis:env&&env.fogVis?env.fogVis():null};}
+function atcCtx(){const F=G.F,A=G.startAP,tx=G.obj&&G.obj.find(o=>o.type==='taxi');return{F,taxiVia:G.taxiRoute?G.taxiRoute.names:null,taxiHold:(tx&&tx.ref)||(G.taxiHold&&G.taxiHold.ref)||'',metric:save.settings.units==='metric',wind:{...wx.cur,gustTxt:wx.cfg.gust>3},traffic,startRwy:A?(G.startRev?A.rwyB:A.rwyA):'',startRwyObj:A,pad:pad.connected,agl:F.pos.y-S.groundAt(F.pos.x,F.pos.z)-F.P.gearH,onRwy:!!WF.runwayAt(F.pos.x,F.pos.z),temp:G.live&&LIVE&&LIVE.T!=null?LIVE.T:null,vis:env&&env.fogVis?env.fogVis():null};}
 // ---------- Wiederholung ----------
 const RP={t:0,mode:0,camT:0,next:false,anchor:new THREE.Vector3(),speed:1,lock:false};
 const RPS=[0.25,0.5,1,2,4,8];
