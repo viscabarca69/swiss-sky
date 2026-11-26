@@ -4,6 +4,7 @@
 import * as THREE from 'three';
 import {GEO} from './worldgen.js';
 import {LOWMEM} from './device.js';
+import {STU,STREAM_GLSL} from './stream.js';
 
 // Gebiete in Schweizer Landeskoordinaten (LV95), Kacheln 1 km × 1 km, benannt nach der Südwest-Ecke in km
 export const ORTHO_REGIONS=[
@@ -48,15 +49,16 @@ const blank=new THREE.DataTexture(new Uint8Array([128,128,128,255]),1,1);blank.n
 export const ORU={orA:{value:blank},orB:{value:blank},orH0:{value:blank},orH1:{value:blank},orH2:{value:blank},orH3:{value:blank},
   orAE:{value:new THREE.Vector3()},orAN:{value:new THREE.Vector3()},orBE:{value:new THREE.Vector3()},orBN:{value:new THREE.Vector3()},
   orABox:{value:new THREE.Vector4(0,0,1,1)},orBBox:{value:new THREE.Vector4(0,0,1,1)},orOn:{value:new THREE.Vector2(0,0)},
-  orHT:{value:[0,1,2,3].map(()=>new THREE.Vector4(0,0,0,0))},orGain:{value:0.92}};
+  orHT:{value:[0,1,2,3].map(()=>new THREE.Vector4(0,0,0,0))},orGain:{value:0.92},...STU};
 // im Shader relativ zur Südwest-Ecke des Gebiets rechnen (kleine Zahlen -> genug Genauigkeit in float32)
 {const [A,B]=ORTHO_REGIONS,rel=(a,o)=>[a[0],a[1],a[2]-o];
   ORU.orAE.value.fromArray(rel(A.aff.E,A.e0*1000));ORU.orAN.value.fromArray(rel(A.aff.N,A.n0*1000));ORU.orBE.value.fromArray(rel(B.aff.E,B.e0*1000));ORU.orBN.value.fromArray(rel(B.aff.N,B.n0*1000));
   ORU.orABox.value.set(0,0,(A.e1-A.e0)*1000,(A.n1-A.n0)*1000);ORU.orBBox.value.set(0,0,(B.e1-B.e0)*1000,(B.n1-B.n0)*1000);}
 
 export const ORTHO_GLSL_HEAD=`uniform sampler2D orA,orB,orH0,orH1,orH2,orH3;uniform vec3 orAE,orAN,orBE,orBN;uniform vec4 orABox,orBBox;uniform vec2 orOn;uniform vec4 orHT[4];uniform float orGain;
+${STREAM_GLSL}
 // Luftbild an einer Weltposition: rgb (linear) + Deckung (0 ausserhalb, weicher Rand 350 m)
-vec4 orthoAt(vec2 wp){vec3 P3=vec3(wp.x,wp.y,1.0);vec2 eA=vec2(dot(P3,orAE),dot(P3,orAN)),eB=vec2(dot(P3,orBE),dot(P3,orBN));vec3 oc=vec3(0.0);float m=0.0;
+vec4 orthoStatic(vec2 wp){vec3 P3=vec3(wp.x,wp.y,1.0);vec2 eA=vec2(dot(P3,orAE),dot(P3,orAN)),eB=vec2(dot(P3,orBE),dot(P3,orBN));vec3 oc=vec3(0.0);float m=0.0;
  vec2 uA=(eA-orABox.xy)/orABox.zw,uB=(eB-orBBox.xy)/orBBox.zw;
  if(orOn.x>0.5&&uA.x>0.0&&uA.x<1.0&&uA.y>0.0&&uA.y<1.0){float ed=min(min(eA.x,orABox.z-eA.x),min(eA.y,orABox.w-eA.y));m=smoothstep(0.0,350.0,ed);oc=texture2D(orA,uA).rgb;}
  else if(orOn.y>0.5&&uB.x>0.0&&uB.x<1.0&&uB.y>0.0&&uB.y<1.0){float ed=min(min(eB.x,orBBox.z-eB.x),min(eB.y,orBBox.w-eB.y));m=smoothstep(0.0,350.0,ed);oc=texture2D(orB,uB).rgb;}
@@ -64,7 +66,10 @@ vec4 orthoAt(vec2 wp){vec3 P3=vec3(wp.x,wp.y,1.0);vec2 eA=vec2(dot(P3,orAE),dot(
   #define ORHI(k,S) if(orHT[k].z>0.5){vec2 u=((orHT[k].w>0.5?eB:eA)-orHT[k].xy)/1000.0;if(u.x>0.0&&u.x<1.0&&u.y>0.0&&u.y<1.0)oc=texture2D(S,u).rgb;}
   ORHI(0,orH0) ORHI(1,orH1) ORHI(2,orH2) ORHI(3,orH3)
  }
- return vec4(oc*orGain,m);}`;
+ return vec4(oc*orGain,m);}
+// mitgelieferte Luftbilder (Zürich, Strengelbach: Flugzeuge entfernt) vor dem Stream; dazwischen weich überblenden
+vec4 orthoAt(vec2 wp){vec4 s=orthoStatic(wp);if(s.a>0.999)return s;vec4 t=streamAt(wp);if(t.a<0.001)return s;t.rgb*=orGain;
+ float A=s.a+t.a*(1.0-s.a);return vec4((s.rgb*s.a+t.rgb*t.a*(1.0-s.a))/max(A,1e-4),A);}`;
 // nach der Grundfarbe des Geländes: Luftbild darüberlegen
 export const ORTHO_GLSL_BODY=`
 float oM=0.0;{vec4 o4=orthoAt(vWP.xz);oM=o4.a;if(oM>0.0)diffuseColor.rgb=mix(diffuseColor.rgb,o4.rgb,oM);}

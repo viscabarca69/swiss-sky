@@ -4,6 +4,7 @@ import {Reflector} from 'three/addons/objects/Reflector.js';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {HALF,WORLD,G,N1,CELL,ROADS,RIVERS,LAKES,TOWNS,FLATS,toLocal,AIRPORTS} from './worldgen.js';
 import {taxiNet,nearestEdge} from './taxinet.js';
+import {STU,STREAM_GLSL} from './stream.js';
 import {makeSimplex,mulberry,clamp,sstep} from './noise.js';
 
 export const nightU={value:0};
@@ -74,8 +75,14 @@ export function buildExtras(scene,S,Q,W,airportNear){
   // ---------- Strassen & Flüsse ----------
   const rt=roadTex();
   const rm=new THREE.MeshStandardMaterial({map:rt,roughness:0.85,polygonOffset:true,polygonOffsetFactor:-4,polygonOffsetUnits:-4});
+  // wo das gestreamte Luftbild liegt, zeigt es Strassen und Flüsse am echten Ort: die gezeichneten Bänder dort weglassen
+  const hideUnderPhoto=m=>{m.onBeforeCompile=sh=>{Object.assign(sh.uniforms,STU);
+    sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vWPs;').replace('#include <worldpos_vertex>','#include <worldpos_vertex>\nvWPs=(modelMatrix*vec4(transformed,1.0)).xyz;');
+    sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vWPs;\n'+STREAM_GLSL).replace('void main() {','void main() {\nif(streamAt(vWPs.xz).a>0.55)discard;');};};
+  hideUnderPhoto(rm);
   const road=new THREE.Mesh(ribbon(ROADS,S,R=>R.w>2?22:12,0.8,(x,z)=>S.isLake(x,z)||!!airportNear(x,z,0)||(W.inOrtho&&W.inOrtho(x,z,-60))),rm);road.receiveShadow=true;scene.add(road);
   const rvm=new THREE.MeshStandardMaterial({color:0x1d4148,roughness:0.12,metalness:0.1,envMapIntensity:1.0,normalMap:W.waterTex,normalScale:new THREE.Vector2(0.25,0.25),polygonOffset:true,polygonOffsetFactor:-3,polygonOffsetUnits:-3});
+  hideUnderPhoto(rvm);
   const river=new THREE.Mesh(ribbon(RIVERS,S,R=>Math.max(18,R.w),0.9,(x,z)=>S.isLake(x,z)||(W.inOrtho&&W.inOrtho(x,z,-60)),true),rvm);scene.add(river);
 
   // ---------- Kirchtürme ----------
