@@ -10,6 +10,16 @@ Artifact slug e3615a1f-7860-4277-b4c4-84ea1ba2abea · letzte veröffentlichte Ve
 Backup Etappe 1: /tmp/af_e1 (kann nach Neustart weg sein)
 Testen: /tmp/run.sh test/<x>.py (Playwright, SwiftShader) · node test/jobs.mjs (Routen) · node test/mis.mjs
 
+## Version 12.1 (26.11.2026) – Daten-Pipeline auf GitHub
+- **Pipeline** `tools/pipeline/` + `.github/workflows/daten.yml`: läuft auf GitHub Actions (Push auf Zweig `pipeline` oder von Hand), weil der Arbeitsbereich swisstopo nicht erreicht. Ergebnis auf Zweig `daten-out` (force-push), danach lokal `terrain_build.py` / `sb3d_build.py`.
+  - `terrain_fetch.py`: swissALTIRegio-COG (55000×43000, 10 m, Übersichten bis 860×672) per /vsicurl/ → gdalwarp EPSG:2056→4326, Pixelmitten = Spielgitterknoten (Spielgitter ist linear in lat/lon), -r average, 3073² → `alti_game.f32.gz`. Dauer ~1 min.
+  - `terrain_build.py <in>`: übernimmt Höhen (Abdeckung 100 %), Seemaske (B) und Seegrund bleiben, Ufer im Umkreis 4 Zellen ≥ Seespiegel + 0,8 m (sonst Flimmern/Mulden, z. B. Greyerzersee −65 m). Abweichung alt→neu: Mittel |Δ| 35 m, p99 419 m (altes Modell grob).
+  - `sb3d_fetch.py`: STAC-Suche je Flugplatz-Quadrat (Halbseite 1200–2200 m), je Kachel neuester Jahrgang, GDB → Building_solid → Spielkoordinaten (npz). Felder: UUID, OBJEKTART, … DACH_MAX, GESAMTHOEHE.
+  - `sb3d_build.py <in>`: ohne Unterirdisch/unsichtbar/Mauern, Boden weg, meshoptimizer (pip `meshoptimizer`, Fehler 1,0 m absolut), Art nach OBJEKTART (Hochhaus 1, sakral 2, Flugdach/offen/Halle 3, Treibhaus 4, Tank/Kamin/Turm 5), an SSB2 angehängt (Kacheln mit `ap`, Cover-Quadrat mit 9. Wert 1 → ein neuer Lauf ersetzt sie). 22 715 Gebäude, 1,45 M → 0,55 M Dreiecke, buildings.txt 11,7 → 14,8 MB.
+- `airports3d.buildAirports(…, inReal)`: wo echte Gebäude liegen (Cover), keine erfundenen Terminals/Tower/Hallen/Tanks/Parkplätze; Flugzeuge, Windsack bleiben.
+- Flugplatzhöhen angepasst: REI 751 → 723, ZOF 437 → 424 (neues Gelände).
+- Test: alle Missionen starten ohne Absturz (mis_check), Ansichten Jungfrau/Sion/Emmen/Belp/Zürichsee.
+
 ## Version 12.0 (26.11.2026)
 - **Vom Stand zum Stand** (`taxinet.standsFor`, `main.startFlight`, Ankunft im Loop): Menü-Chip «Am Standplatz» an allen OSM-Plätzen ausser Zürich (dort weiter Gate). Stände mit eigener Einfahrtslinie (Sackgasse) oder frei (Nase weg vom nächsten Rollweg, keine Sackgassen/Pisten, 8–100 m). Jets: Abstand ≥ 34 m zum Nachbarstand, nur Stände mit gültigem Pushback-Plan (`planPushback`, bis 12 Versuche). Bevorzugt: auf gezeichnetem Vorfeld (`ap`), frei (kein PARKED < 30 m). Nach der Landung (`G.arrAP`, Aufsetzen nach > 20 s Flug): sobald < 13 m/s und neben der Piste → Weg zum nächsten freien Stand (5 Kandidaten, kürzester Weg), grüne Punkte, «Parkposition erreicht» < 14 m und < 1,5 m/s.
 - **Gate-Fix**: «Am Standplatz» an einem anderen Platz setzte Jets nach Zürich (gateP filterte nur LSZH, nicht cfg.ap).

@@ -132,7 +132,7 @@ async function boot(){
   env=createEnv(renderer,scene,Q);env.onSun=d=>world.uSun.value.copy(d);
   buildComposer();
   prog(0.9,'Flughäfen werden gebaut');await new Promise(r=>setTimeout(r,0));
-  airports=buildAirports(scene,S,addParked);finalizeParked();
+  airports=buildAirports(scene,S,addParked,world&&world.inReal);finalizeParked();
   try{helipads=buildHelipads(scene,S,world.heavy);}catch(e){console.warn('Landeplätze',e);}
   traffic=createTraffic(scene,S,buildModel,animateModel,PLANES,helipads);traffic.prewarm();
   attr=createAttractions(scene,S,{collected:ewIds(),area:AREA_ID,realCover:world.inReal});
