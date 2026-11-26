@@ -16,7 +16,7 @@ export const ORTHO_REGIONS=[
   {id:'brn',name:'Flughafen Bern-Belp',e0:2603,e1:2606,n0:1194,n1:1198,T:256,ic:'LSZB'},
   {id:'lug',name:'Flughafen Lugano-Agno',e0:2712,e1:2716,n0:1094,n1:1098,T:256,ic:'LSZA'},
   {id:'sio',name:'Flughafen Sion',e0:2589,e1:2594,n0:1117,n1:1120,T:256,ic:'LSGS'}];
-const ORTHO_DATA=null; // Offline-Version: hier stehen die Bilder als Data-URLs
+const ORTHO_DATA=typeof window!=='undefined'&&window.__OFF&&window.__OFF.ortho||null; // Offline-Datei: Bilder als Data-URLs
 const url=(e,n,k)=>{const key=`${e}_${n}_${k}`;return ORTHO_DATA&&ORTHO_DATA[key]||`data/ortho/${key}.webp`;};
 
 // LV95 -> WGS84 (Näherungsformeln von swisstopo) -> Spielkoordinaten

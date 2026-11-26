@@ -18,6 +18,7 @@ Testen: /tmp/run.sh test/<x>.py (Playwright, SwiftShader) · node test/jobs.mjs 
 - `gfx.hideUnderPhoto`: verwirft Strassen-/Fluss-Pixel, wo `orthoAt` (statisch + Stream) > 0,55 deckt; Bänder werden nicht mehr an der Gebietsgrenze abgeschnitten.
 - Gebäude: sb3d für GVA (2400) und LUG (1300) – vorher Flughafenzonen ausgespart. `sb3d_build` prüft jetzt gegen vorhandene Grundrisse (Mitte im Rechteck ±1 m) statt gegen Cover → nur Fehlendes: GVA +591, LUG +778. `coverTest(RC,true)` (nur Flugplatz-Quadrate) entscheidet über erfundene Flughafengebäude (vorher in 12.1: GVA/LUG/ZOF fälschlich ohne Gebäude).
 - Offen: Flugzeuge im Luftbild nicht entfernt (in Zürich schon).
+- **Offline-Datei** neu: `tools/build_offline.mjs` (aus /home/claude/buildtools mit node_modules/esbuild 0.24 + Link three → /home/claude/tools/node_modules/three 0.160): bündelt desk.js+main.js, Daten in `window.__OFF` (terrain, buildings, ortho) – swissdata.js/ortho.js lesen es, sonst data/…; Schriften als Data-URL im CSS. 122,7 MB, getestet über file:// ohne Internet (Luftbilder, 128k Gebäude, localStorage ok; Stream schaltet sich ab).
 
 ## Version 12.1 (26.11.2026) – Daten-Pipeline auf GitHub
 - **Pipeline** `tools/pipeline/` + `.github/workflows/daten.yml`: läuft auf GitHub Actions (Push auf Zweig `pipeline` oder von Hand), weil der Arbeitsbereich swisstopo nicht erreicht. Ergebnis auf Zweig `daten-out` (force-push), danach lokal `terrain_build.py` / `sb3d_build.py`.
