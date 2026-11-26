@@ -1367,6 +1367,9 @@ function padTick(dt){pad.poll(dt);if(!pad.connected)return;if(state==='photo'){P
 
 // ---------- Hauptschleife ----------
 let last=performance.now(),T=0,fpsA=0;
+// Sicherung: wirft ein Teilsystem einen Fehler, läuft das Bild weiter (Fehler einmal melden statt einfrieren)
+const OOPS=new Set();
+function safe(tag,fn){try{fn();}catch(e){if(!OOPS.has(tag)){OOPS.add(tag);console.error('Fehler in '+tag,e);try{toast('Interner Fehler ('+tag+') – Spiel läuft weiter. Bitte Screenshot an Claude: '+String(e&&e.message||e).slice(0,80),7000);}catch(_){}}}}
 function loop(now){
   requestAnimationFrame(loop);const raw=(now-last)/1000;const dt=Math.min(0.05,raw);last=now;T+=dt;
   if(!env)return;
@@ -1393,11 +1396,11 @@ function loop(now){
     env.update(F.pos,cam,P_shadow(G.P));flareTick();
     audio.update({silent:state!=='fly'&&state!=='map'||F.crashed,kind:G.P.heli?'heli':G.P.glider?'none':G.P.prop?(G.P.id==='alpina'?'piston':'turboprop'):'jet',rpm:G.P.heli?F.rotor*(0.6+0.4*F.eng):0.25+0.75*F.eng,speed:F.vel.length(),inside:G.cam===1,stall:F.stalled&&!F.onGround});
   }else if(state==='menu'){if(FLARE)FLARE.visible=false;menuCam(T);env.update(cam.position.clone().add(new THREE.Vector3(0,-60,0)),cam,120);audio.update({silent:true});}
-  if(traffic&&state!=='load')traffic.update(state==='pause'?0:dt,G&&state!=='menu'?G.F:null,T,env.night,{s:glowU.uScale.value,f:glowU.uFogD.value},cam.position);
-  if(attr&&state!=='load')attr.update(state==='pause'?0:dt,T,cam,env.night,glowU.uScale.value,wx.wind);
+  if(traffic&&state!=='load')safe('Verkehr',()=>traffic.update(state==='pause'?0:dt,G&&state!=='menu'?G.F:null,T,env.night,{s:glowU.uScale.value,f:glowU.uFogD.value},cam.position));
+  if(attr&&state!=='load')safe('Attraktionen',()=>attr.update(state==='pause'?0:dt,T,cam,env.night,glowU.uScale.value,wx.wind));
 
-  ctxUpdate(performance.now()/1000);world.updateTrees(cam.position);{const agl=cam.position.y-S.groundAt(cam.position.x,cam.position.z);if(orthoUp)orthoUp(cam.position,agl);if(streamUp)streamUp.update(cam.position,agl);}
-  airports.update(G&&G.cam!==1?G.F.pos:cam.position,T,glowU.uScale.value,glowU.uFogD.value);farCull(cam.position,dt||0.016);
+  safe('Funk',()=>ctxUpdate(performance.now()/1000));safe('Gelände',()=>world.updateTrees(cam.position));{const agl=cam.position.y-S.groundAt(cam.position.x,cam.position.z);if(orthoUp)safe('Luftbild',()=>orthoUp(cam.position,agl));if(streamUp)safe('Luftbild-Stream',()=>streamUp.update(cam.position,agl));}
+  safe('Flugplätze',()=>{airports.update(G&&G.cam!==1?G.F.pos:cam.position,T,glowU.uScale.value,glowU.uFogD.value);farCull(cam.position,dt||0.016);});
   cityU.uI.value=env.night*1.25;if(helipads){helipads.setNight(env.night);if(G&&G.F)helipads.update(G.F.pos,1/30);}cityU.uScale.value=glowU.uScale.value;cityU.uFogD.value=glowU.uFogD.value;
   world.waterTex.offset.x=T*0.006;world.waterTex.offset.y=T*0.004;
   nightU.value=env.night;setClockTime(G&&G.hour!=null?G.hour:12,env.night);airports.setNight(env.night);world.water.material.envMapIntensity=1.15*(1-0.8*env.night);const X=world.extras;if(X){if(X.updateWater)X.updateWater(cam,T,env);X.updateBoats(dt,T);}

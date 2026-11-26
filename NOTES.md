@@ -10,6 +10,11 @@ Artifact slug e3615a1f-7860-4277-b4c4-84ea1ba2abea · letzte veröffentlichte Ve
 Backup Etappe 1: /tmp/af_e1 (kann nach Neustart weg sein)
 Testen: /tmp/run.sh test/<x>.py (Playwright, SwiftShader) · node test/jobs.mjs (Routen) · node test/mis.mjs
 
+## Version 12.4.1 (26.11.2026) – Einfrieren
+- traffic.js lod(): parts.lights ist {P,u,pts} (kein Object3D) → TypeError in jedem Bild, sobald KI-Verkehr da war → Rest der Schleife (Render!) übersprungen = eingefrorenes Bild. Jetzt L.P.traverse.
+- main.js safe(tag,fn): Verkehr, Attraktionen, Funk, Gelände/Bäume, Luftbild, Stream, Flugplätze einzeln abgesichert; Fehler einmal als Toast + console.error.
+- Lehre: Tests müssen > 60 s Spielzeit mit KI-Verkehr laufen (traf.json: traffic.update 240× mit dt 0,5).
+
 ## Version 12.4 (26.11.2026) – Ruckeln
 - Messung auf Luis' Laptop (eingebauter Browser, Intel Iris Xe, ANGLE D3D11, DPR 2, Qualität «Hoch» → 2160×1350): Bild ~66 ms, davon composer.render ~50 ms (GTAO: zweiter Szenendurchgang + overrideVisibility über 5000 Objekte), direkt ~22–30 ms, fast alles CPU in renderer.render (~1000 Draw-Calls). Übrige Spiel-Logik < 5 ms. Messung im versteckten Fenster: rAF über MessageChannel ersetzt, gl.finish je Bild.
 - AO «Auto» nur noch Ultra ohne IGPU. IGPU-Erkennung über WEBGL_debug_renderer_info (Intel/Iris/UHD/Radeon Graphics/Mali/Adreno/SwiftShader …): pr ≤ 1 (Ultra 1,25), PCFShadowMap, Schattenkarte 2048.

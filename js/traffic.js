@@ -122,7 +122,7 @@ export function createTraffic(scene,S,buildModel,animateModel,PLANES,HP){
   let MENU_F=null;
   // weit weg (> 14 km) nur noch Positionslichter und Kondensstreifen zeichnen: spart je Flugzeug ~12 Zeichenaufrufe
   const FAR2=14000*14000;
-  function lod(m,far){const u=m.userData;if(!u.lodM){const keep=new Set();if(u.trail)u.trail.traverse(o=>keep.add(o));if(u.parts&&u.parts.lights)u.parts.lights.traverse(o=>keep.add(o));
+  function lod(m,far){const u=m.userData;if(!u.lodM){const keep=new Set();if(u.trail&&u.trail.traverse)u.trail.traverse(o=>keep.add(o));const L=u.parts&&u.parts.lights;if(L&&L.P&&L.P.traverse)L.P.traverse(o=>keep.add(o));
       u.lodM=[];m.traverse(o=>{if((o.isMesh||o.isLine)&&!keep.has(o))u.lodM.push(o);});u.far=false;}
     if(u.far===far)return;u.far=far;for(const o of u.lodM)o.layers.mask=far?0:1;}
   T.update=(dt,F,t,night,glow,cp)=>{
