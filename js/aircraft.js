@@ -991,7 +991,9 @@ export function buildModel(id,opts={}){
   }
   if(AIRLINER[id])buildAirliner(AIRLINER[id],body,parts,root,P);
   body.traverse(o=>{if(o.isMesh&&!o.material.transparent)o.castShadow=true;});
-  if(opts.landingLight){const sl=new THREE.SpotLight(0xfff1dc,0,1400,0.32,0.6,1.3);sl.position.copy(parts.landing);sl.target.position.copy(parts.landing).add(new THREE.Vector3(0,-2.4,-25));body.add(sl,sl.target);parts.spot=sl;}
+  // Landescheinwerfer: KEIN eigenes Licht im Modell (jede Änderung der Lichterzahl übersetzt alle Shader neu = sekundenlanges Einfrieren).
+  // Nur Markierungen; das eine echte Scheinwerferlicht der Szene folgt dem eigenen Flugzeug (main.js LAND).
+  if(opts.landingLight){const a=new THREE.Object3D(),b=new THREE.Object3D();a.position.copy(parts.landing);b.position.copy(parts.landing).add(new THREE.Vector3(0,-2.4,-25));body.add(a,b);parts.spot={intensity:0,at:a,to:b};}
   // Räder genau auf Bodenhöhe (gearH): Fahrwerksbeine entsprechend verschieben
   if(parts.wheels&&parts.wheels.length&&!P.heli){root.updateMatrixWorld(true);let wMin=1e9;const bx=new THREE.Box3();for(const w of parts.wheels){bx.setFromObject(w,true);wMin=Math.min(wMin,bx.min.y);}
     const d=-P.gearH-wMin;if(Math.abs(d)>0.01&&Math.abs(d)<1.5)for(const gg of parts.gear||[])if(gg.g&&!gg.fixed)gg.g.position.y+=d;}

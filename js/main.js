@@ -92,6 +92,12 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,Q.pr));
 renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.outputColorSpace=THREE.SRGBColorSpace;
 renderer.shadowMap.enabled=Q.shadows;renderer.shadowMap.type=IGPU?THREE.PCFShadowMap:THREE.PCFSoftShadowMap;if(IGPU)Q.shadowMap=2048;
 const scene=new THREE.Scene();
+// genau EIN Scheinwerferlicht in der ganzen Szene, immer vorhanden (Lichterzahl bleibt konstant → keine Shader-Neuübersetzung)
+const LAND=new THREE.SpotLight(0xfff1dc,0,1400,0.32,0.6,1.3);scene.add(LAND,LAND.target);
+const _lv=new THREE.Vector3();
+function landLight(){const sp=G&&G.model&&G.model.userData.parts&&G.model.userData.parts.spot;
+  if(!sp||!sp.at||!G.model.visible){LAND.intensity=0;return;}
+  sp.at.getWorldPosition(LAND.position);sp.to.getWorldPosition(_lv);LAND.target.position.copy(_lv);LAND.target.updateMatrixWorld();LAND.intensity=sp.intensity||0;}
 let composer=null,bloom=null,aoPass=null;
 // Umgebungsverdeckung (GTAO): nur feste Flächen in der Nähe der Kamera, Wolken/Wasser/Partikel bleiben aussen vor
 class AOPass extends GTAOPass{constructor(sc,cm,w,h,res){super(sc,cm,Math.round(w*res),Math.round(h*res));this.res=res;}
@@ -1406,6 +1412,7 @@ function loop(now){
   nightU.value=env.night;setClockTime(G&&G.hour!=null?G.hour:12,env.night);airports.setNight(env.night);world.water.material.envMapIntensity=1.15*(1-0.8*env.night);const X=world.extras;if(X){if(X.updateWater)X.updateWater(cam,T,env);X.updateBoats(dt,T);}
   if(window.__camHold){const h=window.__camHold;cam.position.set(h[0],h[1],h[2]);cam.up.set(0,1,0);cam.lookAt(h[3],h[4],h[5]);cam.fov=h[6]||50;cam.near=1;cam.updateProjectionMatrix();}
   if(window.__dbgCam){const d=window.__dbgCam;cam.position.set(d[0],d[1],d[2]);cam.up.set(0,1,0);cam.lookAt(d[3],d[4],d[5]);cam.fov=d[6]||50;cam.near=0.5;cam.updateProjectionMatrix();}// Testkamera (nur für Bild-Tests)
+  safe('Scheinwerfer',landLight);
   if(composer&&!window.__noComp){if(bloom)bloom.strength=0.22+0.5*env.night;if(aoPass){const p=cam.position;aoBox.min.set(p.x-700,p.y-700,p.z-700);aoBox.max.set(p.x+700,p.y+700,p.z+700);aoPass.setSceneClipBox(aoBox);}composer.render();}else renderer.render(scene,cam);
 }
 const P_shadow=P=>P.shadow;

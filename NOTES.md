@@ -10,6 +10,11 @@ Artifact slug e3615a1f-7860-4277-b4c4-84ea1ba2abea · letzte veröffentlichte Ve
 Backup Etappe 1: /tmp/af_e1 (kann nach Neustart weg sein)
 Testen: /tmp/run.sh test/<x>.py (Playwright, SwiftShader) · node test/jobs.mjs (Routen) · node test/mis.mjs
 
+## Version 12.4.2 (26.11.2026) – Einfrieren durch Shader-Neuübersetzung
+- Gemessen auf Luis' Laptop (12.4.1, Sparmodus): EIN renderer.render dauerte 20,3 s und übersetzte 30 Programme. Ursache: buildModel(...,{landingLight:true}) hängte eine THREE.SpotLight an jedes Modell (auch KI-Verkehr) → numSpotLights ändert sich bei jedem Auftauchen/Verschwinden → alle beleuchteten Materialien neu (ANGLE/D3D11 ~0,7 s je Programm).
+- Jetzt: parts.spot = {intensity, at, to} (nur Markierungen); main.js LAND = eine SpotLight in der Szene (immer da, Intensität 0), folgt G.model (landLight()). Test progs.json: Programme bleiben beim Spawnen konstant.
+- Regel: Lichterzahl, castShadow und Nebeltyp zur Laufzeit NIE ändern.
+
 ## Version 12.4.1 (26.11.2026) – Einfrieren
 - traffic.js lod(): parts.lights ist {P,u,pts} (kein Object3D) → TypeError in jedem Bild, sobald KI-Verkehr da war → Rest der Schleife (Render!) übersprungen = eingefrorenes Bild. Jetzt L.P.traverse.
 - main.js safe(tag,fn): Verkehr, Attraktionen, Funk, Gelände/Bäume, Luftbild, Stream, Flugplätze einzeln abgesichert; Fehler einmal als Toast + console.error.
