@@ -114,7 +114,9 @@ export async function buildWorld(scene,H,LK,S,Q,progress){
   const tmat=new THREE.MeshStandardMaterial({map:sat,roughness:0.97,metalness:0,envMapIntensity:0.55});
   tmat.onBeforeCompile=sh=>{
     sh.uniforms.clsMap={value:clsTex};sh.uniforms.uWin=W.uWin;sh.uniforms.uSun=W.uSun;Object.assign(sh.uniforms,ORU);
-    sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vWP;varying vec3 vWN;')
+    // Geomorphing: jede Ecke gleitet mit der Entfernung auf die Höhe der nächstgröberen Stufe (aM.x) – beim Stufenwechsel springt nichts
+    sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vWP;varying vec3 vWN;attribute vec2 aM;')
+      .replace('#include <begin_vertex>','#include <begin_vertex>\n{float dd=distance(cameraPosition,transformed);transformed.y=mix(transformed.y,aM.x,smoothstep(aM.y*0.55,aM.y,dd));}')
       .replace('#include <worldpos_vertex>','#include <worldpos_vertex>\nvWP=(modelMatrix*vec4(transformed,1.0)).xyz;vWN=normalize(mat3(modelMatrix)*objectNormal);');
     sh.fragmentShader=sh.fragmentShader.replace('#include <common>',`#include <common>
 uniform sampler2D clsMap;uniform float uWin;uniform vec3 uSun;varying vec3 vWP;varying vec3 vWN;
@@ -198,19 +200,25 @@ ${ORTHO_GLSL_BODY}`)
   };
   // Kacheln mit Detailstufen: nah fein, weit grob; Schürzen verdecken Spalten zwischen den Stufen
   const CHN=128,NC=G/CHN,IDX={},GC=new Map(),terrain=new THREE.Group();scene.add(terrain);W.terrain=terrain;
+  // Stufe s gilt bis LODT[s] m (danach 2s); die Ecken sind dort schon ganz auf die gröbere Stufe geglitten
+  const LODD=[[1,6000],[2,14000],[4,32000]],LODT={1:6000,2:14000,4:32000};
   function idxFor(s){if(IDX[s])return IDX[s];const n=CHN/s,v=n+1,ix=[];
     for(let j=0;j<n;j++)for(let i=0;i<n;i++){const a=j*v+i,b=a+1,c=a+v,d=c+1;ix.push(a,c,b,b,c,d);}
     const E=[[],[],[],[]];for(let k=0;k<v;k++){E[0].push(k);E[1].push(k*v+n);E[2].push(n*v+k);E[3].push(k*v);}
     E.forEach((e,ei)=>{for(let k=0;k<n;k++){const v0=e[k],v1=e[k+1],s0=v*v+ei*v+k,s1=s0+1;ix.push(v0,s0,v1,v1,s0,s1,v0,v1,s0,v1,s1,s0);}});
     return IDX[s]=new THREE.Uint32BufferAttribute(ix,1);}
   function buildChunk(ci,cj,s){const key=ci+','+cj+','+s;let g=GC.get(key);if(g){GC.delete(key);GC.set(key,g);return g;}
-    const n=CHN/s,v=n+1,NV=v*v+4*v,pos=new Float32Array(NV*3),nor=new Float32Array(NV*3),uv=new Float32Array(NV*2),gi0=ci*CHN,gj0=cj*CHN;
-    const put=(o,gi,gj,dy)=>{const k=gj*N1+gi,hl=H[gi>0?k-1:k],hr=H[gi<G?k+1:k],hu=H[gj>0?k-N1:k],hd=H[gj<G?k+N1:k];
+    const n=CHN/s,v=n+1,NV=v*v+4*v,pos=new Float32Array(NV*3),nor=new Float32Array(NV*3),uv=new Float32Array(NV*2),am=new Float32Array(NV*2),gi0=ci*CHN,gj0=cj*CHN;
+    // Höhe der nächstgröberen Stufe (Schritt 2s) an dieser Ecke – wie deren Dreiecke sie interpolieren (Diagonale b–c)
+    const Hg=(gi,gj)=>H[Math.min(G,Math.max(0,gj))*N1+Math.min(G,Math.max(0,gi))],tM=(LODT[s]||1e9);
+    const hC=(gi,gj)=>{if(s>=8)return Hg(gi,gj);const oi=((gi-gi0)/s)&1,oj=((gj-gj0)/s)&1;
+      if(!oi&&!oj)return Hg(gi,gj);if(oi&&!oj)return (Hg(gi-s,gj)+Hg(gi+s,gj))/2;if(!oi&&oj)return (Hg(gi,gj-s)+Hg(gi,gj+s))/2;return (Hg(gi+s,gj-s)+Hg(gi-s,gj+s))/2;};
+    const put=(o,gi,gj,dy)=>{am[o*2]=hC(gi,gj)-dy;am[o*2+1]=tM;const k=gj*N1+gi,hl=H[gi>0?k-1:k],hr=H[gi<G?k+1:k],hu=H[gj>0?k-N1:k],hd=H[gj<G?k+N1:k];
       const nx=-(hr-hl)/(2*CELL),nz=-(hd-hu)/(2*CELL),l=Math.hypot(nx,1,nz);
       pos[o*3]=-HALF+gi*CELL;pos[o*3+1]=H[k]-dy;pos[o*3+2]=-HALF+gj*CELL;nor[o*3]=nx/l;nor[o*3+1]=1/l;nor[o*3+2]=nz/l;uv[o*2]=gi/G;uv[o*2+1]=1-gj/G;};
     for(let j=0;j<v;j++)for(let i=0;i<v;i++)put(j*v+i,gi0+i*s,gj0+j*s,0);
     const D=25+35*s;for(let k=0;k<v;k++){put(v*v+k,gi0+k*s,gj0,D);put(v*v+v+k,gi0+n*s,gj0+k*s,D);put(v*v+2*v+k,gi0+k*s,gj0+n*s,D);put(v*v+3*v+k,gi0,gj0+k*s,D);}
-    g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('normal',new THREE.BufferAttribute(nor,3));g.setAttribute('uv',new THREE.BufferAttribute(uv,2));
+    g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('normal',new THREE.BufferAttribute(nor,3));g.setAttribute('uv',new THREE.BufferAttribute(uv,2));g.setAttribute('aM',new THREE.BufferAttribute(am,2));
     g.setIndex(idxFor(s));g.computeBoundingSphere();g.computeBoundingBox();GC.set(key,g);
     // Zwischenspeicher begrenzen (nur ungenutzte Kacheln verwerfen)
     if(GC.size>110){for(const [k2,g2] of GC){if(GC.size<=90)break;if(!CK.some(c=>c.mesh.geometry===g2)){GC.delete(k2);g2.dispose();}}}
@@ -219,7 +227,6 @@ ${ORTHO_GLSL_BODY}`)
   for(let cj=0;cj<NC;cj++)for(let ci=0;ci<NC;ci++){const m=new THREE.Mesh(buildChunk(ci,cj,8),tmat);m.receiveShadow=true;m.matrixAutoUpdate=false;terrain.add(m);
     let hm=-1e9;for(let j=cj*CHN;j<=(cj+1)*CHN;j+=4)for(let i=ci*CHN;i<=(ci+1)*CHN;i+=4)hm=Math.max(hm,H[j*N1+i]);
     CK.push({ci,cj,s:8,mesh:m,cx:-HALF+(ci+0.5)*CHN*CELL,cz:-HALF+(cj+0.5)*CHN*CELL,hw:CHN*CELL/2,hm});}
-  const LODD=[[1,5000],[2,12000],[4,28000]];
   const wantS=(c,p,cur)=>{const dx=Math.max(0,Math.abs(p.x-c.cx)-c.hw),dz=Math.max(0,Math.abs(p.z-c.cz)-c.hw),dy=Math.max(0,p.y-c.hm),d=Math.hypot(dx,dz,dy);
     for(const [s,t] of LODD)if(d<(s<cur?t:t*1.12))return s;return 8;};
   W.updateTerrain=(p,force)=>{const todo=[];for(const c of CK){const s=wantS(c,p,c.s);if(s!==c.s)todo.push([s<c.s?(Math.log2(c.s/s)+2):0.5,c,s]);}
