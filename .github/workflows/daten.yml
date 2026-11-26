@@ -37,6 +37,7 @@ jobs:
         if: always()
         run: |
           mkdir -p out && cp out_log.txt out/log.txt 2>/dev/null || true
+          find out -name '*.tif' -delete; find out -size +95M -delete
           cd out && git init -q && git checkout -q -b daten-out && git add -A
           git -c user.name=daten-pipeline -c user.email=actions@users.noreply.github.com commit -qm "Daten aus ${GITHUB_SHA::7} (${{ job.status }})"
           git push -qf "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}" daten-out

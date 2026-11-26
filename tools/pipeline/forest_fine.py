@@ -29,7 +29,9 @@ cmd = ['gdalwarp', '-overwrite'] + cfg + ['-t_srs', 'EPSG:4326', '-te'] + [repr(
        '-co', 'COMPRESS=DEFLATE', '-co', 'TILED=YES', '-co', 'BIGTIFF=YES', '/vsicurl/' + href, tif]
 print(' '.join(cmd), flush=True)
 subprocess.run(cmd, check=True)
-V = gdal.Open(tif).GetRasterBand(1).ReadAsArray().astype(np.int16)
+ds = gdal.Open(tif)  # Referenz behalten
+V = ds.GetRasterBand(1).ReadAsArray().astype(np.int16)
+ds = None
 fo = (V >= 0) & (V <= 100)
 cls = np.zeros(V.shape, np.uint8)
 cls[fo & (V < 30)] = 1; cls[fo & (V >= 30) & (V <= 70)] = 2; cls[fo & (V > 70)] = 3

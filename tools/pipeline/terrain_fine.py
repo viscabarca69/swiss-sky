@@ -36,7 +36,9 @@ if not os.path.exists(tif):
            '-wm', '2048', '-co', 'COMPRESS=DEFLATE', '-co', 'PREDICTOR=3', '-co', 'TILED=YES', '-co', 'BIGTIFF=YES', '/vsicurl/' + URL, tif]
     print(' '.join(cmd), flush=True)
     subprocess.run(cmd, check=True)
-Hf = gdal.Open(tif).GetRasterBand(1).ReadAsArray().astype(np.float32)
+ds = gdal.Open(tif)  # Referenz behalten (sonst gibt GDAL den Datensatz frei)
+Hf = ds.GetRasterBand(1).ReadAsArray().astype(np.float32)
+ds = None
 assert Hf.shape == (NF, NF), Hf.shape
 ok = Hf > -1000
 print('gueltig', float(ok.mean()), flush=True)
