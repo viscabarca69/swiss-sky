@@ -1,0 +1,135 @@
+gdalwarp -overwrite --config GDAL_DISABLE_READDIR_ON_OPEN EMPTY_DIR --config GDAL_HTTP_MULTIRANGE YES --config GDAL_HTTP_MAX_RETRY 8 --config GDAL_HTTP_RETRY_DELAY 3 --config VSI_CACHE TRUE --config GDAL_CACHEMAX 2048 -s_srs EPSG:2056 -t_srs EPSG:4326 -te 5.758483745852599 45.215177488585276 10.6215162541474 48.54482251141473 -ts 12289 12289 -r average -ot Float32 -dstnodata -9999 -multi -wo NUM_THREADS=ALL_CPUS -wm 2048 -co COMPRESS=DEFLATE -co PREDICTOR=3 -co TILED=YES -co BIGTIFF=YES /vsicurl/https://data.geo.admin.ch/ch.swisstopo.swissaltiregio/swissaltiregio/swissaltiregio_2056_5728.tif out/alti_fine.tif
+Creating output file that is 12289P x 12289L.
+Processing /vsicurl/https://data.geo.admin.ch/ch.swisstopo.swissaltiregio/swissaltiregio/swissaltiregio_2056_5728.tif [1/1] : 0Using internal nodata values (e.g. 3.4e+38) for image /vsicurl/https://data.geo.admin.ch/ch.swisstopo.swissaltiregio/swissaltiregio/swissaltiregio_2056_5728.tif.
+...10...20...30...40...50...60...70...80...90...100 - done.
+/usr/lib/python3/dist-packages/osgeo/gdal.py:312: FutureWarning: Neither gdal.UseExceptions() nor gdal.DontUseExceptions() has been explicitly called. In GDAL 4.0, exceptions will be enabled by default.
+  warnings.warn(
+gueltig 1.0
+{"nf": 12289, "cf": 30.110677083333332, "ts": 256, "K": 7.876205646414737, "rmax": 260.0, "abw_p50": 4.77581787109375, "abw_p90": 27.737548828125, "abw_p99": 57.0648193359375, "abw_p9999": 134.7523194579917, "abw_max": 393.964599609375, "anteil_geclippt": 9.1216216832542e-07}
+{
+ "nf": 12289,
+ "cf": 30.110677083333332,
+ "ts": 256,
+ "K": 7.876205646414737,
+ "rmax": 260.0,
+ "abw_p50": 4.77581787109375,
+ "abw_p90": 27.737548828125,
+ "abw_p99": 57.0648193359375,
+ "abw_p9999": 134.7523194579917,
+ "abw_max": 393.964599609375,
+ "anteil_geclippt": 9.1216216832542e-07,
+ "kacheln": 2399,
+ "roh_mb": 157.220864,
+ "gzip_mb": 82.516156,
+ "kontrolle_ok": true
+}
+Assets ['https://data.geo.admin.ch/ch.bafu.landesforstinventar-waldmischungsgrad/landesforstinventar-waldmischungsgrad/landesforstinventar-waldmischungsgrad_2056.tif']
+Driver: GTiff/GeoTIFF
+Files: /vsicurl/https://data.geo.admin.ch/ch.bafu.landesforstinventar-waldmischungsgrad/landesforstinventar-waldmischungsgrad/landesforstinventar-waldmischungsgrad_2056.tif
+Size is 36000, 23000
+Coordinate System is:
+PROJCRS["CH1903+ / LV95",
+    BASEGEOGCRS["CH1903+",
+        DATUM["CH1903+",
+            ELLIPSOID["Bessel 1841",6377397.155,299.152812800003,
+                LENGTHUNIT["metre",1]]],
+        PRIMEM["Greenwich",0,
+            ANGLEUNIT["degree",0.0174532925199433]],
+        ID["EPSG",4150]],
+    CONVERSION["Hotine Oblique Mercator (variant B)",
+        METHOD["Hotine Oblique Mercator (variant B)",
+            ID["EPSG",9815]],
+        PARAMETER["Latitude of projection centre",46.9524055555556,
+            ANGLEUNIT["degree",0.0174532925199433],
+            ID["EPSG",8811]],
+        PARAMETER["Longitude of projection centre",7.43958333333333,
+            ANGLEUNIT["degree",0.0174532925199433],
+            ID["EPSG",8812]],
+        PARAMETER["Azimuth of initial line",90,
+            ANGLEUNIT["degree",0.0174532925199433],
+            ID["EPSG",8813]],
+        PARAMETER["Angle from Rectified to Skew Grid",90,
+            ANGLEUNIT["degree",0.0174532925199433],
+            ID["EPSG",8814]],
+        PARAMETER["Scale factor on initial line",1,
+            SCALEUNIT["unity",1],
+            ID["EPSG",8815]],
+        PARAMETER["Easting at projection centre",2600000,
+            LENGTHUNIT["metre",1],
+            ID["EPSG",8816]],
+        PARAMETER["Northing at projection centre",1200000,
+            LENGTHUNIT["metre",1],
+            ID["EPSG",8817]]],
+    CS[Cartesian,2],
+        AXIS["easting",east,
+            ORDER[1],
+            LENGTHUNIT["metre",1]],
+        AXIS["northing",north,
+            ORDER[2],
+            LENGTHUNIT["metre",1]],
+    ID["EPSG",2056]]
+Data axis to CRS axis mapping: 1,2
+Origin = (2480000.000000000000000,1300000.000000000000000)
+Pixel Size = (10.000000000000000,-10.000000000000000)
+Metadata:
+  AREA_OR_POINT=Area
+  DataType=Generic
+Image Structure Metadata:
+  COMPRESSION=LERC_ZSTD
+  INTERLEAVE=BAND
+  LAYOUT=COG
+  LERC_VERSION=2.4
+  MAX_Z_ERROR=0.02
+  MAX_Z_ERROR_OVERVIEW=0.1
+Corner Coordinates:
+Upper Left  ( 2480000.000, 1300000.000) (  5d50'10.90"E, 47d50'27.19"N)
+Lower Left  ( 2480000.000, 1070000.000) (  5d53'48.55"E, 45d46'20.03"N)
+Upper Right ( 2840000.000, 1300000.000) ( 10d38'40.84"E, 47d48'28.07"N)
+Lower Right ( 2840000.000, 1070000.000) ( 10d31'26.15"E, 45d44'25.35"N)
+Center      ( 2660000.000, 1185000.000) (  8d13'33.13"E, 46d48'53.11"N)
+Band 1 Block=512x512 Type=Int8, ColorInterp=Gray
+  Description = Band_1
+  Min=0.000 Max=100.000 
+  Minimum=0.000, Maximum=100.000, Mean=44.632, StdDev=38.977
+  NoData Value=-128
+  Overviews: 18000x11500, 9000x5750, 4500x2875, 2250x1437, 1125x718, 562x359, 281x179
+  Metadata:
+    BandName=Band_1
+    RepresentationType=ATHEMATIC
+    STATISTICS_COVARIANCES=1519.192691702866
+    STATISTICS_MAXIMUM=100
+    STATISTICS_MEAN=44.63159415619
+    STATISTICS_MEDIAN=40.000000
+    STATISTICS_MINIMUM=0
+    STATISTICS_SKIPFACTORX=1
+    STATISTICS_SKIPFACTORY=1
+    STATISTICS_STDDEV=38.976822493668
+gdalwarp -overwrite --config GDAL_DISABLE_READDIR_ON_OPEN EMPTY_DIR --config GDAL_HTTP_MAX_RETRY 8 --config GDAL_HTTP_RETRY_DELAY 3 -t_srs EPSG:4326 -te 5.758483745852599 45.215177488585276 10.6215162541474 48.54482251141473 -ts 12289 12289 -r near -ot Int16 -dstnodata -1 -multi -wo NUM_THREADS=ALL_CPUS -wm 2048 -co COMPRESS=DEFLATE -co TILED=YES -co BIGTIFF=YES /vsicurl/https://data.geo.admin.ch/ch.bafu.landesforstinventar-waldmischungsgrad/landesforstinventar-waldmischungsgrad/landesforstinventar-waldmischungsgrad_2056.tif out/wald_fine.tif
+Creating output file that is 12289P x 12289L.
+Processing /vsicurl/https://data.geo.admin.ch/ch.bafu.landesforstinventar-waldmischungsgrad/landesforstinventar-waldmischungsgrad/landesforstinventar-waldmischungsgrad_2056.tif [1/1] : 0Using internal nodata values (e.g. -128) for image /vsicurl/https://data.geo.admin.ch/ch.bafu.landesforstinventar-waldmischungsgrad/landesforstinventar-waldmischungsgrad/landesforstinventar-waldmischungsgrad_2056.tif.
+...10...20...30...40...50...60...70...80...90...100 - done.
+/usr/lib/python3/dist-packages/osgeo/gdal.py:312: FutureWarning: Neither gdal.UseExceptions() nor gdal.DontUseExceptions() has been explicitly called. In GDAL 4.0, exceptions will be enabled by default.
+  warnings.warn(
+{"href": "https://data.geo.admin.ch/ch.bafu.landesforstinventar-waldmischungsgrad/landesforstinventar-waldmischungsgrad/landesforstinventar-waldmischungsgrad_2056.tif", "werte_min": 0, "werte_max": 100, "waldanteil_raster": 0.13859764526732937, "klassen": [130088571, 8387114, 6892910, 5650926], "kontrolle": {"Engadin_L\u00e4rche/Arve": 17.047935527761787, "Jura_Buche": 61.82454619344351, "Basel_Hardwald": 66.64229117522531, "Emmental": 32.86089302056741, "Tessin_Kastanie": 71.46787059605583}}
+{
+ "href": "https://data.geo.admin.ch/ch.bafu.landesforstinventar-waldmischungsgrad/landesforstinventar-waldmischungsgrad/landesforstinventar-waldmischungsgrad_2056.tif",
+ "werte_min": 0,
+ "werte_max": 100,
+ "waldanteil_raster": 0.13859764526732937,
+ "klassen": [
+  130088571,
+  8387114,
+  6892910,
+  5650926
+ ],
+ "kontrolle": {
+  "Engadin_L\u00e4rche/Arve": 17.047935527761787,
+  "Jura_Buche": 61.82454619344351,
+  "Basel_Hardwald": 66.64229117522531,
+  "Emmental": 32.86089302056741,
+  "Tessin_Kastanie": 71.46787059605583
+ },
+ "kacheln": 786,
+ "roh_mb": 12.877824,
+ "gzip_mb": 5.334208
+}

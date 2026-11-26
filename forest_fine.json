@@ -1,0 +1,22 @@
+{
+ "href": "https://data.geo.admin.ch/ch.bafu.landesforstinventar-waldmischungsgrad/landesforstinventar-waldmischungsgrad/landesforstinventar-waldmischungsgrad_2056.tif",
+ "werte_min": 0,
+ "werte_max": 100,
+ "waldanteil_raster": 0.13859764526732937,
+ "klassen": [
+  130088571,
+  8387114,
+  6892910,
+  5650926
+ ],
+ "kontrolle": {
+  "Engadin_L\u00e4rche/Arve": 17.047935527761787,
+  "Jura_Buche": 61.82454619344351,
+  "Basel_Hardwald": 66.64229117522531,
+  "Emmental": 32.86089302056741,
+  "Tessin_Kastanie": 71.46787059605583
+ },
+ "kacheln": 786,
+ "roh_mb": 12.877824,
+ "gzip_mb": 5.334208
+}
