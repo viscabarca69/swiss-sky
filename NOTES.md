@@ -10,6 +10,16 @@ Artifact slug e3615a1f-7860-4277-b4c4-84ea1ba2abea · letzte veröffentlichte Ve
 Backup Etappe 1: /tmp/af_e1 (kann nach Neustart weg sein)
 Testen: /tmp/run.sh test/<x>.py (Playwright, SwiftShader) · node test/jobs.mjs (Routen) · node test/mis.mjs
 
+## Version 13.0 (26.11.2026) – feine Berge, echte Wälder, Pisten frei
+- Pipeline (jobs.txt «fine forest»): terrain_fine.py → swissALTIRegio im Feinraster CELL/4 (12289², 30 m), Abweichung zum 120-m-Grundraster (Dreiecke wie heightAt), Seen 0, Ufer ≥ Spiegel+0,8. fine_pack.py: nur Schweiz + 3 km (weich), 1-m-Stufen bis ±60 m, darüber 5 m, WebP-Atlanten (16×16 Kacheln à 256²) → data/terrain_fine.txt (Base64, 21,9 MB binär, 895 Kacheln). GDAL: Datensatz-Referenz halten (gdal.Open(...).GetRasterBand → Absturz), grosse .tif nicht nach daten-out.
+- forest_fine.py: Waldmischungsgrad LFI (10 m, Wert = LAUBholzanteil %: Engadin 17, Tessin 71) → Klassen 1 Nadel (<30) / 2 Misch / 3 Laub (>70), 2 Bit je Knoten, gzip → data/forest_fine.txt (5,3 MB).
+- worldgen: FINE.T/W, fineD/fineForest, heightAt = baseAt + Dreiecks-Interpolation der Abweichung (Feindreiecke liegen in den Grunddreiecken → Netz = heightAt exakt, Test md 0). Flugplatz-Ebenen: Abweichung beim Laden ausgeblendet (prepFine, enc/lut je Format). ?coarse oder Sparmodus → ohne.
+- world3d: Gelände als Viertelbaum je grosser Kachel (512 Feinzellen): Stufen s=1/2/4/8/16/32 Feinzellen, maxNode s1 64, s2 128, s4 256; LOD [1,1800],[2,3600],[4,6500],[8,14000],[16,32000]; Blätter einer Kachel auf einmal tauschen; Update nur nach > 30 m Bewegung oder offen (pending). Harness: LOD folgt dem Flugzeug, nicht __dbgCam → «tp» benutzen.
+- Wald: CHM (Landesgrenze 240 m, Canvas) → in der Schweiz isForest aus LFI (11 Nadel 93 % Nadelbäume, 12 Misch 50 %, 13 Laub 8 %), Geländefarbe FO aus Feinwald; ausserhalb erfunden. IGPU: Q.trees ≤ 22000, Radius ≤ 3300.
+- rwObstacle(x0,z0,x1,z1,top): Piste+Streifen (w/2+60, klein +35; ±90 m Länge) frei; Schneisen 4 km, Halbbreite w/2+60+0,15·d, Fläche Pistenhöhe + d/40 − 2. Angewendet: echte Gebäude (Ecken zusammenfallen, Indizes trotzdem lesen!), erfundene Häuser (okSpot +45 m), Kirchtürme gfx (+60), Bäume (±6 m, +34).
+- flight.js: Bugrad zuerst nur Absturz bei Nase < −11° oder (< −5° und Sinken > 1,4·ldgSink); sonst Hinweis.
+- Realcity-Dächer: roofPhoto() = statische Luftbilder + Stream-Ebenen 0/1 (≤ 2 m); grobe Ebenen nur 30 % Farbstich.
+
 ## Version 12.4.2 (26.11.2026) – Einfrieren durch Shader-Neuübersetzung
 - Gemessen auf Luis' Laptop (12.4.1, Sparmodus): EIN renderer.render dauerte 20,3 s und übersetzte 30 Programme. Ursache: buildModel(...,{landingLight:true}) hängte eine THREE.SpotLight an jedes Modell (auch KI-Verkehr) → numSpotLights ändert sich bei jedem Auftauchen/Verschwinden → alle beleuchteten Materialien neu (ANGLE/D3D11 ~0,7 s je Programm).
 - Jetzt: parts.spot = {intensity, at, to} (nur Markierungen); main.js LAND = eine SpotLight in der Szene (immer da, Intensität 0), folgt G.model (landLight()). Test progs.json: Programme bleiben beim Spawnen konstant.

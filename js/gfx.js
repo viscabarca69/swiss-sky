@@ -2,7 +2,7 @@
 import * as THREE from 'three';
 import {Reflector} from 'three/addons/objects/Reflector.js';
 import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
-import {HALF,WORLD,G,N1,CELL,ROADS,RIVERS,LAKES,TOWNS,FLATS,toLocal,AIRPORTS} from './worldgen.js';
+import {HALF,WORLD,G,N1,CELL,ROADS,RIVERS,LAKES,TOWNS,FLATS,toLocal,AIRPORTS,rwObstacle} from './worldgen.js';
 import {taxiNet,nearestEdge} from './taxinet.js';
 import {ORU,ORTHO_GLSL_HEAD} from './ortho.js';
 import {makeSimplex,mulberry,clamp,sstep} from './noise.js';
@@ -90,7 +90,7 @@ export function buildExtras(scene,S,Q,W,airportNear){
   const rnd=mulberry(77);const spots=[];
   for(const T of TOWNS){const n=T.city?(T.name==='Zürich'?6:3):1;
     for(let k=0;k<n;k++){for(let tr=0;tr<12;tr++){const a=rnd()*6.28,r=(k===0?0.05:0.35)*T.r*rnd(),x=T.x+Math.cos(a)*r,z=T.z+Math.sin(a)*r;
-      if(S.isLake(x,z)||S.lakeId(x,z)||S.slopeAt(x,z)>0.25||airportNear(x,z,150)||(W.inReal&&W.inReal(x,z))||(W.inOrtho&&W.inOrtho(x,z,-100)))continue;spots.push({x,z,h:24+rnd()*22+(T.city?10:0),a:rnd()*3});break;}}}
+      if(S.isLake(x,z)||S.lakeId(x,z)||S.slopeAt(x,z)>0.25||airportNear(x,z,150)||(W.inReal&&W.inReal(x,z))||(W.inOrtho&&W.inOrtho(x,z,-100))||rwObstacle(x-20,z-20,x+20,z+20,S.heightAt(x,z)+60))continue;spots.push({x,z,h:24+rnd()*22+(T.city?10:0),a:rnd()*3});break;}}}
   {const shaft=new THREE.BoxGeometry(1,1,1).translate(0,0.5,0);const spire=new THREE.ConeGeometry(0.75,1,4).rotateY(Math.PI/4).translate(0,0.5,0);
     const nave=new THREE.BoxGeometry(1,1,1).translate(0,0.5,0);
     const sm=new THREE.InstancedMesh(shaft,new THREE.MeshStandardMaterial({color:0xece6d8,roughness:0.9}),spots.length*2);

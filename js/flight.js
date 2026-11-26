@@ -153,7 +153,8 @@ export function stepFlight(F,ctl,dt,W){
     const maxBank=P.wingStrike||14;
     if(sink>P.ldgSink*2.3)return crash(F,`Zu harter Aufprall (Sinkrate ${sink.toFixed(1)} m/s).`);
     if(bank>maxBank)return crash(F,'Eine Flügelspitze hat den Boden berührt.');
-    if(pitch<-5)return crash(F,'Mit der Nase voran aufgeschlagen.');
+    // Bugrad zuerst: nur bei steiler Nase oder hartem Aufprall ein Absturz, sonst harte Landung (Hinweis in main.js)
+    if(pitch<-11||(pitch<-5&&sink>P.ldgSink*1.4))return crash(F,'Mit der Nase voran aufgeschlagen.');
     const rw=W.runwayAt(F.pos.x,F.pos.z),zone=W.airportZone(F.pos.x,F.pos.z);
     if(!rw&&!zone){if(W.slopeAt(F.pos.x,F.pos.z)<0.09&&sink<P.ldgSink*1.2&&Vs<P.Vr*1.4)F.events.push({type:'outlanding'});else return crash(F,'Bodenberührung im Gelände.');}
     F.onGround=true;F.pos.y=gh+P.gearH;F.vel.y=0;F.susp={y:0,v:-Math.min(sink,4.5),r:clamp(_e.z,-0.2,0.2)};if(F.autobrake)F.abOn=true;

@@ -5,7 +5,7 @@ import {mergeGeometries} from 'three/addons/utils/BufferGeometryUtils.js';
 import {buildExtras,windowShader} from './gfx.js';
 import {loadRealCity,coverTest,buildRealCity} from './realcity.js';
 import {makeSimplex,fbm,hash2,clamp,sstep,mulberry} from './noise.js';
-import {WORLD,HALF,G,N1,CELL,AIRPORTS,FLATS,TOWNS,ROADS,RIVERS,LAKES,BORDER,toLocal} from './worldgen.js';
+import {WORLD,HALF,G,N1,CELL,AIRPORTS,FLATS,TOWNS,ROADS,RIVERS,LAKES,BORDER,toLocal,FINE,FF,NF,CF,fineForest,rwObstacle} from './worldgen.js';
 import {ORU,ORTHO_GLSL_HEAD,ORTHO_GLSL_BODY,inOrtho,orthoTree} from './ortho.js';
 
 const tick=()=>new Promise(r=>setTimeout(r,0));
@@ -36,7 +36,19 @@ export async function buildWorld(scene,H,LK,S,Q,progress){
   function sample(arr,x,z){let gx=(x+HALF)/CELL,gz=(z+HALF)/CELL;gx=clamp(gx,0,G-1e-4);gz=clamp(gz,0,G-1e-4);const i=gx|0,j=gz|0,fx=gx-i,fz=gz-j,k=j*N1+i;
     return arr[k]*(1-fx)*(1-fz)+arr[k+1]*fx*(1-fz)+arr[k+N1]*(1-fx)*fz+arr[k+N1+1]*fx*fz;}
   function forestThr(h,sl){return 0.3+(h<650?0.06:0)+(h>1750?(h-1750)/200:0)-Math.min(sl,0.7)*0.45;}
+  // Schweiz-Maske aus der Landesgrenze (240 m): dort gelten die echten Walddaten (LFI), ausserhalb der erfundene Wald
+  const CHM=(()=>{if(!BORDER.length||!FINE.W)return null;const N=1536,cv=document.createElement('canvas');cv.width=cv.height=N;const c=cv.getContext('2d',{willReadFrequently:true});
+    const P=v=>(v+HALF)/(2*HALF)*N;c.fillStyle='#fff';c.beginPath();for(const r of BORDER){for(let i=0;i<r.length;i+=2)i?c.lineTo(P(r[i]),P(r[i+1])):c.moveTo(P(r[i]),P(r[i+1]));c.closePath();}c.fill('evenodd');
+    const d=c.getImageData(0,0,N,N).data,m=new Uint8Array(N*N);for(let k=0;k<N*N;k++)m[k]=d[k*4]>127?1:0;return{N,m};})();
+  const inCH=(x,z)=>{if(!CHM)return false;const N=CHM.N,i=Math.floor((x+HALF)/(2*HALF)*N),j=Math.floor((z+HALF)/(2*HALF)*N);return i>=0&&j>=0&&i<N&&j<N&&CHM.m[j*N+i]===1;};
+  W.inCH=inCH;
+  // Waldfarbe im Gelände (Satellitenbild-Ersatz) in der Schweiz ebenfalls aus den echten Daten: Anteil Waldknoten um jeden Grundknoten
+  if(CHM){const o=[[-1,-1],[1,-1],[-1,1],[1,1],[0,0]];for(let j=0;j<N1;j++){const z=-HALF+j*CELL;for(let i=0;i<N1;i++){const x=-HALF+i*CELL;if(!inCH(x,z))continue;
+    let n=0;for(const [a,b] of o)if(fineForest(x+a*CF,z+b*CF)>0)n++;FO[j*N1+i]=n>=3?5:n===2?0.6:-5;}
+    if(j%256===0)await tick();}}
+  // Rückgabe: 0 kein Wald; erfunden 1 (Laub-betont) / 2 (Nadel-betont); echt 11 Nadel, 12 Misch, 13 Laub (LFI: Laubholzanteil)
   function isForest(x,z,jit){
+    if(CHM&&inCH(x,z)){const f=fineForest(x,z);if(f<=0||S.isLake(x,z))return 0;return 10+f;}
     if(S.isLake(x,z))return 0;const h=S.heightAt(x,z);const sl=sample(SL,x,z);
     if(sl>1.05||h>2050||(sl>0.75&&h>1500))return 0;if(sample(TW,x,z)>0.03)return 0;
     const f=sample(FO,x,z)+jit-forestThr(h,sl);return f>0?(h>900?2:1):0;
@@ -199,40 +211,71 @@ ${ORTHO_GLSL_BODY}`)
   float h0=RG(p),hx=RG(p+vec2(e,0.0)),hz=RG(p+vec2(0.0,e));
   vec3 dW=vec3(-(hx-h0)/e,0.0,-(hz-h0)/e)*55.0;normal=normalize(normal+(viewMatrix*vec4(dW,0.0)).xyz*k*0.9);}}`);
   };
-  // Kacheln mit Detailstufen: nah fein, weit grob; Schürzen verdecken Spalten zwischen den Stufen
-  const CHN=128,NC=G/CHN,IDX={},GC=new Map(),terrain=new THREE.Group();scene.add(terrain);W.terrain=terrain;
-  // Stufe s gilt bis LODT[s] m (danach 2s); die Ecken sind dort schon ganz auf die gröbere Stufe geglitten
-  const LODD=LOWMEM?[[1,4500],[2,11000],[4,26000]]:[[1,6000],[2,14000],[4,32000]],LODT=Object.fromEntries(LODD);
-  function idxFor(s){if(IDX[s])return IDX[s];const n=CHN/s,v=n+1,ix=[];
+  // Gelände in Kacheln mit Detailstufen (Version 13): Einheiten sind Feinknoten (CELL/4 ≈ 30 m).
+  // Grosse Kachel = 512 Feinzellen (wie früher 128 Grundzellen). Nah an der Kamera wird sie in 4 bzw. 16 Teile geteilt,
+  // damit die feinen Stufen (30 m, 60 m) nicht zu viele Dreiecke haben. Geomorphing (aM) und Schürzen wie bisher.
+  const BIG=512,NCB=NF/BIG,IDX={},GC=new Map(),terrain=new THREE.Group();scene.add(terrain);W.terrain=terrain;
+  const HASF=!!FINE.T,nodeH=S.nodeH;
+  // Stufe s (Feinzellen je Masche) gilt bis LODT[s] m; danach 2s. Ohne Feindaten beginnt es bei 4 (= 120 m)
+  const LODD=HASF?[[1,1800],[2,3600],[4,6500],[8,14000],[16,32000]]:LOWMEM?[[4,4500],[8,11000],[16,26000]]:[[4,6000],[8,14000],[16,32000]],LODT=Object.fromEntries(LODD);
+  const SMIN=HASF?1:4,maxNode=s=>s<=1?64:s<=2?128:s<=4&&HASF?256:BIG;
+  function idxFor(n){if(IDX[n])return IDX[n];const v=n+1,ix=[];
     for(let j=0;j<n;j++)for(let i=0;i<n;i++){const a=j*v+i,b=a+1,c=a+v,d=c+1;ix.push(a,c,b,b,c,d);}
     const E=[[],[],[],[]];for(let k=0;k<v;k++){E[0].push(k);E[1].push(k*v+n);E[2].push(n*v+k);E[3].push(k*v);}
     E.forEach((e,ei)=>{for(let k=0;k<n;k++){const v0=e[k],v1=e[k+1],s0=v*v+ei*v+k,s1=s0+1;ix.push(v0,s0,v1,v1,s0,s1,v0,v1,s0,v1,s1,s0);}});
-    return IDX[s]=new THREE.Uint32BufferAttribute(ix,1);}
-  function buildChunk(ci,cj,s){const key=ci+','+cj+','+s;let g=GC.get(key);if(g){GC.delete(key);GC.set(key,g);return g;}
-    const n=CHN/s,v=n+1,NV=v*v+4*v,pos=new Float32Array(NV*3),nor=new Float32Array(NV*3),uv=new Float32Array(NV*2),am=new Float32Array(NV*2),gi0=ci*CHN,gj0=cj*CHN;
+    return IDX[n]=new THREE.Uint32BufferAttribute(ix,1);}
+  // Höhe am Feinknoten: Grundraster-Knoten direkt aus H (schnell), sonst Grundraster + Abweichung
+  const Hn=(fi,fj)=>{fi=fi<0?0:fi>NF?NF:fi;fj=fj<0?0:fj>NF?NF:fj;return HASF?nodeH(fi,fj):H[(fj>>2)*N1+(fi>>2)];};
+  function buildChunk(fi0,fj0,size,s){const key=fi0+','+fj0+','+size+','+s;let g=GC.get(key);if(g){GC.delete(key);GC.set(key,g);return g;}
+    const n=size/s,v=n+1,NV=v*v+4*v,pos=new Float32Array(NV*3),nor=new Float32Array(NV*3),uv=new Float32Array(NV*2),am=new Float32Array(NV*2),tM=(LODT[s]||1e9);
+    // Knotenhöhen einmal rechnen (mit Rand für die Normalen)
+    const vv=v+2,HB=new Float32Array(vv*vv);for(let j=0;j<vv;j++)for(let i=0;i<vv;i++)HB[j*vv+i]=Hn(fi0+(i-1)*s,fj0+(j-1)*s);
+    const hb=(i,j)=>HB[(j+1)*vv+i+1];
     // Höhe der nächstgröberen Stufe (Schritt 2s) an dieser Ecke – wie deren Dreiecke sie interpolieren (Diagonale b–c)
-    const Hg=(gi,gj)=>H[Math.min(G,Math.max(0,gj))*N1+Math.min(G,Math.max(0,gi))],tM=(LODT[s]||1e9);
-    const hC=(gi,gj)=>{if(s>=8)return Hg(gi,gj);const oi=((gi-gi0)/s)&1,oj=((gj-gj0)/s)&1;
-      if(!oi&&!oj)return Hg(gi,gj);if(oi&&!oj)return (Hg(gi-s,gj)+Hg(gi+s,gj))/2;if(!oi&&oj)return (Hg(gi,gj-s)+Hg(gi,gj+s))/2;return (Hg(gi+s,gj-s)+Hg(gi-s,gj+s))/2;};
-    const put=(o,gi,gj,dy)=>{am[o*2]=hC(gi,gj)-dy;am[o*2+1]=tM;const k=gj*N1+gi,hl=H[gi>0?k-1:k],hr=H[gi<G?k+1:k],hu=H[gj>0?k-N1:k],hd=H[gj<G?k+N1:k];
-      const nx=-(hr-hl)/(2*CELL),nz=-(hd-hu)/(2*CELL),l=Math.hypot(nx,1,nz);
-      pos[o*3]=-HALF+gi*CELL;pos[o*3+1]=H[k]-dy;pos[o*3+2]=-HALF+gj*CELL;nor[o*3]=nx/l;nor[o*3+1]=1/l;nor[o*3+2]=nz/l;uv[o*2]=gi/G;uv[o*2+1]=1-gj/G;};
-    for(let j=0;j<v;j++)for(let i=0;i<v;i++)put(j*v+i,gi0+i*s,gj0+j*s,0);
-    const D=25+35*s;for(let k=0;k<v;k++){put(v*v+k,gi0+k*s,gj0,D);put(v*v+v+k,gi0+n*s,gj0+k*s,D);put(v*v+2*v+k,gi0+k*s,gj0+n*s,D);put(v*v+3*v+k,gi0,gj0+k*s,D);}
+    const hC=(i,j)=>{if(s>=32)return hb(i,j);const oi=i&1,oj=j&1;
+      if(!oi&&!oj)return hb(i,j);if(oi&&!oj)return (hb(i-1,j)+hb(i+1,j))/2;if(!oi&&oj)return (hb(i,j-1)+hb(i,j+1))/2;return (hb(i+1,j-1)+hb(i-1,j+1))/2;};
+    const e2=2*s*CF;
+    const put=(o,i,j,dy)=>{const h=hb(i,j);am[o*2]=hC(i,j)-dy;am[o*2+1]=tM;
+      const nx=-(hb(i+1,j)-hb(i-1,j))/e2,nz=-(hb(i,j+1)-hb(i,j-1))/e2,l=Math.hypot(nx,1,nz);const fi=fi0+i*s,fj=fj0+j*s;
+      pos[o*3]=-HALF+fi*CF;pos[o*3+1]=h-dy;pos[o*3+2]=-HALF+fj*CF;nor[o*3]=nx/l;nor[o*3+1]=1/l;nor[o*3+2]=nz/l;uv[o*2]=fi/NF;uv[o*2+1]=1-fj/NF;};
+    for(let j=0;j<v;j++)for(let i=0;i<v;i++)put(j*v+i,i,j,0);
+    const D=25+9*s;for(let k=0;k<v;k++){put(v*v+k,k,0,D);put(v*v+v+k,n,k,D);put(v*v+2*v+k,k,n,D);put(v*v+3*v+k,0,k,D);}
     g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('normal',new THREE.BufferAttribute(nor,3));g.setAttribute('uv',new THREE.BufferAttribute(uv,2));g.setAttribute('aM',new THREE.BufferAttribute(am,2));
-    g.setIndex(idxFor(s));g.computeBoundingSphere();g.computeBoundingBox();GC.set(key,g);
+    g.setIndex(idxFor(n));g.computeBoundingSphere();g.computeBoundingBox();GC.set(key,g);
     // Zwischenspeicher begrenzen (nur ungenutzte Kacheln verwerfen)
-    if(GC.size>110){for(const [k2,g2] of GC){if(GC.size<=90)break;if(!CK.some(c=>c.mesh.geometry===g2)){GC.delete(k2);g2.dispose();}}}
+    if(GC.size>220){const used=new Set();for(const c of CK)for(const l of c.leaves)used.add(l.mesh.geometry);for(const [k2,g2] of GC){if(GC.size<=170)break;if(!used.has(g2)){GC.delete(k2);g2.dispose();}}}
     return g;}
+  // Mesh-Vorrat (Blätter werden zwischen Kacheln weitergegeben)
+  const POOL=[];const getMesh=()=>{const m=POOL.pop()||new THREE.Mesh(undefined,tmat);m.receiveShadow=true;m.matrixAutoUpdate=false;m.visible=true;terrain.add(m);return m;};
+  const putMesh=m=>{terrain.remove(m);POOL.push(m);};
   const CK=[];
-  for(let cj=0;cj<NC;cj++)for(let ci=0;ci<NC;ci++){const m=new THREE.Mesh(buildChunk(ci,cj,8),tmat);m.receiveShadow=true;m.matrixAutoUpdate=false;terrain.add(m);
-    let hm=-1e9;for(let j=cj*CHN;j<=(cj+1)*CHN;j+=4)for(let i=ci*CHN;i<=(ci+1)*CHN;i+=4)hm=Math.max(hm,H[j*N1+i]);
-    CK.push({ci,cj,s:8,mesh:m,cx:-HALF+(ci+0.5)*CHN*CELL,cz:-HALF+(cj+0.5)*CHN*CELL,hw:CHN*CELL/2,hm});}
-  const wantS=(c,p,cur)=>{const dx=Math.max(0,Math.abs(p.x-c.cx)-c.hw),dz=Math.max(0,Math.abs(p.z-c.cz)-c.hw),dy=Math.max(0,p.y-c.hm),d=Math.hypot(dx,dz,dy);
-    for(const [s,t] of LODD)if(d<(s<cur?t:t*1.12))return s;return 8;};
-  W.updateTerrain=(p,force)=>{const todo=[];for(const c of CK){const s=wantS(c,p,c.s);if(s!==c.s)todo.push([s<c.s?(Math.log2(c.s/s)+2):0.5,c,s]);}
-    if(!todo.length)return;todo.sort((a,b)=>b[0]-a[0]);const n=force?todo.length:Math.min(todo.length,3);
-    for(let k=0;k<n;k++){const [,c,s]=todo[k];c.mesh.geometry=buildChunk(c.ci,c.cj,s);c.s=s;}};
+  for(let cj=0;cj<NCB;cj++)for(let ci=0;ci<NCB;ci++){const fi0=ci*BIG,fj0=cj*BIG;
+    let hm=-1e9;for(let j=fj0>>2;j<=(fj0+BIG)>>2;j+=4)for(let i=fi0>>2;i<=(fi0+BIG)>>2;i+=4)hm=Math.max(hm,H[Math.min(G,j)*N1+Math.min(G,i)]);
+    const c={fi0,fj0,hm:hm+(HASF?80:0),leaves:[],sig:'',prev:new Map()};const m=getMesh();m.geometry=buildChunk(fi0,fj0,BIG,32);c.leaves=[{fi0,fj0,size:BIG,s:32,mesh:m}];c.sig=fi0+','+fj0+','+BIG+',32';CK.push(c);}
+  // Abstand Kamera – Knoten (Rechteck, Höhe bis hm)
+  const distN=(p,fi0,fj0,size,hm)=>{const x0=-HALF+fi0*CF,z0=-HALF+fj0*CF,w=size*CF;const dx=Math.max(0,x0-p.x,p.x-(x0+w)),dz=Math.max(0,z0-p.z,p.z-(z0+w)),dy=Math.max(0,p.y-hm);return Math.hypot(dx,dz,dy);};
+  const lodFor=(d,prev)=>{for(const [s,t] of LODD)if(d<(prev!=null&&s<prev?t:t*1.12))return s;return 32;};
+  // gewünschte Blätter einer grossen Kachel (Viertelbaum)
+  function want(c,p,out){const rec=(fi0,fj0,size)=>{const d=distN(p,fi0,fj0,size,c.hm),key=fi0+','+fj0+','+size,s=Math.max(SMIN,lodFor(d,c.prev.get(key)));
+      if(size>maxNode(s)&&size>64){const h=size/2;rec(fi0,fj0,h);rec(fi0+h,fj0,h);rec(fi0,fj0+h,h);rec(fi0+h,fj0+h,h);return;}
+      out.push({fi0,fj0,size,s:Math.max(s,size/128)});};
+    rec(c.fi0,c.fj0,BIG);return out;}
+  const lastP=new THREE.Vector3(1e9,0,0);let pending=true;
+  W.updateTerrain=(p,force)=>{
+    // nur nach Bewegung (> 30 m) oder wenn noch Kacheln ausstehen – spart Rechenzeit und Speicherbereinigung
+    if(!force&&!pending&&lastP.distanceToSquared(p)<900)return;lastP.copy(p);pending=false;
+    const t0=performance.now();let built=0;
+    // dringende Kacheln (nah) zuerst
+    const order=CK.map(c=>[distN(p,c.fi0,c.fj0,BIG,c.hm),c]).sort((a,b)=>a[0]-b[0]);
+    for(const [,c] of order){const ls=want(c,p,[]);const sig=ls.map(l=>l.fi0+','+l.fj0+','+l.size+','+l.s).join('|');if(sig===c.sig)continue;
+      if(!force&&built>0&&performance.now()-t0>4){pending=true;break;}
+      // neue Blätter fertig bauen, dann auf einmal tauschen (keine Löcher)
+      const geos=ls.map(l=>buildChunk(l.fi0,l.fj0,l.size,l.s));
+      for(const l of c.leaves)putMesh(l.mesh);
+      c.leaves=ls.map((l,k)=>{const m=getMesh();m.geometry=geos[k];return{...l,mesh:m};});c.sig=sig;
+      c.prev.clear();for(const l of ls)c.prev.set(l.fi0+','+l.fj0+','+l.size,l.s);built++;
+      if(!force&&built>=3){pending=true;break;}}};
+  W.terrainInfo=()=>({leaves:CK.reduce((a,c)=>a+c.leaves.length,0),fine:HASF,cache:GC.size});
   progress(0.58,'Seen werden gefüllt');await tick();
 
   // ---------- Seen ----------
@@ -263,7 +306,7 @@ ${ORTHO_GLSL_BODY}`)
   // ---------- Häuser ----------
   progress(0.62,'Städte und Dörfer werden gebaut');await tick();
   const rnd=mulberry(5);const houses=[],towers=[],churches=[];
-  function okSpot(x,z){if(S.isLake(x,z)||S.lakeId(x,z))return false;if(inOrtho(x,z,-200))return false;if(sample(SL,x,z)>0.32)return false;if(airportNear(x,z,200))return false;if(inReal(x,z))return false;return true;}
+  function okSpot(x,z){if(S.isLake(x,z)||S.lakeId(x,z))return false;if(inOrtho(x,z,-200))return false;if(sample(SL,x,z)>0.32)return false;if(airportNear(x,z,200))return false;if(inReal(x,z))return false;if(rwObstacle(x-15,z-15,x+15,z+15,S.heightAt(x,z)+45))return false;return true;}// +45 m: auch Kirchtürme/Hochhäuser
   for(const Tn of TOWNS){
     const n=Math.round(Tn.r*Tn.r/(Tn.city?1500:2400)*Q.house*(Tn.name==='Zürich'?2.2:Tn.city?1.3:1));const ang=rnd()*Math.PI;
     for(let i=0;i<n;i++){const rr=Math.sqrt(rnd())*Tn.r*1.0,a=rnd()*Math.PI*2,x=Tn.x+Math.cos(a)*rr,z=Tn.z+Math.sin(a)*rr;
@@ -335,18 +378,18 @@ ${ORTHO_GLSL_BODY}`)
       for(let i=i0;i<=i1;i++){
         const x=(i+hash2(i,j*3+1))*SP,z=(j+hash2(i*5+2,j))*SP;const dx=x-cx,dz=z-cz;if(dx*dx+dz*dz>RAD*RAD||Math.abs(x)>HALF||Math.abs(z)>HALF)continue;
         const hv=hash2(i+11,j-7);
-        if(inOrtho(x,z,-150)){if(rwNear(x,z,750)){if((i+j)%40===0)yield;continue;}const ot=orthoTree(x,z);if(ot){const hz=hash2(i*3-1,j*7+5),kd=ot===2||hv<0.4?0:1;if(out[kd].length<CAP*5)out[kd].push(x,S.heightAt(x,z)-0.3,z,0.8+hz*0.45,hv);}if((i+j)%40===0)yield;continue;}
+        if(inOrtho(x,z,-150)){if(rwNear(x,z,750)){if((i+j)%40===0)yield;continue;}const ot=orthoTree(x,z);if(ot&&!rwObstacle(x-6,z-6,x+6,z+6,S.heightAt(x,z)+34)){const hz=hash2(i*3-1,j*7+5),kd=ot===2||hv<0.4?0:1;if(out[kd].length<CAP*5)out[kd].push(x,S.heightAt(x,z)-0.3,z,0.8+hz*0.45,hv);}if((i+j)%40===0)yield;continue;}
         const t=isForest(x,z,(hv-0.5)*0.08);
         if(!t){// offenes Land: Hochstamm-Obstgärten in Reihen, Einzelbäume auf Feldern, Gartenbäume in Dörfern
           if(dx*dx+dz*dz>RAD*RAD*0.55)continue;const hz=hash2(i*3-1,j*7+5);
           const orch=SV(x/480,z/480)>0.56&&SV(x/2600+7,z/2600)>-0.1,lone=hz<0.016,gard=hz<0.16;if(!orch&&!lone&&!gard)continue;
-          if(S.isLake(x,z)||airportNear(x,z,60))continue;const tw=sample(TW,x,z);if(gard&&!orch&&!lone&&(tw<0.06||tw>0.75))continue;if(tw>0.75)continue;
+          if(S.isLake(x,z)||airportNear(x,z,60)||rwObstacle(x-6,z-6,x+6,z+6,S.heightAt(x,z)+34))continue;const tw=sample(TW,x,z);if(gard&&!orch&&!lone&&(tw<0.06||tw>0.75))continue;if(tw>0.75)continue;
           const sl=sample(SL,x,z);if(sl>0.3)continue;const h=S.heightAt(x,z);if(h>1250)continue;if(out[1].length>=CAP*5)continue;
           if(orch){const ox=(i+0.5)*SP+(hv-0.5)*3,oz=(j+0.5)*SP+(hz-0.5)*3;out[1].push(ox,S.heightAt(ox,oz)-0.3,oz,0.55+hz*0.2,hv);}
           else out[1].push(x,h-0.3,z,lone?1.05+hz*20:0.6+hv*0.35,hv);
           continue;}
-        if(airportNear(x,z,30))continue;
-        const kind=t===2?(hv<0.85?0:1):(hv<0.35?0:1);if(out[kind].length>=CAP*5)continue;
+        if(airportNear(x,z,30)||rwObstacle(x-6,z-6,x+6,z+6,S.heightAt(x,z)+34))continue;
+        const pc=t===2?0.85:t===1?0.35:t===11?0.93:t===12?0.5:0.08,kind=hv<pc?0:1;if(out[kind].length>=CAP*5)continue;
         out[kind].push(x,S.heightAt(x,z)-0.3,z,0.75+hash2(i-3,j+9)*0.75,hv);
       }
       if((j-j0)%3===0)yield;

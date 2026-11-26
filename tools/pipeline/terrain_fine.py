@@ -3,7 +3,7 @@ Das Spiel rechnet: Höhe = Grundraster (Dreiecke wie heightAt, mit Flugplatz-Ebe
 von Flugplatz-Ebenen). Seen: keine Abweichung in Zellen mit Seemaske; Ufer bleibt >= Seespiegel + 0,8 m.
 Speicher: Kacheln 256x256 Knoten, nur Kacheln mit Daten. Wert c (int8) = Vorzeichen * sqrt(|d|) * K, d = c^2 / K^2.
 Kacheln werden mit Gradienten-Vorhersage (c - links - oben + linksoben, mod 256) als ein gzip-Strom gespeichert.
-Datei: 'SSFT' | u16 Version | u16 TS | u16 NT | u16 Anzahl | f32 K | Anzahl * (u16 ti, u16 tj) | gzip(Kacheln)
+Datei: data/terrain_fine.txt (Base64), Format 2 aus fine_pack.py
 Aufruf (GitHub Actions):  python3 tools/pipeline/terrain_fine.py out   -> out/terrain_fine.bin, out/terrain_fine.json"""
 import sys, os, gzip, json, struct, subprocess
 import numpy as np
@@ -104,34 +104,17 @@ rep = {'nf': NF, 'cf': CF, 'ts': TS, 'K': float(K), 'rmax': RMAX,
        'abw_p9999': float(np.percentile(ad, 99.99)), 'abw_max': float(ad.max()), 'anteil_geclippt': float((ad > RMAX).mean())}
 print(json.dumps(rep), flush=True)
 
-# 4) Kodieren + Kacheln
-C = np.clip(np.round(np.sign(D) * np.sqrt(np.abs(D)) * K), -127, 127).astype(np.int16)
-del D
-idx, blobs = [], []
+# 4) Kacheln (Format 2: Schweiz + Puffer, 1-m-Stufen, WebP-Atlanten) – siehe fine_pack.py
+from fine_pack import pack
+idx, tl = [], []
 for tj in range(NT):
     for ti in range(NT):
-        t = np.zeros((TS, TS), np.int16)
-        a = C[tj * TS:(tj + 1) * TS, ti * TS:(ti + 1) * TS]; t[:a.shape[0], :a.shape[1]] = a
-        if not t.any():
+        t = np.zeros((TS, TS), np.float32); a = D[tj * TS:(tj + 1) * TS, ti * TS:(ti + 1) * TS]; t[:a.shape[0], :a.shape[1]] = a
+        if np.abs(t).max() < 0.5:
             continue
-        u = (t & 255).astype(np.int32)
-        p = np.zeros_like(u); p[1:, 1:] = u[1:, :-1] + u[:-1, 1:] - u[:-1, :-1]; p[0, 1:] = u[0, :-1]; p[1:, 0] = u[:-1, 0]
-        idx.append((ti, tj)); blobs.append(((u - p) & 255).astype(np.uint8).tobytes())
-raw = b''.join(blobs)
-gz = gzip.compress(raw, 9)
-hdr = b'SSFT' + struct.pack('<HHHHf', 1, TS, NT, len(idx), float(K)) + b''.join(struct.pack('<HH', a, b) for a, b in idx)
-open(os.path.join(out, 'terrain_fine.bin'), 'wb').write(hdr + gz)
-rep.update({'kacheln': len(idx), 'roh_mb': len(raw) / 1e6, 'gzip_mb': len(gz) / 1e6})
-# Vergleich: Kontrolle der Dekodierung an einer Kachel
-t0 = np.frombuffer(blobs[len(blobs) // 2], np.uint8).reshape(TS, TS).astype(np.int32)
-u = np.zeros_like(t0)
-for j in range(TS):
-    for i in range(TS):
-        pr = (u[j, i - 1] if i else 0) + (u[j - 1, i] if j else 0) - (u[j - 1, i - 1] if i and j else 0)
-        u[j, i] = (t0[j, i] + pr) & 255
-ti, tj = idx[len(blobs) // 2]
-ref = C[tj * TS:(tj + 1) * TS, ti * TS:(ti + 1) * TS] & 255
-rep['kontrolle_ok'] = bool((u[:ref.shape[0], :ref.shape[1]] == ref).all())
+        idx.append((ti, tj)); tl.append(t)
+rep.update(pack(np.stack(tl), np.array(idx), TS, NT, os.path.join(out, 'terrain_fine.txt')))
+C = np.clip(np.round(D), -127, 127).astype(np.int16)
 # Vorschau (Schattierung der Abweichung) für die Sichtprüfung
 pv = C[::8, ::8].astype(np.float32)
 Image.fromarray(np.clip(128 + pv, 0, 255).astype(np.uint8), 'L').save(os.path.join(out, 'terrain_fine_preview.png'))

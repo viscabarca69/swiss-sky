@@ -1,5 +1,6 @@
 """Wald (Version 13): Waldmischungsgrad LFI (BAFU, 10 m, Nadelholzanteil in %) auf das Feinraster CELL/4 (~30 m).
-Klassen je Knoten: 0 kein Wald, 1 Laubwald (< 30 % Nadelholz), 2 Mischwald, 3 Nadelwald (> 70 %).
+Klassen je Knoten: 0 kein Wald, 1 Nadelwald (< 30 % Laubholz), 2 Mischwald, 3 Laubwald (> 70 % Laubholz).
+Der LFI-Wert ist der Laubholzanteil (Kontrolle: Engadin 17, Tessin 71).
 Speicher wie terrain_fine.py (Kacheln 256x256, nur Kacheln mit Wald), aber 4 Knoten je Byte (2 Bit), ohne Vorhersage.
 Datei: 'SSFW' | u16 Version | u16 TS | u16 NT | u16 Anzahl | f32 0 | Anzahl * (u16 ti, u16 tj) | gzip(Kacheln)
 Aufruf (GitHub Actions):  python3 tools/pipeline/forest_fine.py out  -> out/forest_fine.bin, out/forest_fine.json"""

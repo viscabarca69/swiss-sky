@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import {ORU,ORTHO_GLSL_HEAD,inAirportArea} from './ortho.js';
 import {BUILDINGS} from './swissdata.js';
 import {nightU} from './gfx.js';
-import {toXZ} from './worldgen.js';
+import {toXZ,rwObstacle} from './worldgen.js';
 // Wahrzeichen: Gebäude im Umkreis bekommen ein eigenes Aussehen (Art 2 = Sandstein mit Kupfer- oder Schieferdach, 6 = roter Sandstein mit bunten Ziegeln)
 // tint < 128 → grünes Kupferdach, sonst dunkles Dach; nachts werden Kirchen und Wahrzeichen angestrahlt
 const LANDMARKS=[
@@ -54,7 +54,10 @@ function cityMaterial(){
     sh.fragmentShader=sh.fragmentShader.replace('#include <common>',`#include <common>
 uniform float uNight;varying vec2 vInfo;varying vec3 vWP;float winLit;float winMask;float farLit;float glassM;float metA;float cool;float flood;
 ${ORTHO_GLSL_HEAD}
-float hh(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}`)
+float hh(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}
+// Dachfarbe aus scharfen Luftbildern: mitgelieferte Kacheln und Stream-Ebenen 0,5 m / 2 m (gröbere Ebenen verschmieren Dach und Garten)
+vec4 roofPhoto(vec2 wp){vec4 s=orthoStatic(wp);if(s.a>0.999)return s;vec4 a=stLvl(stT1,stL[1],wp),b=stLvl(stT0,stL[0],wp);a.rgb=mix(a.rgb,b.rgb,b.a);a.a=max(a.a,b.a);a.rgb*=orGain;
+ float A=s.a+a.a*(1.0-s.a);return vec4((s.rgb*s.a+a.rgb*a.a*(1.0-s.a))/max(A,1e-4),A);}`)
       .replace('#include <map_fragment>',`#include <map_fragment>
 vec3 nW=normalize(cross(dFdx(vWP),dFdy(vWP)));if(dot(nW,cameraPosition-vWP)<0.0)nW=-nW;
 float t=vInfo.x/255.0;float k=vInfo.y;winLit=0.0;winMask=0.0;farLit=0.0;glassM=0.0;metA=0.0;cool=0.0;flood=0.0;
@@ -128,7 +131,7 @@ if(abs(nW.y)<0.4&&k>15.5){
   if(k>2.5&&k<3.5)c=vec3(0.70,0.70,0.69);
 }else{
   vec3 r0=vec3(0.62,0.30,0.21),r1=vec3(0.54,0.25,0.18),r2=vec3(0.42,0.38,0.36),r3=vec3(0.66,0.38,0.25),r4=vec3(0.37,0.36,0.35);
-  c=t<0.3?r0:t<0.5?r1:t<0.68?r3:t<0.85?r2:r4;
+  c=t<0.27?r0:t<0.42?r1:t<0.56?r3:t<0.8?r2:r4;
   if(k>1.5&&k<2.5)c=t<0.5?vec3(0.32,0.52,0.43):vec3(0.30,0.29,0.30);
   if(k>7.5&&k<8.5)c=vec3(0.32,0.52,0.43);if(k>8.5&&k<9.5)c=vec3(0.29,0.29,0.31);
   if(k>0.5&&k<1.5)c=vec3(0.42,0.43,0.44);
@@ -137,7 +140,9 @@ if(abs(nW.y)<0.4&&k>15.5){
 }
 diffuseColor.rgb*=pow(c,vec3(2.2));
 // Dächer im Luftbild-Gebiet: echte Dachfarbe aus dem Luftbild
-if(nW.y>0.4){vec4 o4=orthoAt(vWP.xz);if(o4.a>0.0)diffuseColor.rgb=mix(diffuseColor.rgb,o4.rgb*0.82,o4.a*(nW.y>0.985?0.95:0.85));}`)
+if(nW.y>0.4){vec4 o4=roofPhoto(vWP.xz);float w=o4.a*(nW.y>0.985?0.95:0.85);
+ if(w>0.01)diffuseColor.rgb=mix(diffuseColor.rgb,o4.rgb*0.82,w);
+ if(w<0.6){vec4 g=orthoAt(vWP.xz);if(g.a>0.0)diffuseColor.rgb=mix(diffuseColor.rgb,g.rgb*0.82,g.a*0.3*(1.0-w));}}`)
       .replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\ntotalEmissiveRadiance+=mix(vec3(1.0,0.74,0.44),vec3(0.82,0.9,1.0),cool)*(winLit*1.5+farLit)*uNight+diffuseColor.rgb*vec3(1.0,0.86,0.62)*flood*uNight;')
       .replace('#include <roughnessmap_fragment>','#include <roughnessmap_fragment>\nroughnessFactor=mix(roughnessFactor,0.15,winMask);roughnessFactor=mix(roughnessFactor,0.05,glassM);if(metA>0.0)roughnessFactor=min(roughnessFactor,0.5);')
       .replace('#include <metalnessmap_fragment>','#include <metalnessmap_fragment>\nmetalnessFactor=max(metalnessFactor,max(glassM*0.92,metA));');
@@ -178,7 +183,7 @@ export function buildRealCity(scene,RC,S,lights){
     const acc=[0,0,0];let v=0,ii=0;
     for(let b=0;b<NB;b++){
       const nv=bh.getUint16(b*6,true),nt=bh.getUint16(b*6+2,true),tint=bh.getUint8(b*6+4),ty=bh.getUint8(b*6+5);
-      let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9,y0=1e9,y1=-1e9;const v0=v;
+      let x0=1e9,x1=-1e9,z0=1e9,z1=-1e9,y0=1e9,y1=-1e9,gone=false;const v0=v;
       for(let j=0;j<nv;j++,v++){for(let c=0;c<3;c++){const d=(lo[c][v]|(hi[c][v]<<8))<<16>>16;acc[c]=(acc[c]+d)<<16>>16;}
         const x=acc[0]/sc,y=acc[1]/sc,z=acc[2]/sc;pos[v*3]=x;pos[v*3+1]=y;pos[v*3+2]=z;info[v*2]=tint;info[v*2+1]=ty;
         if(x<x0)x0=x;if(x>x1)x1=x;if(z<z0)z0=z;if(z>z1)z1=z;if(y<y0)y0=y;if(y>y1)y1=y;}
@@ -186,18 +191,21 @@ export function buildRealCity(scene,RC,S,lights){
       const gx=C.cx,gz=C.cz;let g=Infinity;
       for(const [px,pz] of [[x0,z0],[x1,z0],[x0,z1],[x1,z1],[(x0+x1)/2,(z0+z1)/2]])g=Math.min(g,S.heightAt(gx+px,gz+pz));
       g-=0.4;for(let j=v0;j<v;j++)pos[j*3+1]+=g;
+      // im Weg eines Flugzeugs (Piste, Streifen, Anflugschneise über der Hindernisfläche): Gebäude weglassen
+      if(rwObstacle(gx+x0,gz+z0,gx+x1,gz+z1,g+y1)){for(let j=v0;j<v;j++){pos[j*3]=pos[v0*3];pos[j*3+1]=g-50;pos[j*3+2]=pos[v0*3+2];}RC.removed=(RC.removed||0)+1;gone=true;}
       // Flughafengebäude (Zürich, sonst am Vorfeldrand): Art aus Form/Höhe – k = 16 + Art*48 + Höhe (Art 0 Glas-Terminal/Dock, 1 Hangar, 2 Büro mit Fensterbändern, 3 Nebengebäude); tint = (Bodenhöhe-200 m)/2
-      if(inAirportArea(gx+(x0+x1)/2,gz+(z0+z1)/2)){const w=x1-x0,d=z1-z0,hb=y1-y0,asp=Math.max(w,d)/Math.max(1,Math.min(w,d)),ar=w*d;
+      if(!gone&&inAirportArea(gx+(x0+x1)/2,gz+(z0+z1)/2)){const w=x1-x0,d=z1-z0,hb=y1-y0,asp=Math.max(w,d)/Math.max(1,Math.min(w,d)),ar=w*d;
         const sub=hb<7.5?3:asp>3.2?0:(ar>3500&&hb>13)?1:hb>17?0:2,at=16+sub*48+Math.min(47,Math.round(hb)),gt=Math.max(0,Math.min(255,Math.round((g+y0-200)/2)));
         for(let j=v0;j<v;j++){info[j*2]=gt;info[j*2+1]=at;}}
-      {const wx=gx+(x0+x1)/2,wz=gz+(z0+z1)/2;      for(const L of LANDMARKS)if(Math.abs(wx-L.x)<L.r&&Math.abs(wz-L.z)<L.r&&Math.hypot(wx-L.x,wz-L.z)<L.r&&y1-y0>=L.hMin){
+      if(!gone){const wx=gx+(x0+x1)/2,wz=gz+(z0+z1)/2;      for(const L of LANDMARKS)if(Math.abs(wx-L.x)<L.r&&Math.abs(wz-L.z)<L.r&&Math.hypot(wx-L.x,wz-L.z)<L.r&&y1-y0>=L.hMin){
         // Kirchen/Wahrzeichen: Art 8 (Kupferdach) bzw. 9 (Schieferdach), Art 6 = Basler Münster; x = Bodenhöhe (250 m + 2 m Schritte) für Fenster und Turmhelme im Shader
         const ty=L.ty===2?(L.tint<128?8:9):L.ty,gx2=L.ty===2||L.ty===6?Math.max(0,Math.min(255,Math.round((g+y0-250)/2))):L.tint;
         for(let j=v0;j<v;j++){info[j*2]=gx2;info[j*2+1]=ty;}
         if(L.clock&&!L.clockDone&&y1-y0>=L.clock.h){const T=towerTop(pos,v0,v,16);if(T){L.clockDone=true;const cy=T.y-L.clock.dy,mx=(T.x0+T.x1)/2,mz=(T.z0+T.z1)/2,geo=new THREE.CircleGeometry(L.clock.d/2,40),mt=clockMat();
           for(const [px,pz,ry] of [[T.x1+0.15,mz,Math.PI/2],[T.x0-0.15,mz,-Math.PI/2],[mx,T.z1+0.15,0],[mx,T.z0-0.15,Math.PI]]){const c=new THREE.Mesh(geo,mt);c.position.set(gx+px,cy,gz+pz);c.rotation.y=ry;c.matrixAutoUpdate=false;c.updateMatrix();scene.add(c);}}}}}
-      if(lights&&(nb%3===0)&&nv>14)lights.push(gx+(x0+x1)/2,g+3,gz+(z0+z1)/2);
+      if(lights&&!gone&&(nb%3===0)&&nv>14)lights.push(gx+(x0+x1)/2,g+3,gz+(z0+z1)/2);
       const ii0=ii;let hw=0;for(let j=0;j<nt*3;j++,ii++){const code=clo[ii]|(chi[ii]<<8);let l;if(code===0)l=hw++;else l=hw-code;idx[ii]=v0+l;}
+      if(gone){nb++;continue;}
       // Flughafen: Lüftungsgeräte und Aufbauten auf grossen Flachdächern (nur wo wirklich Dach ist: Punkt in einem Dach-Dreieck)
       if(roofBoxes&&inAirportArea(gx+(x0+x1)/2,gz+(z0+z1)/2)&&(x1-x0)*(z1-z0)>1200&&y1-y0>6){
         const top=y1+g-0.8,tris=[];let ang=0,best=0;

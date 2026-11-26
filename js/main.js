@@ -88,6 +88,8 @@ const GPU=(()=>{try{const gl=renderer.getContext(),e=gl.getExtension('WEBGL_debu
 const IGPU=/Intel|Iris|UHD|HD Graphics|Radeon\(TM\) Graphics|Radeon Graphics|Vega \d+ Graphics|Mali|Adreno|PowerVR|SwiftShader|llvmpipe/i.test(GPU)&&!/NVIDIA|GeForce|Quadro|RTX|Radeon RX|Radeon Pro|Arc\(TM\) A|Arc A\d/i.test(GPU);
 const prFor=q=>{const b=(QUAL[q]||QUAL.high).pr;return IGPU?Math.min(b,q==='ultra'?1.25:1):b;};
 Q.pr=LOWMEM?QUAL.low.pr:prFor(save.settings.quality||'high');
+// Laptop-Grafik: weniger Bäume (echte Wälder sind dichter als die erfundenen – sonst über 1 Mio. Dreiecke nur für Bäume)
+if(IGPU&&!LOWMEM){Q.trees=Math.min(Q.trees,22000);Q.treeRadius=Math.min(Q.treeRadius,3300);}
 renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,Q.pr));
 renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.outputColorSpace=THREE.SRGBColorSpace;
 renderer.shadowMap.enabled=Q.shadows;renderer.shadowMap.type=IGPU?THREE.PCFShadowMap:THREE.PCFSoftShadowMap;if(IGPU)Q.shadowMap=2048;
@@ -528,7 +530,7 @@ function step(dt){
     if(ev.type==='liftoff')atc.event('liftoff');
     if(ev.type==='touchdown'&&ev.rw&&!ev.water&&F.airTime>20&&!G.mission){G.arrAP=ev.rw;G.arrDone=false;G.arrTry=0;G.parked=false;}
     if(ev.type==='touchdown'){pad.rumble(Math.min(1,0.25+ev.sink*0.18),0.5,180+ev.sink*60);if(!G.lesson){const ap0=ev.rw||WF.airportZone(F.pos.x,F.pos.z);if(ap0)markVisit(ap0);}atc.event('touchdown',{ap:ev.rw||WF.airportZone(F.pos.x,F.pos.z)});if(G.mission&&G.mission.comfort&&ev.sink>2.2)G.comfort-=Math.min(30,(ev.sink-2.2)*15);audio.touch(ev.sink);if(ev.heli){const gr=heliGrade(ev);G.lastTouch=gr;toast(`Landung ${gr.letter} · Sinkrate ${ev.sink.toFixed(1)} m/s`,2600);}else if(ev.rw){const gr=gradeLanding(ev,F);G.lastTouch=gr;G.tdLetter=gr.letter;}}
-    if(ev.type==='touchdown'&&!ev.water)touchFx(F,ev);
+    if(ev.type==='touchdown'&&!ev.water){touchFx(F,ev);if(ev.pitch<-2.5)toast('Bugrad zuerst aufgesetzt – harte Landung. Kurz vor dem Aufsetzen die Nase leicht anheben (↓).',4500);}
     if(ev.type==='touchdown'&&ev.water){audio.splash(1.5);G.waterTouch=ev.sink;}
     if(ev.type==='touchdown'){const so=G.obj[G.oi];if(so&&so.type==='spot'&&(ev.rw===so.ap)){const al=toLocal(so.ap,ev.x,ev.z).along,d=Math.abs(al-(-so.ap.len/2+so.tgt));(G.spots=G.spots||[]).push(d);G.oi++;audio.chime();toast(`Ziellandung ${so.k}/${so.n}: ${d.toFixed(1)} m neben der Linie${so.k<so.n?' – Vollgas und durchstarten!':''}`,3200);}}
     if(ev.type==='outlanding'){audio.touch(ev.sink||1);toast('Aussenlandung geglückt!',3000);}
