@@ -10,6 +10,9 @@ Artifact slug e3615a1f-7860-4277-b4c4-84ea1ba2abea · letzte veröffentlichte Ve
 Backup Etappe 1: /tmp/af_e1 (kann nach Neustart weg sein)
 Testen: /tmp/run.sh test/<x>.py (Playwright, SwiftShader) · node test/jobs.mjs (Routen) · node test/mis.mjs
 
+## Version 13.1.1 (27.11.2026)
+- Jahreszeit: startFlight nimmt mission.season, sonst cfg.season, sonst save.free.season (Aufträge/Missionen vorher immer Sommer). Menü: Chip setzt world.setSeason sofort (CTX.world), showMenu mit save.free.season statt Sommer.
+
 ## Version 13.1 (26.11.2026) – Jahreszeiten, Airliner-Formen
 - Jahreszeiten: world.setSeason('spring'|'summer'|'autumn'|'winter') (setWinter = Kurzform). ORU.orSea (vec4 Winter, Herbst, Frühling), orLaub (R8-Textur 1537², Laubholzanteil aus forest_fine, orLB = x0,z0,Breite). GLSL seasonPhoto(c,wp,sea) in ORTHO_GLSL_HEAD: Vegetation = Grünüberschuss, dunkel = Wald; Herbst Laubwald orange/gelb/braun nach Laubanteil, Felder Stoppelgelb; Frühling frischgrün + Blütenpunkte (step 0,993); Winter Schnee über Fotos. Wirkt auch auf Gelände ohne Foto (orSea.y/z). Bäume: fillGen-Farben je Jahreszeit, Neuverteilung bei Wechsel (center zurückgesetzt). Dächer Winter: realcity mix(…, 0,80/0,83/0,87, orSea.x · (flach 0,55 / steil 0,8)).
 - Menü: Frühling/Sommer/Herbst/Winter-Chips; Live-Wetter: März–Mai Frühling, Sept–Nov Herbst, Dez–Feb oder Schnee/kalt Winter.

@@ -166,7 +166,7 @@ function renderFree(){const {$,AP,fmtH,liveWeather,persist,save}=ctx;
   $('fWx').querySelectorAll('.chip').forEach(el=>el.onclick=()=>{f.weather=el.dataset.w;f.live=null;f.liveCH=false;if(f.weather==='foehn'&&f.wind!=='foehn')f.wind='foehn';persist();renderFree();});
   $('fLive').innerHTML=`<button class="chip ${f.live?'sel':''}" id="fLiveB">☁ Echtwetter Schweiz${f.liveCH&&f.live?' ✓':' laden'}<small>${f.live?esc(f.live):'aktuelles Wetter an 40 Orten – unterwegs immer das Wetter der Gegend'}</small></button>`;$('fLiveB').onclick=liveWeather;
   f.season=f.season||'summer';$('fSeason').innerHTML=[['spring','Frühling'],['summer','Sommer'],['autumn','Herbst'],['winter','Winter (Schnee)']].map(([k,n])=>`<button class="chip ${f.season===k?'sel':''}" data-s="${k}">${n}</button>`).join('');
-  $('fSeason').querySelectorAll('.chip').forEach(el=>el.onclick=()=>{f.season=el.dataset.s;persist();renderFree();});
+  $('fSeason').querySelectorAll('.chip').forEach(el=>el.onclick=()=>{f.season=el.dataset.s;persist();renderFree();if(ctx.world)ctx.world.setSeason(f.season);});// Vorschau im Menü-Hintergrund
   f.wind=f.wind||'light';$('fWind').innerHTML=[['calm','Windstill'],['light','Leicht'],['mid','Mässig'],['strong','Stark, böig'],['foehn','Föhnsturm']].map(([k,n])=>`<button class="chip ${f.wind===k?'sel':''}" data-k="${k}">${n}</button>`).join('');
   $('fWind').querySelectorAll('.chip').forEach(el=>el.onclick=()=>{f.wind=el.dataset.k;f.live=null;f.liveCH=false;persist();renderFree();});
 }

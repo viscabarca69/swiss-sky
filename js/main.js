@@ -46,7 +46,7 @@ import {initStream} from './stream.js';
 
 const _el={},$=id=>_el[id]&&_el[id].isConnected?_el[id]:(_el[id]=document.getElementById(id)),DEG=Math.PI/180;
 // gemeinsamer Zustand für die ausgelagerten Module (Getter liefern immer den aktuellen Wert, z. B. den laufenden Flug G)
-const CTX={get G(){return G;},get S(){return S;},get AP(){return AP;},get atc(){return atc;},get audio(){return audio;},get scene(){return scene;},get hud(){return hud;},get career(){return career;},get save(){return save;},get attr(){return attr;},get renderer(){return renderer;},get MISSIONS(){return MISSIONS;},buildComposer:(...a)=>buildComposer(...a),checkBadges:(...a)=>checkBadges(...a),ewIds:(...a)=>ewIds(...a),fmtH:(...a)=>fmtH(...a),hourName:(...a)=>hourName(...a),liveWeather:(...a)=>liveWeather(...a),myLivery:(...a)=>myLivery(...a),renderLog:(...a)=>renderLog(...a),showBrief:(...a)=>showBrief(...a),starsHtml:(...a)=>starsHtml(...a),totalStars:(...a)=>totalStars(...a),get cam(){return cam;},get drag(){return drag;},get lastDrag(){return lastDrag;},get SHOW(){return SHOW;},get wx(){return wx;},get clamp(){return clamp;},get state(){return state;},get env(){return env;},get pad(){return pad;},get K(){return K;},get T(){return T;},ZS,applyShake:(...a)=>applyShake(...a),rpClear:(...a)=>rpClear(...a),showroomOn:(...a)=>showroomOn(...a),get world(){return world;},$,DEG,esc:(...a)=>esc(...a),
+const CTX={get G(){return G;},get world(){return world;},get S(){return S;},get AP(){return AP;},get atc(){return atc;},get audio(){return audio;},get scene(){return scene;},get hud(){return hud;},get career(){return career;},get save(){return save;},get attr(){return attr;},get renderer(){return renderer;},get MISSIONS(){return MISSIONS;},buildComposer:(...a)=>buildComposer(...a),checkBadges:(...a)=>checkBadges(...a),ewIds:(...a)=>ewIds(...a),fmtH:(...a)=>fmtH(...a),hourName:(...a)=>hourName(...a),liveWeather:(...a)=>liveWeather(...a),myLivery:(...a)=>myLivery(...a),renderLog:(...a)=>renderLog(...a),showBrief:(...a)=>showBrief(...a),starsHtml:(...a)=>starsHtml(...a),totalStars:(...a)=>totalStars(...a),get cam(){return cam;},get drag(){return drag;},get lastDrag(){return lastDrag;},get SHOW(){return SHOW;},get wx(){return wx;},get clamp(){return clamp;},get state(){return state;},get env(){return env;},get pad(){return pad;},get K(){return K;},get T(){return T;},ZS,applyShake:(...a)=>applyShake(...a),rpClear:(...a)=>rpClear(...a),showroomOn:(...a)=>showroomOn(...a),get world(){return world;},$,DEG,esc:(...a)=>esc(...a),
   award:(...a)=>award(...a),fmtT:(...a)=>fmtT(...a),nearestAP:(...a)=>nearestAP(...a),persist:(...a)=>persist(...a),toast:(...a)=>toast(...a)};
 const {setupGate,noseDist,placeTug,startPushback,pushTick,planTaxi,buildTaxiDots,routeToRunway}=createGroundOps(CTX);
 const {buildCockpit,updateCockpit}=createCockpit(CTX);
@@ -342,7 +342,7 @@ function startFlight(cfg){
   let wk=mission?(mission.wind||'light'):lesson?'calm':(cfg.wind||'light');if(weather==='storm'&&(wk==='light'||wk==='calm'))wk='storm';const wp=typeof wk==='string'?WIND_PRESETS[wk]||WIND_PRESETS.light:wk;
   const wdir=(typeof wk==='object'&&wk.dir!=null)?wk.dir:wk==='foehn'?195:(mission&&mission.windDir)||(cfg.windDir??(240+Math.round((Math.random()-0.5)*60)));
   const wet=weather==='rain'||weather==='storm'||weather==='snow';wx.set({...wp,dir:wdir},wet?1:0,weather==='snow');audio.setRain&&audio.setRain(weather==='rain'||weather==='storm'?1:0);G.windDir=wdir;
-  {const se=mission?mission.season:lesson?null:cfg.season;world.setSeason(weather==='snow'?'winter':se||'summer');}G.ltT=4+Math.random()*6;
+  {const se=lesson?null:(mission&&mission.season)||cfg.season||(save.free&&save.free.season);world.setSeason(weather==='snow'?'winter':se||'summer');}// Jahreszeit aus dem Freiflug-Menü gilt auch für Aufträge/Missionen ohne eigeneG.ltT=4+Math.random()*6;
   G.hour=hour;if(!mission&&!lesson&&cfg.liveCH&&LIVE){G.live=true;try{applyLive(true);}catch(e){}}
   const dest=G.obj.find(o=>o.type==='land')?.ap||null;
   atc.start({enabled:!lesson&&!(mission&&mission.race)&&!P.heli&&!P.glider&&save.settings.atc!==false,onGround:!air,startAP,dest,callsign:CALLSIGN[planeId]||'HB-XYZ'});
@@ -671,7 +671,7 @@ const rankName=n=>n>=16?'Flugkapitän':n>=11?'Erster Offizier':n>=6?'Linienpilot
 const hourName=h=>h>=21.5||h<5.5?'Nacht':h>=19?'Abend':h>=16?'Nachmittag':h>=11?'Mittag':'Morgen';
 const fmtH=h=>`${Math.floor(h)}:${String(Math.round((h%1)*60)).padStart(2,'0')}`;
 function showMenu(){
-  state='menu';cleanup();env.setTime(20.0,'fair');world.setSeason('summer');SHOW.on=false;
+  state='menu';cleanup();env.setTime(20.0,'fair');world.setSeason(save.free&&save.free.season||'summer');SHOW.on=false;
   ['hud','brief','result','pause','mapov'].forEach(id=>$(id).classList.add('hidden'));$('menu').classList.remove('hidden');
   const n=totalStars();$('rank').innerHTML=`<b>${rankName(n)}</b><span>${n} / ${ALL_MISSIONS.length*3} Sterne</span>`;
   $('mlist').innerHTML=MISSIONS.map((m,i)=>`<div class="mis" data-id="${m.id}"><div class="num">${i+1}</div><div class="mi"><b>${m.name}</b><span>${PLANES[m.plane].name} · ${hourName(m.hour)} · ${m.air?'Luftstart':m.start[2]?'Anflug '+AP[m.start[0]].name:AP[m.start[0]].name}</span></div><div class="mr">${starsHtml(save.stars[m.id]||0)}${save.grades[m.id]?`<em>${save.grades[m.id]}</em>`:''}</div></div>`).join('');
